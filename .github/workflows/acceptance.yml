@@ -22,6 +22,9 @@ jobs:
       matrix:
         instance: [0, 1]
 
+    outputs:
+      merge-base: ${{ steps.merge-base.outputs.sha }}
+
     env:
       VISUAL_HTML_ENABLE: 1
     steps:
