@@ -160,6 +160,7 @@
     "babel-plugin-dynamic-import-node": "^2.2.0",
     "csstype": "^3.0.8",
     "enzyme": "3.11.0",
+    "esbuild": "^0.8.9",
     "eslint": "5.11.1",
     "eslint-config-sentry-app": "1.58.0",
     "eslint-plugin-simple-import-sort": "^6.0.0",
@@ -203,6 +204,7 @@
   "APIMethod": "stub",
   "proxyURL": "http://localhost:8000",
   "scripts": {
+    "esbuild": "yarn esbuild static/app/index.tsx --bundle --outfile=out.js --tsconfig=config/tsconfig.build.json --loader:.svg=text --define:process.env.NODE_ENV=development --loader:.png=file ",
     "test": "node scripts/test.js",
     "test-precommit": "yarn test --bail --findRelatedTests -u",
     "test-ci": "yarn test --ci --coverage",
