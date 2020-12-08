@@ -20,11 +20,11 @@ import {
   vitalDetailRouteWithQuery,
   vitalMap,
   vitalsBaseFields,
-  vitalStateColors,
   vitalsMehFields,
   vitalsP75Fields,
   vitalsPoorFields,
   VitalState,
+  vitalStateColors,
 } from './vitalDetail/utils';
 import VitalPercents from './vitalDetail/vitalPercents';
 
@@ -32,6 +32,7 @@ type Props = {
   eventView: EventView;
   organization: Organization;
   location: Location;
+  showVitalPercentNames?: boolean;
 };
 
 export default function VitalsCards(props: Props) {
@@ -157,23 +158,30 @@ export function VitalsCard(props: CardProps) {
 
   return (
     <Container interactive>
-      <CardTitle>
-        <StyledTitle>{t(`${measurement}`)}</StyledTitle>
-        <QuestionTooltip
-          size="sm"
-          position="top"
-          title={t(vitalName ? vitalDescription[vitalName] || '' : '')}
-        />
-      </CardTitle>
-      <CardValue>
-        {value}
-        {vitalName !== WebVital.CLS && t('ms')}
-      </CardValue>
+      {props.noBorder || (
+        <CardTitle>
+          <StyledTitle>{t(`${measurement}`)}</StyledTitle>
+          <QuestionTooltip
+            size="sm"
+            position="top"
+            title={t(vitalName ? vitalDescription[vitalName] || '' : '')}
+          />
+        </CardTitle>
+      )}
+      {props.noBorder || (
+        <CardValue>
+          {value}
+          {vitalName !== WebVital.CLS && t('ms')}
+        </CardValue>
+      )}
       <CardBreakdown>
         <ProgressBreakdown colorStops={colorStops} />
       </CardBreakdown>
       <CardPercents>
-        <VitalPercents percents={percents} />
+        <VitalPercents
+          percents={percents}
+          showVitalPercentNames={props.showVitalPercentNames}
+        />
       </CardPercents>
     </Container>
   );
@@ -202,7 +210,7 @@ const BlankCard = (props: BlankCardProps) => {
   const Container = props.noBorder ? NonPanel : StyledVitalCard;
   return (
     <Container interactive>
-      <CardTitle>{t(`${props.measurement}`)}</CardTitle>
+      {props.noBorder || <CardTitle>{t(`${props.measurement}`)}</CardTitle>}
       <CardValue>{'\u2014'}</CardValue>
     </Container>
   );

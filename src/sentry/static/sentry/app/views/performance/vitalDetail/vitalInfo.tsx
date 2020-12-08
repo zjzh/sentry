@@ -24,6 +24,7 @@ export default function vitalInfo(props: Props) {
   const description = vitalDescription[vitalName];
   return (
     <Container>
+      <Description>{description}</Description>
       <VitalsCardDiscoverQuery
         eventView={eventView}
         orgSlug={organization.slug}
@@ -32,19 +33,23 @@ export default function vitalInfo(props: Props) {
       >
         {({isLoading, tableData}) => (
           <React.Fragment>
-            <VitalsCard tableData={tableData} isLoading={isLoading} {...props} noBorder />
+            <VitalsCard
+              tableData={tableData}
+              isLoading={isLoading}
+              {...props}
+              noBorder
+              showVitalPercentNames
+            />
           </React.Fragment>
         )}
       </VitalsCardDiscoverQuery>
-      <Description>{description}</Description>
     </Container>
   );
 }
 
 const Container = styled('div')`
   display: grid;
-  grid-template-columns: max-content 1fr;
-  gap: ${space(4)};
+  gap: ${space(3)};
   padding-top: ${space(1)};
   padding-bottom: ${space(4)};
 `;

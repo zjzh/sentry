@@ -2,6 +2,7 @@ import React from 'react';
 import styled from '@emotion/styled';
 
 import {IconCheckmark, IconFire, IconWarning} from 'app/icons';
+import {t} from 'app/locale';
 import space from 'app/styles/space';
 import {formatPercentage} from 'app/utils/formatters';
 import theme, {Color} from 'app/utils/theme';
@@ -15,6 +16,7 @@ type Percent = {
 
 type Props = {
   percents: Percent[];
+  showVitalPercentNames?: boolean;
 };
 
 export default function VitalPercents(props: Props) {
@@ -32,7 +34,10 @@ export default function VitalPercents(props: Props) {
             {p.vitalState === VitalState.GOOD && (
               <IconCheckmark color={vitalStateColors[p.vitalState] as Color} isCircled />
             )}
-            <Percent>{formatPercentage(p.percent, 0)}</Percent>
+            <Percent>
+              {props.showVitalPercentNames && t(`${p.vitalState}`)}{' '}
+              {formatPercentage(p.percent, 0)}
+            </Percent>
           </Vital>
         );
       })}
@@ -48,9 +53,10 @@ const Container = styled('div')`
 
 const Vital = styled('div')`
   display: flex;
+  align-items: center;
+  font-size: ${theme.fontSizeMedium};
 `;
 
 const Percent = styled('div')`
   margin-left: ${space(0.5)};
-  font-size: ${theme.fontSizeMedium};
 `;

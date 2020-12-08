@@ -37,7 +37,13 @@ import {
   transformEventStatsSmoothed,
 } from '../trends/utils';
 
-import {getMaxOfSeries, vitalChartTitleMap, vitalNameFromLocation} from './utils';
+import {
+  getMaxOfSeries,
+  vitalChartTitleMap,
+  vitalNameFromLocation,
+  webVitalMeh,
+  webVitalPoor,
+} from './utils';
 
 const QUERY_KEYS = [
   'environment',
@@ -119,11 +125,12 @@ class VitalChart extends React.Component<Props> {
       period: statsPeriod,
     };
 
-    const vitalThreshold = WEB_VITAL_DETAILS[vitalName].failureThreshold;
+    const vitalPoor = webVitalPoor[vitalName];
+    const vitalMeh = webVitalMeh[vitalName];
 
     const markLines = [
       {
-        seriesName: 'Threshold',
+        seriesName: 'Thresholds',
         type: 'line',
         data: [],
         markLine: MarkLine({
@@ -136,11 +143,34 @@ class VitalChart extends React.Component<Props> {
           label: {
             show: true,
             position: 'insideEndBottom',
-            formatter: 'Threshold',
+            formatter: 'Poor',
           },
           data: [
             {
-              yAxis: vitalThreshold,
+              yAxis: vitalPoor,
+            } as any, // TODO(ts): date on this type is likely incomplete (needs @types/echarts@4.6.2)
+          ],
+        }),
+      },
+      {
+        seriesName: 'Thresholds',
+        type: 'line',
+        data: [],
+        markLine: MarkLine({
+          silent: true,
+          lineStyle: {
+            color: theme.textColor,
+            type: 'dashed',
+            width: 1,
+          },
+          label: {
+            show: true,
+            position: 'insideEndBottom',
+            formatter: 'Meh',
+          },
+          data: [
+            {
+              yAxis: vitalMeh,
             } as any, // TODO(ts): date on this type is likely incomplete (needs @types/echarts@4.6.2)
           ],
         }),
@@ -164,7 +194,7 @@ class VitalChart extends React.Component<Props> {
       },
       yAxis: {
         min: 0,
-        max: vitalThreshold,
+        max: vitalPoor,
         axisLabel: {
           color: theme.chartLabel,
           // coerces the axis to be time based
@@ -204,7 +234,7 @@ class VitalChart extends React.Component<Props> {
               includePrevious={false}
               yAxis={yAxis}
             >
-              {({results, errored, loading, reloading}) => {
+              {({results: _results, errored, loading, reloading}) => {
                 if (errored) {
                   return (
                     <ErrorPanel>
@@ -212,6 +242,12 @@ class VitalChart extends React.Component<Props> {
                     </ErrorPanel>
                   );
                 }
+
+                const singleSeries = _results?.find(
+                  r => r.seriesName === `p75(${vitalName})`
+                );
+                const results = _results ? (singleSeries ? [singleSeries] : []) : []; // TODO: Fix this multiseries hack
+
                 const colors =
                   (results && theme.charts.getColorPalette(results.length - 2)) || [];
 
@@ -220,7 +256,7 @@ class VitalChart extends React.Component<Props> {
                 const smoothedSeries = smoothedResults
                   ? smoothedResults.map(({seriesName, ...rest}, i: number) => {
                       return {
-                        seriesName: replaceSmoothedSeriesName(seriesName) || 'Current',
+                        seriesName: replaceSeriesName(seriesName) || 'Current',
                         ...rest,
                         color: colors[i],
                         lineStyle: {
@@ -231,21 +267,8 @@ class VitalChart extends React.Component<Props> {
                     })
                   : [];
 
-                // Create a list of series based on the order of the fields,
-                const series = results
-                  ? results.map(({seriesName, ...rest}, i: number) => ({
-                      seriesName: replaceSeriesName(seriesName) || 'Current',
-                      ...rest,
-                      color: colors[i],
-                      lineStyle: {
-                        width: 1,
-                        opacity: 0.75,
-                      },
-                    }))
-                  : [];
-
-                const seriesMax = getMaxOfSeries(series);
-                const yAxisMax = Math.max(seriesMax, vitalThreshold);
+                const seriesMax = getMaxOfSeries(smoothedSeries);
+                const yAxisMax = Math.max(seriesMax, vitalPoor);
                 chartOptions.yAxis.max = yAxisMax * 1.1;
 
                 // Stack the toolbox under the legend.
@@ -271,12 +294,7 @@ class VitalChart extends React.Component<Props> {
                               {...chartOptions}
                               legend={legend}
                               onLegendSelectChanged={this.handleLegendSelectChanged}
-                              series={[
-                                ...markLines,
-                                ...releaseSeries,
-                                ...series,
-                                ...smoothedSeries,
-                              ]}
+                              series={[...markLines, ...releaseSeries, ...smoothedSeries]}
                             />
                           ),
                           fixed: 'Web Vitals Chart',
