@@ -12,18 +12,32 @@ export function generateVitalDetailRoute({orgSlug}: {orgSlug: string}): string {
   return `/organizations/${orgSlug}/performance/vitaldetail/`;
 }
 
+export const webVitalPoor = {
+  [WebVital.FCP]: 3000,
+  [WebVital.LCP]: 4000,
+  [WebVital.FID]: 300,
+  [WebVital.CLS]: 0.25,
+};
+
+export const webVitalMeh = {
+  [WebVital.FCP]: 1000,
+  [WebVital.LCP]: 2500,
+  [WebVital.FID]: 100,
+  [WebVital.CLS]: 0.1,
+};
+
 export const vitalsPoorFields = {
-  [WebVital.FCP]: 'count_at_least(measurements.fcp, 3000)',
-  [WebVital.LCP]: 'count_at_least(measurements.lcp, 4000)',
-  [WebVital.FID]: 'count_at_least(measurements.fid, 300)',
-  [WebVital.CLS]: 'count_at_least(measurements.cls, 0.25)',
+  [WebVital.FCP]: `count_at_least(measurements.fcp, 3000)`,
+  [WebVital.LCP]: `count_at_least(measurements.lcp, 4000)`,
+  [WebVital.FID]: `count_at_least(measurements.fid, 300)`,
+  [WebVital.CLS]: `count_at_least(measurements.cls, 0.25)`,
 };
 
 export const vitalsMehFields = {
-  [WebVital.FCP]: 'count_at_least(measurements.fcp, 1000)',
-  [WebVital.LCP]: 'count_at_least(measurements.lcp, 2500)',
-  [WebVital.FID]: 'count_at_least(measurements.fid, 100)',
-  [WebVital.CLS]: 'count_at_least(measurements.cls, 0.1)',
+  [WebVital.FCP]: `count_at_least(measurements.fcp, 1000)`,
+  [WebVital.LCP]: `count_at_least(measurements.lcp, 2500)`,
+  [WebVital.FID]: `count_at_least(measurements.fid, 100)`,
+  [WebVital.CLS]: `count_at_least(measurements.cls, 0.1)`,
 };
 
 export const vitalsBaseFields = {
@@ -41,9 +55,9 @@ export const vitalsP75Fields = {
 };
 
 export enum VitalState {
-  POOR,
-  MEH,
-  GOOD,
+  POOR = 'Poor',
+  MEH = 'Meh',
+  GOOD = 'Good',
 }
 
 export const vitalStateColors = {
@@ -99,8 +113,16 @@ export function vitalNameFromLocation(location: Location): WebVital {
   }
 }
 
-export function getVitalDetailTableStatusFunction(vitalName: WebVital): string {
-  const vitalThreshold = WEB_VITAL_DETAILS[vitalName].failureThreshold;
+export function getVitalDetailTablePoorStatusFunction(vitalName: WebVital): string {
+  const vitalThreshold = webVitalPoor[vitalName];
+  const statusFunction = `compare_numeric_aggregate(${getAggregateAlias(
+    `p75(${vitalName})`
+  )},greater,${vitalThreshold})`;
+  return statusFunction;
+}
+
+export function getVitalDetailTableMehStatusFunction(vitalName: WebVital): string {
+  const vitalThreshold = webVitalMeh[vitalName];
   const statusFunction = `compare_numeric_aggregate(${getAggregateAlias(
     `p75(${vitalName})`
   )},greater,${vitalThreshold})`;
