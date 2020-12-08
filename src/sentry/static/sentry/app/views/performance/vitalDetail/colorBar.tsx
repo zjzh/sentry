@@ -10,7 +10,7 @@ type Props = {
   colorStops: ColorStop[];
 };
 
-const ProgressBreakdown = (props: Props) => {
+const ColorBar = (props: Props) => {
   return (
     <Container fractions={props.colorStops.map(({percent}) => percent)}>
       {props.colorStops.map(colorStop => {
@@ -42,4 +42,4 @@ const Bar = styled('div')<BarProps>`
   background-color: ${p => p.color};
 `;
 
-export default ProgressBreakdown;
+export default ColorBar;

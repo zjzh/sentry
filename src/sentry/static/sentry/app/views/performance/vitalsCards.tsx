@@ -13,7 +13,7 @@ import {getAggregateAlias, WebVital} from 'app/utils/discover/fields';
 import {decodeList} from 'app/utils/queryString';
 import VitalsCardsDiscoverQuery from 'app/views/performance/vitalDetail/vitalsCardsDiscoverQuery';
 
-import ProgressBreakdown from './vitalDetail/progressBreakdown';
+import ColorBar from './vitalDetail/colorBar';
 import {
   vitalAbbreviations,
   vitalDescription,
@@ -175,7 +175,7 @@ export function VitalsCard(props: CardProps) {
         </CardValue>
       )}
       <CardBreakdown>
-        <ProgressBreakdown colorStops={colorStops} />
+        <ColorBar colorStops={colorStops} />
       </CardBreakdown>
       <CardPercents>
         <VitalPercents
