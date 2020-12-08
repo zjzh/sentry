@@ -4,21 +4,29 @@ import {Location} from 'history';
 
 import Card from 'app/components/card';
 import Link from 'app/components/links/link';
+import QuestionTooltip from 'app/components/questionTooltip';
 import {t} from 'app/locale';
 import space from 'app/styles/space';
 import {Organization} from 'app/types';
 import EventView from 'app/utils/discover/eventView';
 import {getAggregateAlias, WebVital} from 'app/utils/discover/fields';
-import {formatPercentage} from 'app/utils/formatters';
 import {decodeList} from 'app/utils/queryString';
 import VitalsCardsDiscoverQuery from 'app/views/performance/vitalDetail/vitalsCardsDiscoverQuery';
 
+import ProgressBreakdown from './vitalDetail/progressBreakdown';
 import {
   vitalAbbreviations,
+  vitalDescription,
   vitalDetailRouteWithQuery,
+  vitalMap,
   vitalsBaseFields,
-  vitalsThresholdFields,
+  vitalStateColors,
+  vitalsMehFields,
+  vitalsP75Fields,
+  vitalsPoorFields,
+  VitalState,
 } from './vitalDetail/utils';
+import VitalPercents from './vitalDetail/vitalPercents';
 
 type Props = {
   eventView: EventView;
@@ -96,7 +104,7 @@ export function LinkedVitalsCard(props: CardProps) {
 export function VitalsCard(props: CardProps) {
   const {isLoading, tableData, vitalName, noBorder} = props;
 
-  const measurement = vitalAbbreviations[vitalName];
+  const measurement = vitalMap[vitalName];
 
   const Container = noBorder ? NonPanel : StyledVitalCard;
 
@@ -111,19 +119,79 @@ export function VitalsCard(props: CardProps) {
     return <BlankCard noBorder={noBorder} measurement={measurement} />;
   }
 
-  const thresholdCount: number =
-    parseFloat(result[getAggregateAlias(vitalsThresholdFields[vitalName])]) || 0;
+  const poorCount: number =
+    parseFloat(result[getAggregateAlias(vitalsPoorFields[vitalName])]) || 0;
+  const mehCount: number =
+    parseFloat(result[getAggregateAlias(vitalsMehFields[vitalName])]) || 0;
+
   const baseCount: number = parseFloat(base) || Number.MIN_VALUE;
 
-  const value = formatPercentage(1 - thresholdCount / baseCount);
+  const p75: number =
+    parseFloat(result[getAggregateAlias(vitalsP75Fields[vitalName])]) || 0;
+
+  const value = vitalName === WebVital.CLS ? p75.toFixed(2) : p75.toFixed(0);
+
+  const poorPercent = poorCount / baseCount;
+  const mehPercent = (mehCount - poorCount) / baseCount;
+  const goodPercent = 1 - poorPercent - mehPercent;
+
+  const percents = [
+    {
+      vitalState: VitalState.GOOD,
+      percent: goodPercent,
+    },
+    {
+      vitalState: VitalState.MEH,
+      percent: mehPercent,
+    },
+    {
+      vitalState: VitalState.POOR,
+      percent: poorPercent,
+    },
+  ];
+
+  const colorStops = percents.map(({percent, vitalState}) => ({
+    percent,
+    color: vitalStateColors[vitalState],
+  }));
 
   return (
     <Container interactive>
-      <CardTitle>{t(`${measurement} Passing`)}</CardTitle>
-      <CardValue>{value}</CardValue>
+      <CardTitle>
+        <StyledTitle>{t(`${measurement}`)}</StyledTitle>
+        <QuestionTooltip
+          size="sm"
+          position="top"
+          title={t(vitalName ? vitalDescription[vitalName] || '' : '')}
+        />
+      </CardTitle>
+      <CardValue>
+        {value}
+        {vitalName !== WebVital.CLS && t('ms')}
+      </CardValue>
+      <CardBreakdown>
+        <ProgressBreakdown colorStops={colorStops} />
+      </CardBreakdown>
+      <CardPercents>
+        <VitalPercents percents={percents} />
+      </CardPercents>
     </Container>
   );
 }
+
+const CardBreakdown = styled('div')`
+  margin-top: ${space(2)};
+`;
+
+const StyledTitle = styled('span')`
+  margin-right: ${space(0.5)};
+`;
+
+const CardPercents = styled('div')`
+  width: 100%;
+  display: flex;
+  justify-content: flex-start;
+`;
 
 type BlankCardProps = {
   noBorder?: boolean;
@@ -134,7 +202,7 @@ const BlankCard = (props: BlankCardProps) => {
   const Container = props.noBorder ? NonPanel : StyledVitalCard;
   return (
     <Container interactive>
-      <CardTitle>{t(`${props.measurement} Passing`)}</CardTitle>
+      <CardTitle>{t(`${props.measurement}`)}</CardTitle>
       <CardValue>{'\u2014'}</CardValue>
     </Container>
   );
@@ -173,4 +241,5 @@ const CardTitle = styled('div')`
 `;
 const CardValue = styled('div')`
   font-size: 32px;
+  margin-top: ${space(1)};
 `;

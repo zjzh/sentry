@@ -1,8 +1,10 @@
 import {Location, Query} from 'history';
 
+import {IconCheckmark, IconFire, IconWarning} from 'app/icons';
 import {Series} from 'app/types/echarts';
 import {getAggregateAlias, WebVital} from 'app/utils/discover/fields';
 import {decodeScalar} from 'app/utils/queryString';
+import theme from 'app/utils/theme';
 
 import {WEB_VITAL_DETAILS} from '../transactionVitals/constants';
 
@@ -10,17 +12,50 @@ export function generateVitalDetailRoute({orgSlug}: {orgSlug: string}): string {
   return `/organizations/${orgSlug}/performance/vitaldetail/`;
 }
 
-export const vitalsThresholdFields = {
+export const vitalsPoorFields = {
   [WebVital.FCP]: 'count_at_least(measurements.fcp, 3000)',
   [WebVital.LCP]: 'count_at_least(measurements.lcp, 4000)',
   [WebVital.FID]: 'count_at_least(measurements.fid, 300)',
   [WebVital.CLS]: 'count_at_least(measurements.cls, 0.25)',
 };
+
+export const vitalsMehFields = {
+  [WebVital.FCP]: 'count_at_least(measurements.fcp, 1000)',
+  [WebVital.LCP]: 'count_at_least(measurements.lcp, 2500)',
+  [WebVital.FID]: 'count_at_least(measurements.fid, 100)',
+  [WebVital.CLS]: 'count_at_least(measurements.cls, 0.1)',
+};
+
 export const vitalsBaseFields = {
   [WebVital.FCP]: 'count_at_least(measurements.fcp, 0)',
   [WebVital.LCP]: 'count_at_least(measurements.lcp, 0)',
   [WebVital.FID]: 'count_at_least(measurements.fid, 0)',
   [WebVital.CLS]: 'count_at_least(measurements.cls, 0)',
+};
+
+export const vitalsP75Fields = {
+  [WebVital.FCP]: 'p75(measurements.fcp)',
+  [WebVital.LCP]: 'p75(measurements.lcp)',
+  [WebVital.FID]: 'p75(measurements.fid)',
+  [WebVital.CLS]: 'p75(measurements.cls)',
+};
+
+export enum VitalState {
+  POOR,
+  MEH,
+  GOOD,
+}
+
+export const vitalStateColors = {
+  [VitalState.POOR]: theme.red300,
+  [VitalState.MEH]: theme.yellow300,
+  [VitalState.GOOD]: theme.green300,
+};
+
+export const vitalStateIcons = {
+  [VitalState.POOR]: IconFire,
+  [VitalState.MEH]: IconWarning,
+  [VitalState.GOOD]: IconCheckmark,
 };
 
 export function vitalDetailRouteWithQuery({
