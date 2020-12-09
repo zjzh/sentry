@@ -11,6 +11,7 @@ export function generateVitalDetailRoute({orgSlug}: {orgSlug: string}): string {
 }
 
 export const webVitalPoor = {
+  [WebVital.FP]: 3000,
   [WebVital.FCP]: 3000,
   [WebVital.LCP]: 4000,
   [WebVital.FID]: 300,
@@ -18,6 +19,7 @@ export const webVitalPoor = {
 };
 
 export const webVitalMeh = {
+  [WebVital.FP]: 1000,
   [WebVital.FCP]: 1000,
   [WebVital.LCP]: 2500,
   [WebVital.FID]: 100,
