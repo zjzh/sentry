@@ -102,41 +102,43 @@ export function LinkedVitalsCard(props: CardProps) {
   );
 }
 
-export function VitalsCard(props: CardProps) {
-  const {isLoading, tableData, vitalName, noBorder} = props;
+type Counts = {
+  poorCount: number;
+  mehCount: number;
+  goodCount: number;
+  baseCount: number;
+};
 
-  const measurement = vitalMap[vitalName];
-
-  const Container = noBorder ? NonPanel : StyledVitalCard;
-
-  if (isLoading || !tableData || !tableData.data || !tableData.data[0]) {
-    return <BlankCard noBorder={noBorder} measurement={measurement} />;
-  }
-
-  const result = tableData.data[0];
+function getCounts(result: any, vitalName: WebVital): Counts {
   const base = result[getAggregateAlias(vitalsBaseFields[vitalName])];
-
-  if (!base) {
-    return <BlankCard noBorder={noBorder} measurement={measurement} />;
-  }
-
   const poorCount: number =
     parseFloat(result[getAggregateAlias(vitalsPoorFields[vitalName])]) || 0;
-  const mehCount: number =
+  const mehTotal: number =
     parseFloat(result[getAggregateAlias(vitalsMehFields[vitalName])]) || 0;
-
+  const mehCount = mehTotal - poorCount;
   const baseCount: number = parseFloat(base) || Number.MIN_VALUE;
 
-  const p75: number =
-    parseFloat(result[getAggregateAlias(vitalsP75Fields[vitalName])]) || 0;
+  const goodCount: number = baseCount - mehCount - poorCount;
 
-  const value = vitalName === WebVital.CLS ? p75.toFixed(2) : p75.toFixed(0);
+  return {
+    poorCount,
+    mehCount,
+    goodCount,
+    baseCount,
+  };
+}
 
+type Percent = {
+  vitalState: VitalState;
+  percent: number;
+};
+
+function getPercentsFromCounts({poorCount, mehCount, goodCount, baseCount}) {
   const poorPercent = poorCount / baseCount;
-  const mehPercent = (mehCount - poorCount) / baseCount;
-  const goodPercent = 1 - poorPercent - mehPercent;
+  const mehPercent = mehCount / baseCount;
+  const goodPercent = goodCount / baseCount;
 
-  const percents = [
+  const percents: Percent[] = [
     {
       vitalState: VitalState.GOOD,
       percent: goodPercent,
@@ -151,36 +153,86 @@ export function VitalsCard(props: CardProps) {
     },
   ];
 
-  const colorStops = percents.map(({percent, vitalState}) => ({
+  return percents;
+}
+
+function getColorStopsFromPercents(percents: Percent[]) {
+  return percents.map(({percent, vitalState}) => ({
     percent,
     color: vitalStateColors[vitalState],
   }));
+}
+
+export function VitalsCard(props: CardProps) {
+  const {isLoading, tableData, vitalName, noBorder} = props;
+
+  const measurement = vitalMap[vitalName];
+
+  if (isLoading || !tableData || !tableData.data || !tableData.data[0]) {
+    return <BlankCard noBorder={noBorder} measurement={measurement} />;
+  }
+
+  const result = tableData.data[0];
+  const base = result[getAggregateAlias(vitalsBaseFields[vitalName])];
+
+  if (!base) {
+    return <BlankCard noBorder={noBorder} measurement={measurement} />;
+  }
+
+  const percents = getPercentsFromCounts(getCounts(result, vitalName));
+  const p75: number =
+    parseFloat(result[getAggregateAlias(vitalsP75Fields[vitalName])]) || 0;
+  const value = vitalName === WebVital.CLS ? p75.toFixed(2) : p75.toFixed(0);
+
+  return (
+    <VitalsCardContent
+      noBorder={noBorder}
+      percents={percents}
+      showVitalPercentNames={props.showVitalPercentNames}
+      title={measurement}
+      titleDescription={t(vitalName ? vitalDescription[vitalName] || '' : '')}
+      value={`${value}${vitalName !== WebVital.CLS && t('ms')}`}
+    />
+  );
+}
+
+type CardContentProps = {
+  noBorder?: boolean;
+  percents: Percent[];
+  showVitalPercentNames?: boolean;
+  title?: string;
+  titleDescription: string;
+  value: string;
+};
+
+function VitalsCardContent(props: CardContentProps) {
+  const {
+    percents,
+    noBorder,
+    title,
+    titleDescription,
+    value,
+    showVitalPercentNames,
+  } = props;
+  const Container = noBorder ? NonPanel : StyledVitalCard;
+  const colorStops = getColorStopsFromPercents(percents);
 
   return (
     <Container interactive>
       {props.noBorder || (
         <CardTitle>
-          <StyledTitle>{t(`${measurement}`)}</StyledTitle>
-          <QuestionTooltip
-            size="sm"
-            position="top"
-            title={t(vitalName ? vitalDescription[vitalName] || '' : '')}
-          />
+          <StyledTitle>{t(`${title}`)}</StyledTitle>
+          <QuestionTooltip size="sm" position="top" title={titleDescription} />
         </CardTitle>
       )}
-      {props.noBorder || (
-        <CardValue>
-          {value}
-          {vitalName !== WebVital.CLS && t('ms')}
-        </CardValue>
-      )}
+      {props.noBorder || <CardValue>{value}</CardValue>}
       <CardBreakdown>
         <ColorBar colorStops={colorStops} />
       </CardBreakdown>
       <CardPercents>
         <VitalPercents
           percents={percents}
-          showVitalPercentNames={props.showVitalPercentNames}
+          showVitalPercentNames={showVitalPercentNames}
         />
       </CardPercents>
     </Container>
