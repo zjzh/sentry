@@ -110,6 +110,10 @@ class VitalCard extends React.Component<Props, State> {
     return {...prevState};
   }
 
+  showVitalColours() {
+    return this.props.organization.features.includes('performance-vitals-overview');
+  }
+
   trackOpenInDiscoverClicked = () => {
     const {organization} = this.props;
     const {vitalDetails: vital} = this.props;
@@ -178,7 +182,8 @@ class VitalCard extends React.Component<Props, State> {
         <Indicator color={colors[0]} />
         <SummaryHeading>
           <CardSectionHeading>{`${name} (${slug.toUpperCase()})`}</CardSectionHeading>
-          {summary === null ? null : summary < failureThreshold ? (
+          {summary === null || this.showVitalColours() ? null : summary <
+            failureThreshold ? (
             <Tag>{t('Pass')}</Tag>
           ) : (
             <StyledTag>{t('Fail')}</StyledTag>
@@ -267,11 +272,11 @@ class VitalCard extends React.Component<Props, State> {
 
     const allSeries = [series];
     if (!isLoading && !error) {
-      if (!organization.features.includes('performance-vitals-overview')) {
-        const baselineSeries = this.getBaselineSeries();
-        if (baselineSeries !== null) {
-          allSeries.push(baselineSeries);
-        }
+      const baselineSeries = this.getBaselineSeries();
+      if (baselineSeries !== null) {
+        allSeries.push(baselineSeries);
+      }
+      if (!this.showVitalColours()) {
         const failureSeries = this.getFailureSeries();
         if (failureSeries !== null) {
           allSeries.push(failureSeries);
@@ -347,7 +352,7 @@ class VitalCard extends React.Component<Props, State> {
 
       const value = item.count;
 
-      if (this.props.organization.features.includes('performance-vitals-overview')) {
+      if (this.showVitalColours()) {
         return {
           value,
           name,
