@@ -196,13 +196,58 @@ export function VitalsCard(props: CardProps) {
   );
 }
 
+type CondensedCardProps = Props & {
+  tableData: any;
+  isLoading?: boolean;
+};
+
+/**
+ * To aggregate and visualize all vital counts in returned data.
+ */
+export function CondensedVitalsCard(props: CondensedCardProps) {
+  const {isLoading, tableData} = props;
+
+  if (isLoading || !tableData || !tableData.data || !tableData.data[0]) {
+    return <BlankCard noBorder />;
+  }
+
+  const result = tableData.data[0];
+
+  const vitals = Object.values(WebVital);
+
+  const allCounts: Counts = {
+    poorCount: 0,
+    mehCount: 0,
+    goodCount: 0,
+    baseCount: 0,
+  };
+  vitals.forEach(vitalName => {
+    const counts = getCounts(result, vitalName);
+    Object.keys(counts).forEach(countKey => (allCounts[countKey] += counts[countKey]));
+  });
+
+  if (!allCounts.baseCount) {
+    return <BlankCard noBorder />;
+  }
+
+  const percents = getPercentsFromCounts(allCounts);
+
+  return (
+    <VitalsCardContent
+      noBorder
+      percents={percents}
+      showVitalPercentNames={props.showVitalPercentNames}
+    />
+  );
+}
+
 type CardContentProps = {
-  noBorder?: boolean;
   percents: Percent[];
+  noBorder?: boolean;
   showVitalPercentNames?: boolean;
   title?: string;
-  titleDescription: string;
-  value: string;
+  titleDescription?: string;
+  value?: string;
 };
 
 function VitalsCardContent(props: CardContentProps) {
