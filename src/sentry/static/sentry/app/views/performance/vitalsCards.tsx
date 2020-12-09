@@ -33,6 +33,7 @@ type Props = {
   organization: Organization;
   location: Location;
   showVitalPercentNames?: boolean;
+  hasCondensedVitals?: boolean;
 };
 
 export default function VitalsCards(props: Props) {
@@ -49,15 +50,24 @@ export default function VitalsCards(props: Props) {
     >
       {({isLoading, tableData}) => (
         <VitalsContainer>
-          {shownVitals.map(vitalName => (
-            <LinkedVitalsCard
-              key={vitalName}
-              vitalName={vitalName}
+          {props.hasCondensedVitals ? (
+            <CondensedVitalsCard
               tableData={tableData}
               isLoading={isLoading}
               {...props}
+              condensedVitals={shownVitals}
             />
-          ))}
+          ) : (
+            shownVitals.map(vitalName => (
+              <LinkedVitalsCard
+                key={vitalName}
+                vitalName={vitalName}
+                tableData={tableData}
+                isLoading={isLoading}
+                {...props}
+              />
+            ))
+          )}
         </VitalsContainer>
       )}
     </VitalsCardsDiscoverQuery>
@@ -191,7 +201,7 @@ export function VitalsCard(props: CardProps) {
       showVitalPercentNames={props.showVitalPercentNames}
       title={measurement}
       titleDescription={t(vitalName ? vitalDescription[vitalName] || '' : '')}
-      value={`${value}${vitalName !== WebVital.CLS && t('ms')}`}
+      value={`${value}${vitalName === WebVital.CLS ? '' : t('ms')}`}
     />
   );
 }
@@ -199,12 +209,13 @@ export function VitalsCard(props: CardProps) {
 type CondensedCardProps = Props & {
   tableData: any;
   isLoading?: boolean;
+  condensedVitals: WebVital[];
 };
 
 /**
  * To aggregate and visualize all vital counts in returned data.
  */
-export function CondensedVitalsCard(props: CondensedCardProps) {
+function CondensedVitalsCard(props: CondensedCardProps) {
   const {isLoading, tableData} = props;
 
   if (isLoading || !tableData || !tableData.data || !tableData.data[0]) {
@@ -213,7 +224,7 @@ export function CondensedVitalsCard(props: CondensedCardProps) {
 
   const result = tableData.data[0];
 
-  const vitals = Object.values(WebVital);
+  const vitals = props.condensedVitals;
 
   const allCounts: Counts = {
     poorCount: 0,
@@ -284,9 +295,7 @@ function VitalsCardContent(props: CardContentProps) {
   );
 }
 
-const CardBreakdown = styled('div')`
-  margin-top: ${space(2)};
-`;
+const CardBreakdown = styled('div')``;
 
 const StyledTitle = styled('span')`
   margin-right: ${space(0.5)};
@@ -347,4 +356,5 @@ const CardTitle = styled('div')`
 const CardValue = styled('div')`
   font-size: 32px;
   margin-top: ${space(1)};
+  margin-bottom: ${space(2)};
 `;

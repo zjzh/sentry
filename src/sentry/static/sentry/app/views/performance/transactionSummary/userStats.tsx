@@ -6,32 +6,30 @@ import {SectionHeading} from 'app/components/charts/styles';
 import Link from 'app/components/links/link';
 import QuestionTooltip from 'app/components/questionTooltip';
 import UserMisery from 'app/components/userMisery';
+import {IconOpen} from 'app/icons';
 import {t} from 'app/locale';
 import space from 'app/styles/space';
 import {Organization} from 'app/types';
+import EventView from 'app/utils/discover/eventView';
 import {getFieldRenderer} from 'app/utils/discover/fieldRenderers';
-import {getAggregateAlias} from 'app/utils/discover/fields';
 import {decodeScalar} from 'app/utils/queryString';
 import {getTermHelp} from 'app/views/performance/data';
-import {
-  PERCENTILE as VITAL_PERCENTILE,
-  VITAL_GROUPS,
-  WEB_VITAL_DETAILS,
-} from 'app/views/performance/transactionVitals/constants';
 import {vitalsRouteWithQuery} from 'app/views/performance/transactionVitals/utils';
 
+import VitalsCards from '../vitalsCards';
+
 type Props = {
+  eventView: EventView;
   totals: Record<string, number>;
   location: Location;
   organization: Organization;
   transactionName: string;
 };
 
-function UserStats({totals, location, organization, transactionName}: Props) {
+function UserStats({eventView, totals, location, organization, transactionName}: Props) {
   let userMisery = <StatNumber>{'\u2014'}</StatNumber>;
   const threshold = organization.apdexThreshold;
   let apdex: React.ReactNode = <StatNumber>{'\u2014'}</StatNumber>;
-  let vitalsPassRate: React.ReactNode = null;
 
   if (totals) {
     const miserableUsers = Number(totals[`user_misery_${threshold}`]);
@@ -51,25 +49,6 @@ function UserStats({totals, location, organization, transactionName}: Props) {
     const apdexKey = `apdex_${threshold}`;
     const formatter = getFieldRenderer(apdexKey, {[apdexKey]: 'number'});
     apdex = formatter(totals, {organization, location});
-
-    const [vitalsPassed, vitalsTotal] = VITAL_GROUPS.map(({vitals: vs}) => vs).reduce(
-      ([passed, total], vs) => {
-        vs.forEach(vital => {
-          const alias = getAggregateAlias(`percentile(${vital}, ${VITAL_PERCENTILE})`);
-          if (Number.isFinite(totals[alias])) {
-            total += 1;
-            if (totals[alias] < WEB_VITAL_DETAILS[vital].failureThreshold) {
-              passed += 1;
-            }
-          }
-        });
-        return [passed, total];
-      },
-      [0, 0]
-    );
-    if (vitalsTotal > 0) {
-      vitalsPassRate = <StatNumber>{`${vitalsPassed}/${vitalsTotal}`}</StatNumber>;
-    }
   }
 
   const webVitalsTarget = vitalsRouteWithQuery({
@@ -99,8 +78,8 @@ function UserStats({totals, location, organization, transactionName}: Props) {
           </SectionValue>
         </Link>
       </div>
-      {vitalsPassRate !== null && (
-        <div>
+      <VitalsContainer>
+        <VitalsHeading>
           <SectionHeading>
             {t('Web Vitals')}
             <QuestionTooltip
@@ -111,12 +90,17 @@ function UserStats({totals, location, organization, transactionName}: Props) {
               size="sm"
             />
           </SectionHeading>
-          <StatNumber>{vitalsPassRate}</StatNumber>
           <Link to={webVitalsTarget}>
-            <SectionValue>{t('Passed')}</SectionValue>
+            <IconOpen />
           </Link>
-        </div>
-      )}
+        </VitalsHeading>
+        <VitalsCards
+          eventView={eventView}
+          organization={organization}
+          location={location}
+          hasCondensedVitals
+        />
+      </VitalsContainer>
       <UserMiseryContainer>
         <SectionHeading>
           {t('User Misery')}
@@ -134,14 +118,19 @@ function UserStats({totals, location, organization, transactionName}: Props) {
 
 const Container = styled('div')`
   display: grid;
-  grid-template-columns: 1fr 1fr;
   grid-row-gap: ${space(2)};
   margin-bottom: ${space(4)};
 `;
 
-const UserMiseryContainer = styled('div')`
-  grid-column: 1/3;
+const VitalsContainer = styled('div')``;
+
+const VitalsHeading = styled('div')`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 `;
+
+const UserMiseryContainer = styled('div')``;
 
 const StatNumber = styled('div')`
   font-size: 32px;

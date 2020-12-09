@@ -30,12 +30,7 @@ import theme from 'app/utils/theme';
 import withApi from 'app/utils/withApi';
 
 import {HeaderTitleLegend} from '../styles';
-import {WEB_VITAL_DETAILS} from '../transactionVitals/constants';
-import {
-  replaceSeriesName,
-  replaceSmoothedSeriesName,
-  transformEventStatsSmoothed,
-} from '../trends/utils';
+import {replaceSeriesName, transformEventStatsSmoothed} from '../trends/utils';
 
 import {
   getMaxOfSeries,
