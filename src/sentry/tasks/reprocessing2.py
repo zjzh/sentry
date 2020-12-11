@@ -154,11 +154,12 @@ def wait_group_reprocessed(project_id, group_id, new_group_id):
     soft_time_limit=60 * 5,
 )
 def finish_reprocessing(project_id, group_id, new_group_id):
-    from sentry.models import Group, GroupRedirect, Activity
+    from sentry.models import Group, GroupRedirect, Activity, GroupInboxReason, add_group_to_inbox
 
     with transaction.atomic():
         group = Group.objects.get(id=group_id)
         new_group = Group.objects.get(id=new_group_id)
+        add_group_to_inbox(new_group, GroupInboxReason.REPROCESSED)
 
         # Any sort of success message will be shown at the *new* group ID's URL
         GroupRedirect.objects.create(
