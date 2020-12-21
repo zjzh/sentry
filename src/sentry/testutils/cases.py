@@ -14,6 +14,7 @@ __all__ = (
     "AcceptanceTestCase",
     "IntegrationTestCase",
     "SnubaTestCase",
+    "OrganizationEventsTestCase",
     "BaseIncidentsTest",
     "IntegrationRepositoryTestCase",
     "ReleaseCommitPatchTest",
@@ -30,6 +31,7 @@ import time
 import inspect
 from uuid import uuid4
 from contextlib import contextmanager
+from datetime import timedelta
 from sentry.utils.compat import mock
 
 from click.testing import CliRunner
@@ -84,7 +86,8 @@ from sentry.rules import EventState
 from sentry.tagstore.snuba import SnubaTagStorage
 from sentry.utils import json
 from sentry.utils.auth import SSO_SESSION_KEY
-from sentry.testutils.helpers.datetime import iso_format
+from sentry.utils.samples import load_data
+from sentry.testutils.helpers.datetime import before_now, iso_format
 from sentry.utils.retries import TimedRetryPolicy
 
 from .fixtures import Fixtures
@@ -789,6 +792,45 @@ class SnubaTestCase(BaseTestCase):
                 settings.SENTRY_SNUBA + "/tests/events/insert", data=json.dumps(events)
             ).status_code
             == 200
+        )
+
+
+class OrganizationEventsTestCase(APITestCase, SnubaTestCase):
+    def setUp(self):
+        super(OrganizationEventsTestCase, self).setUp()
+        self.enabled_features = {}
+        self.start = before_now(days=1).replace(hour=10, minute=0, second=0, microsecond=0)
+        self.end = self.start + timedelta(hours=2)
+        self.login_as(user=self.user)
+
+    def do_request(self, query, features=None):
+        if features is None:
+            features = self.enabled_features
+
+        with self.feature(features):
+            return self.client.get(self.url, query, format="json")
+
+    def store_event(self, data=None, offset=None, duration=None, prototype=None, project=None):
+        if prototype is not None:
+            event_data = load_data(prototype)
+        else:
+            event_data = {}
+
+        if data is not None:
+            event_data.update(data)
+
+        if offset is not None and duration is not None:
+            event_data.update(
+                {
+                    "start_timestamp": iso_format(self.start + offset),
+                    "timestamp": iso_format(self.start + offset + duration),
+                }
+            )
+
+        if project is None:
+            project = self.project
+        return super(OrganizationEventsTestCase, self).store_event(
+            event_data, project_id=project.id
         )
 
 

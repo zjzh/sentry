@@ -23,7 +23,6 @@ class OrganizationEventsMetaEndpoint(APITestCase, SnubaTestCase):
         )
 
     def test_simple(self):
-
         self.store_event(data={"timestamp": iso_format(self.min_ago)}, project_id=self.project.id)
 
         response = self.client.get(self.url, format="json")
