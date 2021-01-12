@@ -29,7 +29,6 @@ const StyledActionLink = styled(ActionLink)`
 
     &.disabled:hover {
       background: ${p => p.theme.white};
-      // color not in the theme
       color: #7a8188;
     }
 

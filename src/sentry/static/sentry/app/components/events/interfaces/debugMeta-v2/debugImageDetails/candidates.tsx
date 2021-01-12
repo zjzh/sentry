@@ -110,7 +110,7 @@ const StyledPanelTable = styled(PanelTable)`
       display: flex;
     }
 
-    grid-template-columns: max-content minmax(150px, 1fr) max-content max-content max-content;
+    grid-template-columns: max-content minmax(200px, 1fr) max-content max-content max-content;
   }
 `;
 

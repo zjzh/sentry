@@ -245,8 +245,15 @@ export const modalCss = css`
 
   @media (min-width: ${theme.breakpoints[0]}) {
     .modal-dialog {
-      width: 40%;
-      margin-left: -20%;
+      width: 60%;
+      margin-left: -30%;
+    }
+  }
+
+  @media (min-width: ${theme.breakpoints[4]}) {
+    .modal-dialog {
+      width: 55%;
+      margin-left: -27.5%;
     }
   }
 `;
