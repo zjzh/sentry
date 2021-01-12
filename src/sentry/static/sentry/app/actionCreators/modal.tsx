@@ -15,11 +15,14 @@ export type ModalRenderProps = {
 };
 
 export type ModalOptions = {
-  onClose?: () => void;
+  // Function may return a promise that resolves to a boolean that will signal
+  // if the modal should be closed.
+  onClose?: () => void | Promise<boolean>;
   modalCss?: ReturnType<typeof css>;
   modalClassName?: string;
   dialogClassName?: string;
   type?: string;
+  backdrop?: BoostrapModal['props']['backdrop'];
 };
 
 /**
@@ -218,5 +221,5 @@ export async function openAddDashboardWidgetModal(options: DashboardWidgetModalO
   );
   const {default: Modal} = mod;
 
-  openModal(deps => <Modal {...deps} {...options} />, {});
+  openModal(deps => <Modal {...deps} {...options} />, {backdrop: 'static'});
 }

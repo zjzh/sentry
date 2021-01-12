@@ -42,18 +42,27 @@ class GlobalModal extends React.Component<Props> {
   handleCloseModal = () => {
     const {options, onClose} = this.props;
 
+    let maybePromise: Promise<boolean> | void = undefined;
+
     // onClose callback for calling component
     if (typeof options.onClose === 'function') {
-      options.onClose();
+      maybePromise = options.onClose();
     }
 
-    // Action creator
-    closeModal();
+    console.log('handleCloseModal');
 
-    // Read description in propTypes
-    if (typeof onClose === 'function') {
-      onClose();
-    }
+    Promise.resolve<boolean | void>(maybePromise).then(shouldClose => {
+      console.log('shouldClose', shouldClose);
+      if (shouldClose === true || shouldClose === undefined) {
+        // Action creator
+        closeModal();
+
+        // Read description in propTypes
+        if (typeof onClose === 'function') {
+          onClose();
+        }
+      }
+    });
   };
 
   render() {
@@ -84,6 +93,7 @@ class GlobalModal extends React.Component<Props> {
             show={visible}
             animation={false}
             onHide={this.handleCloseModal}
+            backdrop={options && options.backdrop}
           >
             {renderedChild}
           </Modal>

@@ -207,7 +207,14 @@ class AddDashboardWidgetModal extends React.Component<Props, State> {
 
     return (
       <React.Fragment>
-        <Header closeButton onHide={closeModal}>
+        <Header
+          closeButton
+          onHide={() => {
+            console.log('fuck');
+            // closeModal
+            return false;
+          }}
+        >
           <h4>{isUpdatingWidget ? t('Edit Widget') : t('Add Widget')}</h4>
         </Header>
         <Body>
