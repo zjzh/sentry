@@ -19,7 +19,7 @@ function ProcessingIcon({status}: Props) {
           containerDisplayMode="inline-flex"
           title={t('The debug information file for this image could not be downloaded')}
         >
-          <IconWarning color="yellow300" size="xs" />
+          <IconWarning color="yellow300" />
         </Tooltip>
       );
     }
@@ -29,7 +29,7 @@ function ProcessingIcon({status}: Props) {
           containerDisplayMode="inline-flex"
           title={t('The debug information file for this image failed to process')}
         >
-          <IconWarning color="yellow300" size="xs" />
+          <IconWarning color="yellow300" />
         </Tooltip>
       );
     }
@@ -39,7 +39,7 @@ function ProcessingIcon({status}: Props) {
           containerDisplayMode="inline-flex"
           title={t('No debug information could be found in any of the specified sources')}
         >
-          <IconWarning color="yellow300" size="xs" />
+          <IconWarning color="yellow300" />
         </Tooltip>
       );
     }
@@ -51,7 +51,7 @@ function ProcessingIcon({status}: Props) {
             'Debug information for this image was found and successfully processed'
           )}
         >
-          <IconCheckmark color="green300" size="xs" />
+          <IconCheckmark color="green300" />
         </Tooltip>
       );
     }
@@ -61,7 +61,7 @@ function ProcessingIcon({status}: Props) {
           containerDisplayMode="inline-flex"
           title={t('The image was not required for processing the stack trace')}
         >
-          <IconInfo color="gray200" size="xs" />
+          <IconInfo color="gray200" />
         </Tooltip>
       );
     }
@@ -71,7 +71,7 @@ function ProcessingIcon({status}: Props) {
           containerDisplayMode="inline-flex"
           title={t('An internal error occurred while handling this image')}
         >
-          <IconWarning color="yellow300" size="xs" />
+          <IconWarning color="yellow300" />
         </Tooltip>
       );
     }
