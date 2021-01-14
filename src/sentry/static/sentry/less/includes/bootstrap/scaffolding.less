@@ -1,6 +1,8 @@
 // Responsive images (ensure images don't scale beyond their parents)
 .img-responsive {
-  .img-responsive();
+  display: block;
+  max-width: 100%;
+  height: auto;
 }
 
 // Rounded corners
@@ -18,9 +20,9 @@
   border: 1px solid @thumbnail-border;
   border-radius: @thumbnail-border-radius;
   .transition(all 0.2s ease-in-out);
-
-  // Keep them at most 100% wide
-  .img-responsive(inline-block);
+  display: inline-block;
+  max-width: 100%;
+  height: auto;
 }
 
 // Perfect circle
