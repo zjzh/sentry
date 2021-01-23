@@ -339,6 +339,6 @@ class VstsIssueSync(IssueSyncMixin):
         quoted_comment = "%s<blockquote>%s</blockquote>" % (attribution, comment_text)
         return quoted_comment
 
-    def update_comment(self, issue_id, user_id, external_comment_id, comment_text):
+    def update_comment(self, issue_id, user_id, group_note):
         # Azure does not support updating comments
         pass
