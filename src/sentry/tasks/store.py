@@ -112,6 +112,10 @@ def sample_process_event_apm():
     return random.random() < getattr(settings, "SENTRY_PROCESS_EVENT_APM_SAMPLING", 0)
 
 
+def sample_save_event_apm():
+    return random.random() < getattr(settings, "SENTRY_SAVE_EVENT_APM_SAMPLING", 0)
+
+
 def _do_preprocess_event(cache_key, data, start_time, event_id, process_task, project):
     from sentry.lang.native.processing import should_process_with_symbolicator
 
@@ -858,4 +862,9 @@ def time_synthetic_monitoring_event(data, project_id, start_time):
 def save_event(
     cache_key=None, data=None, start_time=None, event_id=None, project_id=None, **kwargs
 ):
-    _do_save_event(cache_key, data, start_time, event_id, project_id, **kwargs)
+    with sentry_sdk.start_transaction(
+        op="tasks.store.save_event",
+        name="TaskSaveEvent",
+        sampled=sample_save_event_apm(),
+    ):
+        _do_save_event(cache_key, data, start_time, event_id, project_id, **kwargs)
