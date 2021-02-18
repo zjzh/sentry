@@ -5,10 +5,10 @@ import CrashActions from 'app/components/events/interfaces/crashHeader/crashActi
 import CrashTitle from 'app/components/events/interfaces/crashHeader/crashTitle';
 import {isStacktraceNewestFirst} from 'app/components/events/interfaces/stacktrace';
 import {t} from 'app/locale';
-import {Project} from 'app/types';
+import {ExceptionType, Project} from 'app/types';
 import {Event} from 'app/types/event';
 import {Thread} from 'app/types/events';
-import {STACK_TYPE, STACK_VIEW} from 'app/types/stacktrace';
+import {STACK_TYPE, STACK_VIEW, StacktraceType} from 'app/types/stacktrace';
 import {defined} from 'app/utils';
 
 import findBestThread from './threadSelector/findBestThread';
@@ -84,8 +84,75 @@ class Threads extends React.Component<Props, State> {
     }));
   };
 
+  renderTitle(
+    threads: Array<Thread>,
+    exception?: Required<ExceptionType>,
+    stacktrace?: StacktraceType
+  ) {
+    const {newestFirst, activeThread} = this.state;
+    const {hideGuide, event} = this.props;
+
+    if (exception && !stacktrace) {
+      const exceptionValues = exception.values.map((value, index) => ({
+        id: index,
+        crashed: true,
+        rawStacktrace: value.rawStacktrace,
+        stacktrace: value.stacktrace,
+      }));
+
+      return (
+        <CrashTitle
+          title=""
+          newestFirst={newestFirst}
+          hideGuide={hideGuide}
+          onChange={this.handleChangeNewestFirst}
+          beforeTitle={
+            !!exceptionValues.length && (
+              <ThreadSelector
+                threads={exceptionValues}
+                activeThread={exceptionValues[0]}
+                event={event}
+                onChange={this.handleSelectNewThread}
+              />
+            )
+          }
+        />
+      );
+    }
+
+    if (threads.length > 1) {
+      return (
+        <CrashTitle
+          title=""
+          newestFirst={newestFirst}
+          hideGuide={hideGuide}
+          onChange={this.handleChangeNewestFirst}
+          beforeTitle={
+            activeThread && (
+              <ThreadSelector
+                threads={threads}
+                activeThread={activeThread}
+                event={event}
+                onChange={this.handleSelectNewThread}
+              />
+            )
+          }
+        />
+      );
+    }
+
+    return (
+      <CrashTitle
+        title={t('Stack Trace')}
+        newestFirst={newestFirst}
+        hideGuide={hideGuide}
+        onChange={this.handleChangeNewestFirst}
+      />
+    );
+  }
+
   render() {
-    const {data, event, projectId, hideGuide, type} = this.props;
+    const {data, event, projectId, type} = this.props;
 
     if (!data.values) {
       return null;
@@ -103,38 +170,12 @@ class Threads extends React.Component<Props, State> {
     );
 
     const hasMissingStacktrace = !(exception || stacktrace);
-    const hasMoreThanOneThread = threads.length > 1;
+    const hasMoreThanOneThread = threads.length > 1 || (exception && !stacktrace);
 
     return (
       <EventDataSection
         type={type}
-        title={
-          hasMoreThanOneThread ? (
-            <CrashTitle
-              title=""
-              newestFirst={newestFirst}
-              hideGuide={hideGuide}
-              onChange={this.handleChangeNewestFirst}
-              beforeTitle={
-                activeThread && (
-                  <ThreadSelector
-                    threads={threads}
-                    activeThread={activeThread}
-                    event={event}
-                    onChange={this.handleSelectNewThread}
-                  />
-                )
-              }
-            />
-          ) : (
-            <CrashTitle
-              title={t('Stack Trace')}
-              newestFirst={newestFirst}
-              hideGuide={hideGuide}
-              onChange={this.handleChangeNewestFirst}
-            />
-          )
-        }
+        title={this.renderTitle(threads, exception, stacktrace)}
         actions={
           !hasMissingStacktrace && (
             <CrashActions

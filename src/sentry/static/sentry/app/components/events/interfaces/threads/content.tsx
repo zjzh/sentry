@@ -1,4 +1,5 @@
 import React from 'react';
+import {isEqual} from 'lodash';
 import isNil from 'lodash/isNil';
 
 import CrashContent from 'app/components/events/interfaces/crashContent';
@@ -32,20 +33,9 @@ const Content = ({
   exception,
   stacktrace,
   hasMissingStacktrace,
-}: Props) => (
-  <div className="thread">
-    {data && (!isNil(data?.id) || !!data?.name) && (
-      <Pills>
-        {!isNil(data.id) && <Pill name={t('id')} value={String(data.id)} />}
-        {!!data.name?.trim() && <Pill name={t('name')} value={data.name} />}
-        <Pill name={t('was active')} value={data.current} />
-        <Pill name={t('errored')} className={data.crashed ? 'false' : 'true'}>
-          {data.crashed ? t('yes') : t('no')}
-        </Pill>
-      </Pills>
-    )}
-
-    {hasMissingStacktrace ? (
+}: Props) => {
+  function renderContent() {
+    if (hasMissingStacktrace) {
       <div className="traceback missing-traceback">
         <ul>
           <li className="frame missing-frame">
@@ -54,8 +44,32 @@ const Content = ({
             </div>
           </li>
         </ul>
-      </div>
-    ) : (
+      </div>;
+    }
+
+    if (exception) {
+      const activeException = exception.values?.find(
+        value =>
+          isEqual(value.stacktrace, data?.stacktrace) &&
+          isEqual(value.rawStacktrace, data?.rawStacktrace)
+      );
+
+      return (
+        <CrashContent
+          event={event}
+          stackType={stackType}
+          stackView={stackView}
+          newestFirst={newestFirst}
+          projectId={projectId}
+          exception={
+            activeException ? {...exception, values: [activeException]} : exception
+          }
+          stacktrace={stacktrace}
+        />
+      );
+    }
+
+    return (
       <CrashContent
         event={event}
         stackType={stackType}
@@ -65,8 +79,24 @@ const Content = ({
         exception={exception}
         stacktrace={stacktrace}
       />
-    )}
-  </div>
-);
+    );
+  }
+
+  return (
+    <div className="thread">
+      {data && (!isNil(data?.id) || !!data?.name) && (
+        <Pills>
+          {!isNil(data.id) && <Pill name={t('id')} value={String(data.id)} />}
+          {!!data.name?.trim() && <Pill name={t('name')} value={data.name} />}
+          <Pill name={t('was active')} value={data.current} />
+          <Pill name={t('errored')} className={data.crashed ? 'false' : 'true'}>
+            {data.crashed ? t('yes') : t('no')}
+          </Pill>
+        </Pills>
+      )}
+      {renderContent()}
+    </div>
+  );
+};
 
 export default Content;

@@ -52,20 +52,18 @@ const ThreadSelector = ({threads, event, activeThread, onChange}: Props) => {
     };
   };
 
-  const getItems = () => {
-    const [crashed, notCrashed] = partition(threads, thread => !!thread?.crashed);
-    return [...crashed, ...notCrashed].map(getDropDownItem);
-  };
-
   const handleChange = (thread: Thread) => {
     if (onChange) {
       onChange(thread);
     }
   };
 
+  const [crashed, notCrashed] = partition(threads, thread => !!thread?.crashed);
+  const items = [...crashed, ...notCrashed].map(getDropDownItem);
+
   return (
     <StyledDropdownAutoComplete
-      items={getItems()}
+      items={items}
       onSelect={item => {
         handleChange(item.thread);
       }}

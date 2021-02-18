@@ -3,8 +3,8 @@ import {RawStacktrace, StacktraceType} from './stacktrace';
 export interface Thread {
   id: number;
   crashed: boolean;
-  current: boolean;
-  rawStacktrace: RawStacktrace;
-  stacktrace: StacktraceType;
+  rawStacktrace: RawStacktrace | null;
+  stacktrace: StacktraceType | null;
+  current?: boolean;
   name?: string;
 }
