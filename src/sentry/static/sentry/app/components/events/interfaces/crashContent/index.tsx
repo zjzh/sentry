@@ -32,7 +32,7 @@ const CrashContent = ({
   return (
     <Wrapper>
       {!!exceptionValues?.length && (
-        <div>
+        <React.Fragment>
           <Title>{tn('Exception', 'Exceptions', exceptionValues.length)}</Title>
           <Exception
             stackType={stackType}
@@ -43,11 +43,11 @@ const CrashContent = ({
             platform={platform}
             values={exceptionValues}
           />
-        </div>
+        </React.Fragment>
       )}
       {!!exceptionValues?.length && stacktrace && <hr />}
       {stacktrace && (
-        <div>
+        <React.Fragment>
           <Title>{tn('Stacktrace', 'Stacktraces', stacktrace.frames?.length)}</Title>
           <Stacktrace
             stacktrace={stacktrace}
@@ -56,7 +56,7 @@ const CrashContent = ({
             event={event}
             platform={platform}
           />
-        </div>
+        </React.Fragment>
       )}
     </Wrapper>
   );
