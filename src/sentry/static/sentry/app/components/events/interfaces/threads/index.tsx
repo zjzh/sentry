@@ -40,7 +40,7 @@ type State = {
 function getIntendedStackView(thread: Thread, event: Event) {
   const exception = getThreadException(event, thread);
   const stacktrace = getThreadStacktrace(event, false, thread, exception);
-  return (stacktrace ?? exception)?.hasSystemFrames ? STACK_VIEW.APP : STACK_VIEW.FULL;
+  return (exception ?? stacktrace)?.hasSystemFrames ? STACK_VIEW.APP : STACK_VIEW.FULL;
 }
 
 class Threads extends React.Component<Props, State> {
