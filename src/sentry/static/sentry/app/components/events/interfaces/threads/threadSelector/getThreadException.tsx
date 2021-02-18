@@ -19,10 +19,13 @@ function getThreadException(
     return undefined;
   }
 
-  for (const exc of exceptionDataValues) {
-    if (exc.threadId === thread.id && exc.stacktrace) {
-      return exceptionData as Required<ExceptionType>;
-    }
+  const matchedStacktraceAndExceptionThread = exceptionDataValues.find(
+    exceptionDataValue =>
+      exceptionDataValue.threadId === thread.id && exceptionDataValue.stacktrace
+  );
+
+  if (matchedStacktraceAndExceptionThread) {
+    return exceptionData as Required<ExceptionType>;
   }
 
   if (thread.crashed) {

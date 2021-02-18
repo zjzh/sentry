@@ -1,8 +1,5 @@
 import React from 'react';
-import styled from '@emotion/styled';
 
-import {tn} from 'app/locale';
-import space from 'app/styles/space';
 import {ExceptionType, ExceptionValue, PlatformType} from 'app/types';
 
 import Exception from './exception';
@@ -27,48 +24,34 @@ const CrashContent = ({
   stacktrace,
 }: Props) => {
   const platform = (event.platform ?? 'other') as PlatformType;
-  const exceptionValues = exception?.values;
 
-  return (
-    <Wrapper>
-      {!!exceptionValues?.length && (
-        <React.Fragment>
-          <Title>{tn('Exception', 'Exceptions', exceptionValues.length)}</Title>
-          <Exception
-            stackType={stackType}
-            stackView={stackView}
-            projectId={projectId}
-            newestFirst={newestFirst}
-            event={event}
-            platform={platform}
-            values={exceptionValues}
-          />
-        </React.Fragment>
-      )}
-      {!!exceptionValues?.length && stacktrace && <hr />}
-      {stacktrace && (
-        <React.Fragment>
-          <Title>{tn('Stacktrace', 'Stacktraces', stacktrace.frames?.length)}</Title>
-          <Stacktrace
-            stacktrace={stacktrace}
-            stackView={stackView}
-            newestFirst={newestFirst}
-            event={event}
-            platform={platform}
-          />
-        </React.Fragment>
-      )}
-    </Wrapper>
-  );
+  if (exception) {
+    return (
+      <Exception
+        stackType={stackType}
+        stackView={stackView}
+        projectId={projectId}
+        newestFirst={newestFirst}
+        event={event}
+        platform={platform}
+        values={exception.values}
+      />
+    );
+  }
+
+  if (stacktrace) {
+    return (
+      <Stacktrace
+        stacktrace={stacktrace}
+        stackView={stackView}
+        newestFirst={newestFirst}
+        event={event}
+        platform={platform}
+      />
+    );
+  }
+
+  return null;
 };
 
 export default CrashContent;
-
-const Wrapper = styled('div')`
-  margin-top: ${space(3)};
-`;
-
-const Title = styled('h5')`
-  font-size: ${p => p.theme.fontSizeMedium};
-  color: ${p => p.theme.gray300};
-`;
