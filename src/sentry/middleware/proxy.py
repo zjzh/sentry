@@ -104,6 +104,16 @@ class SetRemoteAddrFromForwardedFor:
             real_ip = self._remove_port_number(real_ip)
             request.META["REMOTE_ADDR"] = real_ip
 
+        logger.info("setremoteaddrfromforwardedfor.process-request", extra={
+            "path": request.path,
+            "host": request.META.get("HTTP_HOST", "-"),
+            "method": request.META["REQUEST_METHOD"],
+            "remote_addr": request.META["REMOTE_ADDR"],
+            "xff": request.META.get("HTTP_X_FORWARDED_FOR", "-"),
+            "request_id": request.META.get("HTTP_X_REQUEST_ID", "-"),
+            "user_agent": request.META.get("HTTP_USER_AGENT", "-"),
+        })
+
 
 class DecompressBodyMiddleware:
     def process_request(self, request):
