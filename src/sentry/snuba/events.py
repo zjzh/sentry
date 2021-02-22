@@ -305,6 +305,10 @@ class Columns(Enum):
         "contexts[trace.parent_span_id]",
         "trace.parent_span",
     )
+    # For more precise timestamps in the trace view
+    FINISH_MS = Column(None, None, "finish_ms", "finish_ms", "finish_ms")
+    START_TS = Column(None, None, "start_ts", "start_ts", "start_ts")
+    START_MS = Column(None, None, "start_ms", "start_ms", "start_ms")
 
     # Reprocessing context
     REPROCESSING_ORIGINAL_GROUP_ID = Column(

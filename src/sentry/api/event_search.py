@@ -1406,6 +1406,32 @@ FIELD_ALIASES = {
             ),
             result_type="boolean",
         ),
+        # the timestamp.* fields are intentionally excluded from discover because they would
+        # just add confusion with the existing time + timestamp field, they are intended for
+        # internal use
+        PseudoField(
+            "timestamp.finish",
+            "timestamp.finish",
+            expression=[
+                "plus",
+                [
+                    ["divide", ["finish_ms", 1000]],
+                    # Timestamp is already aliased to `finish_ts`
+                    ["toUnixTimestamp", ["timestamp"]],
+                ],
+            ],
+        ),
+        PseudoField(
+            "timestamp.start",
+            "timestamp.start",
+            expression=[
+                "plus",
+                [
+                    ["divide", ["start_ms", 1000]],
+                    ["toUnixTimestamp", ["start_ts"]],
+                ],
+            ],
+        ),
     ]
 }
 
