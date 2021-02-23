@@ -128,7 +128,7 @@ class AmazonSQSPlugin(CorePluginMixin, DataForwardingPlugin):
 
         if not all((queue_url, access_key, secret_key, region)):
             logger.info("sentry_plugins.amazon_sqs.skip_unconfigured", extra=logging_params)
-            return
+            return False
 
         boto3_args = {
             "aws_access_key_id": access_key,
