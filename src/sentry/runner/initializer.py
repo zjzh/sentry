@@ -3,6 +3,7 @@ import logging
 import os
 import sys
 
+from datetime import timedelta
 from django.conf import settings
 
 from sentry.utils import metrics, warnings
@@ -348,6 +349,10 @@ def initialize_app(config, skip_service_validation=False):
 
     django.setup()
 
+    print("settings.DEMO_MODE", settings.DEMO_MODE)
+    if settings.DEMO_MODE:
+        setup_demo_mode_task()
+
     monkeypatch_django_migrations()
 
     apply_legacy_settings(settings)
@@ -676,3 +681,12 @@ See: https://github.com/getsentry/snuba#sentry--snuba"""
                 settings.SENTRY_EVENTSTREAM,
             )
         )
+
+
+def setup_demo_mode_task():
+    settings.CELERYBEAT_SCHEDULE["demo-delete-old-orgs"] = {
+        "task": "sentry.demo.tasks.delete_old_orgs",
+        # "schedule": timedelta(hours=1),
+        "schedule": timedelta(seconds=10),
+        "options": {"expires": 3600, "queue": "demo-queue"},
+    }

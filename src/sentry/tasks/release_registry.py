@@ -43,6 +43,7 @@ def _fetch_registry_url(relative_url):
     soft_time_limit=60,
 )
 def fetch_release_registry_data(**kwargs):
+    print("fetch")
     """
     Fetch information about the latest SDK version from the release registry.
 

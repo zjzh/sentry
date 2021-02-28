@@ -715,7 +715,7 @@ CELERYBEAT_SCHEDULE = {
     },
     "fetch-release-registry-data": {
         "task": "sentry.tasks.release_registry.fetch_release_registry_data",
-        "schedule": timedelta(minutes=5),
+        "schedule": timedelta(seconds=5),
         "options": {"expires": 3600},
     },
     "snuba-subscription-checker": {
@@ -723,7 +723,13 @@ CELERYBEAT_SCHEDULE = {
         "schedule": timedelta(minutes=20),
         "options": {"expires": 20 * 60},
     },
+    "demo-delete-old-orgs": {
+        "task": "sentry.demo.tasks.delete_old_orgs",
+        "schedule": timedelta(seconds=5),
+        "options": {"expires": 3600},
+    },
 }
+
 
 BGTASKS = {
     "sentry.bgtasks.clean_dsymcache:clean_dsymcache": {"interval": 5 * 60, "roles": ["worker"]},
@@ -2113,4 +2119,8 @@ SENTRY_EXTRA_WORKERS = None
 # Enabling this will allow users to create accounts without an email or password.
 DEMO_MODE = False
 
+# When making demo orgs, we make the user with this email the owner
 DEMO_ORG_OWNER_EMAIL = None
+
+# when deleting old orgs, we don't delete these orgs based on the slug
+DEMO_ORGS_TO_NOT_DELETE = ["sentry"]

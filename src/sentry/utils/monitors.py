@@ -33,6 +33,7 @@ def connect(app):
         if hasattr(app.conf, "beat_schedule")
         else app.conf["CELERYBEAT_SCHEDULE"]
     )
+    print("schedule", schedule.get("demo-delete-old-orgs"))
     for schedule_name, monitor_id in settings.SENTRY_CELERYBEAT_MONITORS.items():
         schedule[schedule_name].setdefault("options", {}).setdefault("headers", {}).setdefault(
             "X-Sentry-Monitor", monitor_id
