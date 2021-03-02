@@ -916,6 +916,14 @@ def _save_aggregate(event, flat_hashes, release, **kwargs):
         if h.group_id is not None:
             existing_group_id = h.group_id
             break
+        # When refactoring for hierarchical grouping, we noticed that a
+        # tombstone may get ignored entirely if there is another hash *before*
+        # that happens to have a group_id. This bug may not have been noticed
+        # for a long time because most events only ever have 1-2 hashes. It
+        # will definetly get more noticeable with hierarchical grouping and
+        # it's not clear what good behavior would look like. Do people want to
+        # be able to tombstone `hierarchical_hashes[4]` while still having a
+        # group attached to `hierarchical_hashes[0]`? Maybe.
         if h.group_tombstone_id is not None:
             raise HashDiscarded("Matches group tombstone %s" % h.group_tombstone_id)
 
