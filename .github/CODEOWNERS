@@ -58,6 +58,10 @@ build-utils/        @getsentry/owners-js-build
 /src/sentry/static/sentry/app/views/releases/                   @getsentry/owners-releases-ui
 /tests/js/spec/views/releases/                                  @getsentry/owners-releases-ui
 
+# Event Entries UI
+/src/sentry/static/sentry/app/components/events/eventEntries.tsx            @getsentry/owners-event-entries-ui
+/tests/js/spec/views/organizationGroupDetails/groupEventEntries.spec.tsx    @getsentry/owners-event-entries-ui
+
 # Owners by product feature
 
 ### Issue/Metric Alerts ###
