@@ -1,18 +1,8 @@
-import petname
-
 from django.http import Http404
 from django.conf import settings
 from django.db import transaction
 
 from sentry.demo.demo_manager import get_user_org
-from sentry.models import (
-    User,
-    Organization,
-    OrganizationMember,
-    OrganizationMemberTeam,
-    Project,
-    ProjectKey,
-)
 from sentry.utils import auth
 from sentry.web.frontend.base import BaseView
 
@@ -27,6 +17,7 @@ class DemoStartView(BaseView):
         if not settings.DEMO_MODE:
             raise Http404
 
+        # TODO: handle case where no user/org is rready
         (user, org) = get_user_org()
 
         auth.login(request, user)
