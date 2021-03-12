@@ -8,12 +8,8 @@ import DropdownLink from 'app/components/dropdownLink';
 import Tooltip from 'app/components/tooltip';
 import {IconCheckmark, IconChevron} from 'app/icons';
 import {t} from 'app/locale';
-import {
-  Release,
-  ResolutionStatus,
-  ResolutionStatusDetails,
-  UpdateResolutionStatus,
-} from 'app/types';
+import {Release, ResolutionStatus, ResolutionStatusDetails} from 'app/types';
+import {UpdateFuncArgs} from 'app/types/inbox';
 import {formatVersion} from 'app/utils/formatters';
 
 import ActionButton from './button';
@@ -29,7 +25,7 @@ const defaultProps = {
 
 type Props = {
   hasRelease: boolean;
-  onUpdate: (data: UpdateResolutionStatus) => void;
+  onUpdate: (data: UpdateFuncArgs) => void;
   orgId: string;
   latestRelease?: Release;
   projectId?: string;

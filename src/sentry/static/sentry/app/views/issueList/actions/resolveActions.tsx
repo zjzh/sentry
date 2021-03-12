@@ -2,6 +2,7 @@ import React from 'react';
 
 import ResolveActions from 'app/components/actions/resolve';
 import {Organization} from 'app/types';
+import {UpdateFuncArgs} from 'app/types/inbox';
 
 import {ConfirmAction} from './utils';
 
@@ -9,7 +10,7 @@ type Props = {
   orgSlug: Organization['slug'];
   anySelected: boolean;
   params: any;
-  onUpdate: (data?: any) => void;
+  onUpdate: (data?: UpdateFuncArgs) => void;
   onShouldConfirm: (action: ConfirmAction) => boolean;
 };
 

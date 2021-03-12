@@ -71,10 +71,12 @@ function IssueListHeader({
   router,
   displayReprocessingTab,
 }: Props) {
+  console.log('queryCounts', queryCounts);
   const tabs = getTabs(organization);
   const visibleTabs = displayReprocessingTab
     ? tabs
     : tabs.filter(([tab]) => tab !== Query.REPROCESSING);
+
   const savedSearchTabActive = !visibleTabs.some(([tabQuery]) => tabQuery === query);
   // Remove cursor and page when switching tabs
   const {cursor: _, page: __, ...queryParms} = router?.location?.query ?? {};

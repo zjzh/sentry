@@ -13,6 +13,7 @@ import {IconEllipsis, IconPause, IconPlay} from 'app/icons';
 import {t} from 'app/locale';
 import space from 'app/styles/space';
 import {Organization, Project, ResolutionStatus} from 'app/types';
+import {UpdateFuncArgs} from 'app/types/inbox';
 import Projects from 'app/utils/projects';
 
 import {isForReviewQuery} from '../utils';
@@ -34,7 +35,7 @@ type Props = {
   onDelete: () => void;
   onRealtimeChange: () => void;
   onMerge: () => void;
-  onUpdate: (data?: any) => void;
+  onUpdate: (data?: UpdateFuncArgs) => void;
   selectedProjectSlug?: string;
   hasInbox?: boolean;
   inboxGuideActiveReview: boolean;

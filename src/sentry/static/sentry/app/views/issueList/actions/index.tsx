@@ -12,12 +12,13 @@ import GuideStore, {GuideStoreState} from 'app/stores/guideStore';
 import SelectedGroupStore from 'app/stores/selectedGroupStore';
 import space from 'app/styles/space';
 import {GlobalSelection, Group, Organization} from 'app/types';
+import {UpdateFuncArgs} from 'app/types/inbox';
 import {callIfFunction} from 'app/utils/callIfFunction';
 import withApi from 'app/utils/withApi';
 
 import ActionSet from './actionSet';
 import Headers from './headers';
-import {BULK_LIMIT, BULK_LIMIT_STR, ConfirmAction} from './utils';
+import {BULK_LIMIT, BULK_LIMIT_STR, ConfirmAction, hasInboxArg} from './utils';
 
 type Props = {
   api: Client;
@@ -35,6 +36,7 @@ type Props = {
   displayReprocessingActions: boolean;
   hasInbox?: boolean;
   onMarkReviewed?: (itemIds: string[]) => void;
+  onDelete?: (itemIds: string[]) => void;
 };
 
 type State = {
@@ -140,14 +142,14 @@ class IssueListActions extends React.Component<Props, State> {
     this.setState({allInQuerySelected: true});
   };
 
-  handleUpdate = (data?: any) => {
+  handleUpdate = (data?: UpdateFuncArgs) => {
     const {selection, api, organization, query, onMarkReviewed} = this.props;
     const orgId = organization.slug;
 
     this.actionSelectedGroups(itemIds => {
       addLoadingMessage(t('Saving changes\u2026'));
 
-      if (data?.inbox === false) {
+      if (hasInboxArg(data) && data.inbox === false) {
         onMarkReviewed?.(itemIds ?? []);
       }
 
@@ -180,12 +182,14 @@ class IssueListActions extends React.Component<Props, State> {
   };
 
   handleDelete = () => {
-    const {selection, api, organization, query} = this.props;
+    const {selection, api, organization, query, onDelete} = this.props;
     const orgId = organization.slug;
 
     addLoadingMessage(t('Removing events\u2026'));
 
     this.actionSelectedGroups(itemIds => {
+      onDelete?.(itemIds ?? []);
+
       bulkDelete(
         api,
         {
@@ -258,6 +262,7 @@ class IssueListActions extends React.Component<Props, State> {
         return true; // By default, should confirm ...
     }
   };
+
   render() {
     const {
       allResultsVisible,

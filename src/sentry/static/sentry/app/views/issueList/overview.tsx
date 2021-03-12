@@ -484,7 +484,7 @@ class IssueListOverview extends React.Component<Props, State> {
         this.setState({
           error: parseApiError(e),
         });
-        return;
+        return undefined;
       }
     }
 
@@ -498,6 +498,7 @@ class IssueListOverview extends React.Component<Props, State> {
       const tab = getTabs(organization).find(
         ([tabQuery]) => currentTabQuery === tabQuery
       )?.[1];
+
       if (tab && !endpointParams.cursor) {
         trackAnalyticsEvent({
           eventKey: 'issues_tab.viewed',
@@ -509,7 +510,7 @@ class IssueListOverview extends React.Component<Props, State> {
       }
     }
 
-    this.setState({queryCounts});
+    return queryCounts;
   };
 
   fetchData = (selectionChanged?: boolean) => {
@@ -558,13 +559,10 @@ class IssueListOverview extends React.Component<Props, State> {
 
     this._poller.disable();
 
-    const fetchAllCounts =
-      this.props.organization.features.includes('inbox') && !!selectionChanged;
-
     this._lastRequest = this.props.api.request(this.getGroupListEndpoint(), {
       method: 'GET',
       data: qs.stringify(requestParams),
-      success: (data, _, jqXHR) => {
+      success: async (data, _, jqXHR) => {
         if (!jqXHR) {
           return;
         }
@@ -592,24 +590,37 @@ class IssueListOverview extends React.Component<Props, State> {
         this.fetchStats(data.map((group: BaseGroup) => group.id));
 
         const hits = jqXHR.getResponseHeader('X-Hits');
-        const queryCount =
-          typeof hits !== 'undefined' && hits ? parseInt(hits, 10) || 0 : 0;
+
+        const queryCount = !Object.keys(this.state.queryCounts).length
+          ? !!hits
+            ? parseInt(hits, 10) || 0
+            : 0
+          : this.state.queryCount;
+
         const maxHits = jqXHR.getResponseHeader('X-Max-Hits');
-        const queryMaxCount =
-          typeof maxHits !== 'undefined' && maxHits ? parseInt(maxHits, 10) || 0 : 0;
+        const queryMaxCount = !!maxHits ? parseInt(maxHits, 10) || 0 : 0;
         const pageLinks = jqXHR.getResponseHeader('Link');
 
-        if (this.props.organization.features.includes('inbox')) {
-          this.fetchCounts(queryCount, fetchAllCounts);
-        }
-
-        this.setState({
+        const newState = {
           error: null,
           issuesLoading: false,
           queryCount,
           queryMaxCount,
           pageLinks: pageLinks !== null ? pageLinks : '',
-        });
+          queryCounts: this.state.queryCounts,
+        };
+
+        if (this.props.organization.features.includes('inbox')) {
+          const fetchAllCounts =
+            !!selectionChanged || data.length !== this.state.groupIds.length;
+
+          const queryCounts = await this.fetchCounts(queryCount, fetchAllCounts);
+          if (queryCounts) {
+            newState.queryCounts = queryCounts;
+          }
+        }
+
+        this.setState(newState);
       },
       error: err => {
         this.setState({
@@ -691,6 +702,10 @@ class IssueListOverview extends React.Component<Props, State> {
   onGroupChange() {
     const groupIds = this._streamManager.getAllItems().map(item => item.id) ?? [];
     if (!isEqual(groupIds, this.state.groupIds)) {
+      if (this.state.groupIds.length > groupIds.length) {
+        this.setState({groupIds}, this.fetchData);
+      }
+
       this.setState({groupIds});
     }
   }
@@ -710,10 +725,11 @@ class IssueListOverview extends React.Component<Props, State> {
     if (query === this.state.query) {
       // if query is the same, just re-fetch data
       this.fetchData();
-    } else {
-      // Clear the saved search as the user wants something else.
-      this.transitionTo({query}, null);
+      return;
     }
+
+    // Clear the saved search as the user wants something else.
+    this.transitionTo({query}, null);
   };
 
   onSortChange = (sort: string) => {
@@ -898,11 +914,11 @@ class IssueListOverview extends React.Component<Props, State> {
     );
   }
 
-  fetchSavedSearches = () => {
-    const {organization} = this.props;
+  fetchSavedSearches() {
+    const {organization, api} = this.props;
 
-    fetchSavedSearches(this.props.api, organization.slug);
-  };
+    fetchSavedSearches(api, organization.slug);
+  }
 
   onSavedSearchSelect = (savedSearch: SavedSearch) => {
     this.setState({issuesLoading: true}, () => this.transitionTo(undefined, savedSearch));
@@ -940,6 +956,33 @@ class IssueListOverview extends React.Component<Props, State> {
         itemsRemoved: itemsRemoved + inInboxCount,
       });
     }
+  };
+
+  onDelete = (itemIds: string[]) => {
+    const query = this.getQuery() as Query;
+
+    const {queryCounts} = this.state;
+
+    const currentQueryCount = queryCounts[query];
+
+    if (!currentQueryCount) {
+      return;
+    }
+
+    const groupIds = this._streamManager.getAllItems().map(item => item.id) ?? [];
+
+    const newCurrentQueryCount = currentQueryCount.count - itemIds.length;
+    console.log('newCurrentQueryCount', currentQueryCount.count);
+
+    // this.setState({
+    //   queryCounts: {
+    //     ...queryCounts,
+    //     [query]: {
+    //       ...currentQueryCount,
+    //       count: newCurrentQueryCount,
+    //     },
+    //   },
+    // });
   };
 
   tagValueLoader = (key: string, search: string) => {
@@ -1083,6 +1126,7 @@ class IssueListOverview extends React.Component<Props, State> {
                     onSelectStatsPeriod={this.onSelectStatsPeriod}
                     onRealtimeChange={this.onRealtimeChange}
                     onMarkReviewed={this.onMarkReviewed}
+                    onDelete={this.onDelete}
                     realtimeActive={realtimeActive}
                     statsPeriod={this.getGroupStatsPeriod()}
                     groupIds={groupIds}

@@ -3,6 +3,7 @@ import capitalize from 'lodash/capitalize';
 
 import ExternalLink from 'app/components/links/externalLink';
 import {t, tct, tn} from 'app/locale';
+import {InboxArg, UpdateFuncArgs} from 'app/types/inbox';
 
 import ExtraDescription from './extraDescription';
 
@@ -102,4 +103,8 @@ export function getLabel(numIssues: number, allInQuerySelected: boolean) {
 
     return text + append;
   };
+}
+
+export function hasInboxArg(maybe?: UpdateFuncArgs): maybe is InboxArg {
+  return typeof (maybe as InboxArg)?.inbox !== 'undefined';
 }
