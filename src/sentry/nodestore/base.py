@@ -254,9 +254,14 @@ class NodeStorage(local, Service):
         if self.cache:
             self.cache.delete_many([id for id in id_list])
 
+    _cache_backend_name = "nodedata"
+
     @memoize
     def cache(self):
+        if self._cache_backend_name is None:
+            return None
+
         try:
-            return caches["nodedata"]
+            return caches[self._cache_backend_name]
         except InvalidCacheBackendError:
             return None
