@@ -430,7 +430,7 @@ const SPECIAL_FUNCTIONS: SpecialFunctions = {
       return <NumberContainer>{emptyValue}</NumberContainer>;
     }
 
-    const miserableUsers = userMiseryField ? data[userMiseryField] : 0;
+    const miserableUsers = userMiseryField ? data[userMiseryField] : undefined;
 
     const userMisery = data[miseryField];
     if (!uniqueUsers && uniqueUsers !== 0) {

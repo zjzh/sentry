@@ -11,7 +11,7 @@ type Props = {
   userMisery: number;
   totalUsers: number;
   miseryLimit: number;
-  miserableUsers: number;
+  miserableUsers: number | undefined;
 };
 
 function Misery(props: Props) {
@@ -20,19 +20,28 @@ function Misery(props: Props) {
   // and below 5% will always be an overestimation of the actual proportion
   // of miserable to total unique users. We are going to visualize it as
   // 0 User Misery while still preserving the actual value for sorting purposes.
-  const adjustedMisery = userMisery >= 0.05 ? userMisery : 0;
+  const adjustedMisery = userMisery >= 0.05 ? userMisery.toFixed(3) : 0;
 
   const palette = new Array(bars).fill([CHART_PALETTE[0][0]]);
   const score = adjustedMisery ? Math.ceil(adjustedMisery * palette.length) : 0;
 
-  const title = tct(
-    '[affectedUsers] out of [totalUsers] unique users waited more than [duration]ms',
-    {
-      affectedUsers: miserableUsers,
-      totalUsers,
+  let title: React.ReactNode;
+  if (miserableUsers || miserableUsers === 0) {
+    title = tct(
+      '[miserableUsers] out of [totalUsers] unique users waited more than [duration]ms',
+      {
+        miserableUsers,
+        totalUsers,
+        duration: 4 * miseryLimit,
+      }
+    );
+  } else {
+    title = tct('Probability that users waited more than [duration]ms is [userMisery]', {
       duration: 4 * miseryLimit,
-    }
-  );
+      userMisery: userMisery.toFixed(2),
+    });
+  }
+
   return (
     <Tooltip title={title} containerDisplayMode="block">
       <ScoreBar size={barHeight} score={score} palette={palette} radius={0} />
