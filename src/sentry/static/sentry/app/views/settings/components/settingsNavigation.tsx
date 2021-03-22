@@ -70,14 +70,8 @@ const PositionStickyWrapper = styled('div')<{stickyTop: string}>`
   @media (min-width: ${p => p.theme.breakpoints[0]}) {
     position: sticky;
     top: ${p => p.stickyTop};
-    overflow: scroll;
+    overflow: auto;
     height: calc(100vh - ${p => p.stickyTop} - ${FOOTER_HEIGHT}px);
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-
-    &::-webkit-scrollbar {
-      display: none;
-    }
   }
 `;
 

@@ -256,12 +256,7 @@ const History = styled('div')`
 
 const ScrollPanel = styled(Panel)`
   max-height: 500px;
-  overflow: scroll;
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-  &::-webkit-scrollbar {
-    display: none;
-  }
+  overflow: auto;
 
   p {
     font-size: ${p => p.theme.fontSizeMedium};
