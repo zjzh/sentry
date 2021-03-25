@@ -484,6 +484,13 @@ def top_events_timeseries(
                 # timestamp needs special handling, creating a big OR instead
                 if field == "timestamp":
                     snuba_filter.conditions.append([["timestamp", "=", value] for value in values])
+                elif field in ["timestamp.to_hour", "timestamp.to_day"]:
+                    snuba_filter.conditions.append(
+                        [
+                            [FIELD_ALIASES[field].get_expression(None), "=", value]
+                            for value in values
+                        ]
+                    )
                 elif None in values:
                     non_none_values = [value for value in values if value is not None]
                     condition = [[["isNull", [resolve_discover_column(field)]], "=", 1]]
