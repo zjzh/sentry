@@ -77,7 +77,7 @@ if settings.DEBUG:
     # Special favicon in debug mode
     urlpatterns += [
         url(
-            r"^_static/[^/]+/[^/]+/images/favicon\.(ico|png)$",
+            r"^_static/[^/]+/[^/]+/images/favicon(.*)\.(ico|png)$",
             generic.dev_favicon,
             name="sentry-dev-favicon",
         ),
