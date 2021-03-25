@@ -6,8 +6,8 @@ import space from 'app/styles/space';
 
 type Props = {
   title: string;
-  description: string;
   children: React.ReactNode;
+  description?: string;
 };
 
 function BuildStep({title, description, children}: Props) {
@@ -15,7 +15,7 @@ function BuildStep({title, description, children}: Props) {
     <StyledListItem>
       <Header>
         <Description>{title}</Description>
-        <SubDescription>{description}</SubDescription>
+        {description && <SubDescription>{description}</SubDescription>}
       </Header>
       <Content>{children}</Content>
     </StyledListItem>
@@ -46,5 +46,5 @@ const Header = styled('div')`
 
 const Content = styled('div')`
   display: grid;
-  grid-template-columns: 1fr max-content;
+  grid-gap: ${space(2)};
 `;
