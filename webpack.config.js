@@ -219,7 +219,7 @@ let appConfig = {
     /**
      * Main Sentry SPA
      */
-    app: 'app',
+    app: ['app/utils/statics-setup', 'app'],
 
     /**
      * Legacy CSS Webpack appConfig for Django-powered views.
