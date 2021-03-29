@@ -19,7 +19,7 @@ type Props = RouteComponentProps<RouteParams, {}> & {
   children: React.ReactNode;
 };
 
-function WidgetBuilderContainer({organization, ...props}: Props) {
+function WidgetNewContainer({organization, ...props}: Props) {
   return (
     <Feature
       features={['metrics']}
@@ -35,4 +35,4 @@ function WidgetBuilderContainer({organization, ...props}: Props) {
   );
 }
 
-export default withOrganization(WidgetBuilderContainer);
+export default withOrganization(WidgetNewContainer);
