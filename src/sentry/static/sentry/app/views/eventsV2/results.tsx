@@ -11,6 +11,7 @@ import {fetchProjectsCount} from 'app/actionCreators/projects';
 import {loadOrganizationTags} from 'app/actionCreators/tags';
 import {Client} from 'app/api';
 import Alert from 'app/components/alert';
+import AsyncComponent from 'app/components/asyncComponent';
 import Confirm from 'app/components/confirm';
 import {CreateAlertFromViewButton} from 'app/components/createAlertButton';
 import SearchBar from 'app/components/events/searchBar';
@@ -24,7 +25,7 @@ import {IconFlag} from 'app/icons';
 import {t, tct} from 'app/locale';
 import {PageContent} from 'app/styles/organization';
 import space from 'app/styles/space';
-import {GlobalSelection, Organization} from 'app/types';
+import {GlobalSelection, Organization, SavedQuery} from 'app/types';
 import {generateQueryWithTag} from 'app/utils';
 import {trackAnalyticsEvent} from 'app/utils/analytics';
 import EventView, {isAPIPayloadSimilar} from 'app/utils/discover/eventView';
@@ -50,6 +51,7 @@ type Props = {
   location: Location;
   organization: Organization;
   selection: GlobalSelection;
+  savedQuery?: SavedQuery;
 };
 
 type State = {
@@ -71,7 +73,9 @@ function readShowTagsState() {
 
 class Results extends React.Component<Props, State> {
   static getDerivedStateFromProps(nextProps: Readonly<Props>, prevState: State): State {
-    const eventView = EventView.fromLocation(nextProps.location);
+    const eventView = nextProps.savedQuery
+      ? EventView.fromSavedQuery(nextProps.savedQuery)
+      : EventView.fromLocation(nextProps.location);
     return {...prevState, eventView};
   }
 
@@ -478,6 +482,26 @@ export const Top = styled(Layout.Main)`
   flex-grow: 0;
 `;
 
+type SavedQueryState = AsyncComponent['state'] & {
+  savedQuery?: SavedQuery;
+};
+class SavedQueryApiWrapper extends AsyncComponent<Props, SavedQueryState> {
+  getEndpoints(): ReturnType<AsyncComponent['getEndpoints']> {
+    const orgSlug = this.props.organization.slug;
+    const id = this.props.location.query.id;
+    return [['savedQuery', `/organizations/${orgSlug}/discover/saved/${id}/`]];
+  }
+
+  renderLoading() {
+    return this.renderBody();
+  }
+
+  renderBody(): React.ReactNode {
+    const {savedQuery} = this.state;
+    return <Results {...this.props} savedQuery={savedQuery} />;
+  }
+}
+
 function ResultsContainer(props: Props) {
   /**
    * Block `<Results>` from mounting until GSH is ready since there are API
@@ -491,7 +515,7 @@ function ResultsContainer(props: Props) {
     <GlobalSelectionHeader
       skipLoadLastUsed={props.organization.features.includes('global-views')}
     >
-      <Results {...props} />
+      <SavedQueryApiWrapper {...props} />
     </GlobalSelectionHeader>
   );
 }
