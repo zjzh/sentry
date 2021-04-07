@@ -25,7 +25,7 @@ import withOrganization from 'app/utils/withOrganization';
 
 import Controls from './controls';
 import Dashboard from './dashboard';
-import {DEFAULT_STATS_PERIOD, EMPTY_DASHBOARD} from './data';
+import {DEFAULT_STATS_PERIOD, EMPTY_DASHBOARD, emptyDashboardId} from './data';
 import OrgDashboards from './orgDashboards';
 import DashboardTitle from './title';
 import {DashboardDetails, DashboardState, Widget} from './types';
@@ -167,7 +167,7 @@ class DashboardDetail extends React.Component<Props, State> {
 
   onDelete = (dashboard: State['modifiedDashboard']) => () => {
     const {api, organization, location} = this.props;
-    if (!dashboard?.id) {
+    if (!dashboard?.id || dashboard.id === emptyDashboardId) {
       return;
     }
 
