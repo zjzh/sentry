@@ -7,6 +7,7 @@ import set from 'lodash/set';
 import Breadcrumbs from 'app/components/breadcrumbs';
 import Button from 'app/components/button';
 import ButtonBar from 'app/components/buttonBar';
+import EditableText from 'app/components/editableText';
 import SelectControl from 'app/components/forms/selectControl';
 import * as Layout from 'app/components/layouts/thirds';
 import List from 'app/components/list';
@@ -46,7 +47,7 @@ type Props = AsyncView['props'] &
   };
 
 type State = AsyncView['state'] & {
-  title: 'string';
+  title: string;
   displayType: DisplayType;
   interval: string;
   eventQueries: Widget['queries'];
@@ -172,7 +173,14 @@ class WidgetNew extends AsyncView<Props, State> {
                 {label: t('Widget Builder')},
               ]}
             />
-            <Layout.Title>{title}</Layout.Title>
+            <Layout.Title>
+              <EditableText
+                text={title}
+                onSetText={newText => {
+                  this.handleFieldChange('title', newText);
+                }}
+              />
+            </Layout.Title>
           </Layout.HeaderContent>
 
           <Layout.HeaderActions>
