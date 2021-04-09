@@ -182,7 +182,7 @@ class OrganizationEventsTraceEndpointBase(OrganizationEventsV2EndpointBase):
                 warning_extra,
                 event_id,
                 detailed=detailed,
-                check_missing=len(result["data"]) == 1,
+                check_missing_service=len(result["data"]) == 1,
             )
         )
 
@@ -264,7 +264,7 @@ class OrganizationEventsTraceLightEndpoint(OrganizationEventsTraceEndpointBase):
         warning_extra,
         event_id,
         detailed=False,
-        check_missing=False,
+        check_missing_service=False,
     ):
         """ Because the light endpoint could potentially have gaps between root and event we return a flattened list """
         snuba_event, nodestore_event = self.get_current_transaction(transactions, errors, event_id)
@@ -305,7 +305,7 @@ class OrganizationEventsTraceLightEndpoint(OrganizationEventsTraceEndpointBase):
             )
             trace_results.append(current_event)
             domain = None
-            if check_missing:
+            if check_missing_service:
                 url = nodestore_event.data.get("request", {}).get("url")
                 if url:
                     domain = urlparse(url).netloc
@@ -319,8 +319,8 @@ class OrganizationEventsTraceLightEndpoint(OrganizationEventsTraceEndpointBase):
                     current_event["errors"].extend(
                         [self.serialize_error(error) for error in error_map.pop(span["span_id"])]
                     )
-                if check_missing and span["op"] == "http":
-                    check_missing = self.check_missing_service(span, domain, current_event)
+                if check_missing_service and span["op"] == "http":
+                    check_missing_service = self.check_missing_service(span, domain, current_event)
                 if span["span_id"] in parent_map:
                     child_events = parent_map.pop(span["span_id"])
                     trace_results.extend(
@@ -411,7 +411,7 @@ class OrganizationEventsTraceEndpoint(OrganizationEventsTraceEndpointBase):
         warning_extra,
         event_id,
         detailed=False,
-        check_missing=False,
+        check_missing_service=False,
     ):
         """ For the full event trace, we return the results as a graph instead of a flattened list """
         parent_map = self.construct_span_map(transactions, "trace.parent_span")
@@ -468,7 +468,7 @@ class OrganizationEventsTraceEndpoint(OrganizationEventsTraceEndpointBase):
                 spans.append({"span_id": previous_event["span_id"]})
 
                 domain = None
-                if check_missing:
+                if check_missing_service:
                     with sentry_sdk.start_span(op="parse", description="domain"):
                         url = nodestore_event.data.get("request", {}).get("url")
                         if url:
@@ -485,8 +485,10 @@ class OrganizationEventsTraceEndpoint(OrganizationEventsTraceEndpointBase):
                     # We need to connect back to an existing orphan trace
                     if has_orphans and child["span_id"] in results_map:
                         previous_event["children"].extend(results_map.pop(child["span_id"]))
-                    if check_missing and child.get("op") == "http":
-                        check_missing = self.check_missing_service(child, domain, previous_event)
+                    if check_missing_service and child.get("op") == "http":
+                        check_missing_service = self.check_missing_service(
+                            child, domain, previous_event
+                        )
 
                     if child["span_id"] not in parent_map:
                         continue
