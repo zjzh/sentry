@@ -273,6 +273,11 @@ from .endpoints.project_key_details import ProjectKeyDetailsEndpoint
 from .endpoints.project_key_stats import ProjectKeyStatsEndpoint
 from .endpoints.project_keys import ProjectKeysEndpoint
 from .endpoints.project_member_index import ProjectMemberIndexEndpoint
+from .endpoints.project_metrics import (
+    ProjectMetricsDataEndpoint,
+    ProjectMetricsEndpoint,
+    ProjectMetricsTagsEndpoint,
+)
 from .endpoints.project_ownership import ProjectOwnershipEndpoint
 from .endpoints.project_platforms import ProjectPlatformsEndpoint
 from .endpoints.project_plugin_details import ProjectPluginDetailsEndpoint
@@ -1570,6 +1575,21 @@ urlpatterns = [
                     r"^(?P<organization_slug>[^/]+)/(?P<project_slug>[^/]+)/members/$",
                     ProjectMemberIndexEndpoint.as_view(),
                     name="sentry-api-0-project-member-index",
+                ),
+                url(
+                    r"^(?P<organization_slug>[^/]+)/(?P<project_slug>[^/]+)/metrics/$",
+                    ProjectMetricsEndpoint.as_view(),
+                    name="sentry-api-0-project-metrics-index",
+                ),
+                url(
+                    r"^(?P<organization_slug>[^/]+)/(?P<project_slug>[^/]+)/metrics/data/$",
+                    ProjectMetricsDataEndpoint.as_view(),
+                    name="sentry-api-0-project-metrics-data",
+                ),
+                url(
+                    r"^(?P<organization_slug>[^/]+)/(?P<project_slug>[^/]+)/metrics/tags/$",
+                    ProjectMetricsTagsEndpoint.as_view(),
+                    name="sentry-api-0-project-metrics-tags",
                 ),
                 url(
                     r"^(?P<organization_slug>[^\/]+)/(?P<project_slug>[^\/]+)/releases/$",
