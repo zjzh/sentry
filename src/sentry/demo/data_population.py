@@ -24,8 +24,15 @@ from sentry.incidents.logic import (
     create_alert_rule,
     create_alert_rule_trigger,
     create_alert_rule_trigger_action,
+    create_incident,
 )
-from sentry.incidents.models import AlertRuleThresholdType, AlertRuleTriggerAction
+from sentry.incidents.models import (
+    AlertRuleActivity,
+    AlertRuleActivityType,
+    AlertRuleThresholdType,
+    AlertRuleTriggerAction,
+    IncidentType,
+)
 from sentry.interfaces.user import User as UserInterface
 from sentry.mediators import project_rules
 from sentry.models import (
@@ -76,6 +83,11 @@ def get_config(quick):
 def get_config_var(name, quick):
     config = get_config(quick)
     return config[name]
+
+
+def get_start_time(quick):
+    MAX_DAYS = get_config_var("MAX_DAYS", quick)
+    return timezone.now() - timedelta(days=MAX_DAYS)
 
 
 def get_data_file_path(file_name):
@@ -275,7 +287,7 @@ def generate_releases(projects, quick):
     config = get_config(quick)
     NUM_RELEASES = config["NUM_RELEASES"]
     MAX_DAYS = config["MAX_DAYS"]
-    release_time = timezone.now() - timedelta(days=MAX_DAYS)
+    release_time = get_start_time(quick)
     hourly_release_cadence = MAX_DAYS * 24.0 / NUM_RELEASES
     org = projects[0].organization
     org_id = org.id
@@ -348,12 +360,14 @@ def generate_releases(projects, quick):
         release_time += timedelta(hours=hourly_release_cadence)
 
 
-def generate_alerts(project):
-    generate_metric_alert(project)
+def generate_alerts(project, quick):
+    generate_metric_alert(project, quick)
     generate_issue_alert(project)
 
 
-def generate_metric_alert(project):
+def generate_metric_alert(project, quick):
+    start_time = get_start_time(quick)
+
     org = project.organization
     team = Team.objects.filter(organization=org).first()
     alert_rule = create_alert_rule(
@@ -366,6 +380,15 @@ def generate_metric_alert(project):
         AlertRuleThresholdType.ABOVE,
         1,
     )
+    # fudge the creation times
+    alert_rule.date_added = start_time
+    alert_rule.date_modified = start_time
+    alert_rule.save()
+
+    activity = AlertRuleActivity.objects.get(
+        alert_rule=alert_rule, ype=AlertRuleActivityType.CREATED.value
+    )
+
     critical_trigger = create_alert_rule_trigger(alert_rule, "critical", 10)
     warning_trigger = create_alert_rule_trigger(alert_rule, "warning", 7)
     for trigger in [critical_trigger, warning_trigger]:
@@ -375,6 +398,15 @@ def generate_metric_alert(project):
             AlertRuleTriggerAction.TargetType.TEAM,
             target_identifier=str(team.id),
         )
+
+    create_incident(
+        org,
+        type_=IncidentType.DETECTED,
+        title="My Incident",
+        date_started=timezone.now(),
+        alert_rule=alert_rule,
+        projects=[project],
+    )
 
 
 def generate_issue_alert(project):
@@ -693,7 +725,7 @@ def iter_timestamps(disribution_fn_num: int, quick: bool, starting_release: int 
     SCALE_FACTOR = config["SCALE_FACTOR"]
     BASE_OFFSET = config["BASE_OFFSET"]
     NUM_RELEASES = config["NUM_RELEASES"]
-    start_time = timezone.now() - timedelta(days=MAX_DAYS)
+    start_time = get_start_time(quick)
 
     # offset by the release time
     hourly_release_cadence = MAX_DAYS * 24.0 / NUM_RELEASES
@@ -1094,7 +1126,7 @@ def handle_react_python_scenario(react_project: Project, python_project: Project
     """
     with sentry_sdk.start_span(op="handle_react_python_scenario", description="pre_event_setup"):
         generate_releases([react_project, python_project], quick=quick)
-        generate_alerts(python_project)
+        generate_alerts(python_project, quick=quick)
         generate_saved_query(react_project, "/productstore", "Product Store by Browser")
     if not get_config_var("DISABLE_SESSIONS", quick):
         with sentry_sdk.start_span(
