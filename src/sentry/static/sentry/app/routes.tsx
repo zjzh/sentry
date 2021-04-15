@@ -1184,15 +1184,6 @@ function routes() {
               }
               component={errorHandler(LazyLoad)}
             />
-            <Route
-              path="widget/new/"
-              componentPromise={() =>
-                import(
-                  /* webpackChunkName: "WidgetNew" */ 'app/views/dashboardsV2/widget/new'
-                )
-              }
-              component={errorHandler(LazyLoad)}
-            />
           </Route>
 
           <Route
@@ -1874,10 +1865,11 @@ function routes() {
             }
             component={errorHandler(LazyLoad)}
           >
-            <IndexRoute
+            <Route
+              path="widget/new/"
               componentPromise={() =>
                 import(
-                  /* webpackChunkName: "DashboardDetail" */ 'app/views/dashboardsV2/detail'
+                  /* webpackChunkName: "WidgetNew" */ 'app/views/dashboardsV2/widget/new'
                 )
               }
               component={errorHandler(LazyLoad)}

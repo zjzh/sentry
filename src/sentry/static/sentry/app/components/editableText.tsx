@@ -91,6 +91,7 @@ function EditableText({value, onChange}: Props) {
           >
             <StyledInput ref={inputRef} value={inputValue} onChange={handleInputChange} />
           </StyledField>
+
           <InputLabel>{inputValue}</InputLabel>
         </InputWrapper>
       ) : (

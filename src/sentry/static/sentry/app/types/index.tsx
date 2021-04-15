@@ -1657,7 +1657,7 @@ export type Tag = {
   maxSuggestedValues?: number;
 };
 
-export type TagCollection = {[key: string]: Tag};
+export type TagCollection = Record<string, Tag>;
 
 export type TagValue = {
   count: number;
@@ -1992,3 +1992,29 @@ export enum HealthStatsPeriodOption {
   AUTO = 'auto',
   TWENTY_FOUR_HOURS = '24h',
 }
+
+export type IssueOwnership = {
+  raw: string;
+  fallthrough: boolean;
+  dateCreated: string;
+  lastUpdated: string;
+  isActive: boolean;
+  autoAssignment: boolean;
+};
+
+export type CodeOwners = {
+  id: string;
+  raw: string;
+  dateCreated: string;
+  dateUpdated: string;
+  provider: 'github' | 'gitlab';
+};
+
+export type KeyValueListData = {
+  key: string;
+  subject: string;
+  value?: React.ReactNode;
+  meta?: Meta;
+  subjectDataTestId?: string;
+  subjectIcon?: React.ReactNode;
+}[];

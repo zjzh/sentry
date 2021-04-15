@@ -18,6 +18,7 @@ import {DashboardDetails, Widget} from './types';
 type Props = {
   api: Client;
   organization: Organization;
+  dashboardId: string;
   dashboard: DashboardDetails;
   selection: GlobalSelection;
   isEditing: boolean;
@@ -121,6 +122,7 @@ class Dashboard extends React.Component<Props> {
       isEditing,
       onUpdate,
       dashboard: {widgets},
+      dashboardId,
       organization,
     } = this.props;
 
@@ -148,6 +150,7 @@ class Dashboard extends React.Component<Props> {
             {widgets.map((widget, index) => this.renderWidget(widget, index))}
             {isEditing && (
               <AddWidget
+                dashboardId={dashboardId}
                 orgSlug={organization.slug}
                 orgFeatures={organization.features}
                 onClick={this.handleStartAdd}

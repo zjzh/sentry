@@ -172,7 +172,7 @@ type Props = {
   /**
    * Map of tags
    */
-  supportedTags?: {[key: string]: Tag};
+  supportedTags?: Record<string, Tag>;
   /**
    * Maximum number of search items to display or a falsey value for no
    * maximum
@@ -636,7 +636,8 @@ class SmartSearchBar extends React.Component<Props, State> {
         Sentry.captureException(err);
         return [];
       }
-      if (tag.key === 'release' && !values.includes('latest')) {
+
+      if (tag.key === 'release:' && !values.includes('latest')) {
         values.unshift('latest');
       }
 

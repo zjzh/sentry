@@ -8,7 +8,7 @@ import {IconAdd} from 'app/icons';
 import {t} from 'app/locale';
 import {Organization} from 'app/types';
 
-import {DisplayType} from './types';
+import {DashboardDetails, DisplayType} from './types';
 import WidgetWrapper from './widgetWrapper';
 
 export const ADD_WIDGET_BUTTON_DRAG_ID = 'add-widget-button';
@@ -24,9 +24,10 @@ type Props = {
   onClick: () => void;
   orgFeatures: Organization['features'];
   orgSlug: Organization['slug'];
+  dashboardId: DashboardDetails['id'];
 };
 
-function AddWidget({onClick, orgFeatures, orgSlug}: Props) {
+function AddWidget({onClick, orgFeatures, orgSlug, dashboardId}: Props) {
   const {setNodeRef, transform} = useSortable({
     disabled: true,
     id: ADD_WIDGET_BUTTON_DRAG_ID,
@@ -57,7 +58,9 @@ function AddWidget({onClick, orgFeatures, orgSlug}: Props) {
       {orgFeatures.includes('metrics') ? (
         <InnerWrapper>
           <ButtonBar gap={1}>
-            <Button to={`/organizations/${orgSlug}/dashboards/widget/new/`}>
+            <Button
+              to={`/organizations/${orgSlug}/dashboards/${dashboardId}/widget/new/?dataSet=metrics`}
+            >
               {t('Add metrics widget')}
             </Button>
             <Button onClick={onClick}>{t('Add events widget')}</Button>
