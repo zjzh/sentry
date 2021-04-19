@@ -85,7 +85,7 @@ def pytest_configure(config):
     middleware = list(settings.MIDDLEWARE_CLASSES)
     sudo = middleware.index("sentry.middleware.sudo.SudoMiddleware")
     middleware[sudo] = "sentry.testutils.middleware.SudoMiddleware"
-    settings.MIDDLEWARE_CLASSES = tuple(middleware)
+    settings.MIDDLEWARE = tuple(middleware)
 
     settings.SENTRY_OPTIONS["cloudflare.secret-key"] = "cloudflare-secret-key"
 

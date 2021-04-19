@@ -276,7 +276,7 @@ USE_TZ = True
 # so that responses aren't modified after Content-Length is set, or have the
 # response modifying middleware reset the Content-Length header.
 # This is because CommonMiddleware Sets the Content-Length header for non-streaming responses.
-MIDDLEWARE_CLASSES = (
+MIDDLEWARE = (
     "sentry.middleware.proxy.DecompressBodyMiddleware",
     "sentry.middleware.security.SecurityHeadersMiddleware",
     "sentry.middleware.maintenance.ServicesUnavailableMiddleware",
@@ -295,6 +295,8 @@ MIDDLEWARE_CLASSES = (
     "sentry.middleware.superuser.SuperuserMiddleware",
     "sentry.middleware.locale.SentryLocaleMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
+    # TODO: Remove this, needed so django doesn't complain about admin
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
 )
 
 ROOT_URLCONF = "sentry.conf.urls"

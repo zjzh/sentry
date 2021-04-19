@@ -1,7 +1,8 @@
 from django.conf import settings
+from django.utils.deprecation import MiddlewareMixin
 
 
-class NoIfModifiedSinceMiddleware:
+class NoIfModifiedSinceMiddleware(MiddlewareMixin):
     def __init__(self):
         if not settings.DEBUG:
             from django.core.exceptions import MiddlewareNotUsed

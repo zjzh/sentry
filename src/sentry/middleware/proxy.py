@@ -4,6 +4,7 @@ import zlib
 
 from django.conf import settings
 from django.core.exceptions import MiddlewareNotUsed
+from django.utils.deprecation import MiddlewareMixin
 
 logger = logging.getLogger(__name__)
 Z_CHUNK = 1024 * 8
@@ -77,7 +78,7 @@ class GzipDecoder(ZDecoder):
         ZDecoder.__init__(self, fp, zlib.decompressobj(16 + zlib.MAX_WBITS))
 
 
-class SetRemoteAddrFromForwardedFor:
+class SetRemoteAddrFromForwardedFor(MiddlewareMixin):
     def __init__(self):
         if not getattr(settings, "SENTRY_USE_X_FORWARDED_FOR", True):
             raise MiddlewareNotUsed
@@ -105,7 +106,7 @@ class SetRemoteAddrFromForwardedFor:
             request.META["REMOTE_ADDR"] = real_ip
 
 
-class DecompressBodyMiddleware:
+class DecompressBodyMiddleware(MiddlewareMixin):
     def process_request(self, request):
         decode = False
         encoding = request.META.get("HTTP_CONTENT_ENCODING", "").lower()
