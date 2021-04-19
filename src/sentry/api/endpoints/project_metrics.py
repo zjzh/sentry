@@ -1,8 +1,8 @@
 from rest_framework.exceptions import ParseError
 from rest_framework.response import Response
 
-from sentry import features
 from sentry.api.bases.project import ProjectEndpoint
+from sentry.api.exceptions import ResourceDoesNotExist
 from sentry.snuba.metrics import DATA_SOURCE, InvalidField, InvalidParams, QueryDefinition
 
 
@@ -10,26 +10,48 @@ class ProjectMetricsEndpoint(ProjectEndpoint):
     """ Get metric name, type, unit and tag names """
 
     def get(self, request, project):
-
-        if not features.has("organizations:metrics", project.organization, actor=request.user):
-            return Response(status=404)
-
         metrics = DATA_SOURCE.get_metrics(project)
         return Response(metrics, status=200)
+
+
+class ProjectMetricDetailsEndpoint(ProjectEndpoint):
+    """ Get metric name, type, unit and tag names """
+
+    def get(self, request, project, metric_name):
+        try:
+            metric = DATA_SOURCE.get_single_metric(project, metric_name)
+        except InvalidParams:
+            raise ResourceDoesNotExist(detail=f"metric '{metric_name}'")
+
+        return Response(metric, status=200)
 
 
 class ProjectMetricsTagsEndpoint(ProjectEndpoint):
     """ Get all existing tag values for a metric """
 
-    def get(self, request, project, metric_name, tag_name):
-
-        if not features.has("organizations:metrics", project.organization, actor=request.user):
-            return Response(status=404)
+    def get(self, request, project):
 
         try:
-            tag_values = DATA_SOURCE.get_tag_values(project, metric_name, tag_name)
+            tag_names = DATA_SOURCE.get_tag_names(project)
         except InvalidParams as exc:
             raise (ParseError(detail=str(exc)))
+
+        return Response(tag_names, status=200)
+
+
+class ProjectMetricsTagDetailsEndpoint(ProjectEndpoint):
+    """ Get all existing tag values for a metric """
+
+    def get(self, request, project, tag_name):
+
+        try:
+            tag_values = DATA_SOURCE.get_tag_values(project, tag_name)
+        except InvalidParams as exc:
+            raise (ParseError(detail=str(exc)))
+
+        if not tag_values:
+            # NOTE: this behavior might change once we have a true tag indexer
+            raise ResourceDoesNotExist(f"tag '{tag_name}'")
 
         return Response(tag_values, status=200)
 
@@ -42,9 +64,6 @@ class ProjectMetricsDataEndpoint(ProjectEndpoint):
     """
 
     def get(self, request, project):
-
-        if not features.has("organizations:metrics", project.organization, actor=request.user):
-            return Response(status=404)
 
         try:
             query = QueryDefinition(request.GET, allow_minute_resolution=False)

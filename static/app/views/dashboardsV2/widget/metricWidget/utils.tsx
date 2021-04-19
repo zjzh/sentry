@@ -10,14 +10,53 @@ export function getBreakdownChartData({
 }: {
   response: SessionApiResponse;
   legend: string;
-  groupBy?: string;
+  groupBy?: string[];
 }): ChartData {
   return response.groups.reduce((groups, group, index) => {
-    const key = groupBy ? group.by[groupBy] : index;
-    groups[key] = {
-      seriesName: legend,
-      data: [],
-    };
+    for (const groupByIndex in groupBy) {
+      const key = groupBy ? group.by[groupBy[groupByIndex]] : index;
+      groups[key] = {
+        seriesName: legend,
+        data: [],
+      };
+    }
     return groups;
   }, {});
+}
+
+type FillChartDataFromMetricsResponse = {
+  response: SessionApiResponse;
+  field: string;
+  chartData: ChartData;
+  groupBy?: string[];
+  valueFormatter?: (value: number) => number;
+};
+
+export function fillChartDataFromMetricsResponse({
+  response,
+  field,
+  groupBy,
+  chartData,
+  valueFormatter,
+}: FillChartDataFromMetricsResponse) {
+  response.intervals.forEach((interval, index) => {
+    response.groups.forEach(group => {
+      const value = group.series[field][index];
+      if (!groupBy) {
+        chartData[0].data.push({
+          name: interval,
+          value: typeof valueFormatter === 'function' ? valueFormatter(value) : value,
+        });
+      } else {
+        for (const groupByIndex in groupBy) {
+          chartData[group.by[groupBy[groupByIndex]]].data.push({
+            name: interval,
+            value: typeof valueFormatter === 'function' ? valueFormatter(value) : value,
+          });
+        }
+      }
+    });
+  });
+
+  return chartData;
 }

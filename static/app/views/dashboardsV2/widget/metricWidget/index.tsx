@@ -27,7 +27,7 @@ import {DataSet, DisplayType, displayTypes} from '../utils';
 import Card from './card';
 import Queries from './queries';
 import SearchBar from './searchBar';
-import {Metric, MetricQuery} from './types';
+import {MetricMeta, MetricQuery} from './types';
 
 const metricDisplayTypes = Object.keys(displayTypes).filter(
   displayType =>
@@ -53,9 +53,10 @@ type Props = RouteComponentProps<RouteParams, {}> &
 type State = AsyncView['state'] & {
   title: string;
   displayType: DisplayType;
-  metrics: Metric[];
+  metricMetas: MetricMeta[];
+  metricTags: string[];
   queries: MetricQuery[];
-  tags: string;
+  searchQuery?: string;
 };
 
 class MetricWidget extends AsyncView<Props, State> {
@@ -64,9 +65,9 @@ class MetricWidget extends AsyncView<Props, State> {
       ...super.getDefaultState(),
       title: t('Custom Widget'),
       displayType: DisplayType.LINE,
-      metrics: [],
+      metricMetas: [],
+      metricTags: [],
       queries: [{}],
-      tags: '',
     };
   }
 
@@ -85,7 +86,13 @@ class MetricWidget extends AsyncView<Props, State> {
       return [];
     }
 
-    return [['metrics', `/projects/${organization.slug}/${this.project.slug}/metrics/`]];
+    const orgSlug = organization.slug;
+    const projectSlug = this.project.slug;
+
+    return [
+      ['metricMetas', `/projects/${orgSlug}/${projectSlug}/metrics/meta/`],
+      ['metricTags', `/projects/${orgSlug}/${projectSlug}/metrics/tags/`],
+    ];
   }
 
   componentDidUpdate(prevProps: Props, prevState: State) {
@@ -117,10 +124,11 @@ class MetricWidget extends AsyncView<Props, State> {
   };
 
   handleChangeQuery = (index: number, query: MetricQuery) => {
-    const isMetricNew = this.state.queries[index].metric?.name !== query.metric?.name;
+    const isMetricNew =
+      this.state.queries[index].metricMeta?.name !== query.metricMeta?.name;
 
     if (isMetricNew) {
-      query.aggregation = undefined;
+      query.aggregation = query.metricMeta ? query.metricMeta.operations[0] : undefined;
     }
 
     this.setState(state => {
@@ -169,7 +177,14 @@ class MetricWidget extends AsyncView<Props, State> {
       params,
     } = this.props;
     const {dashboardId} = params;
-    const {title, metrics, metric, queries, displayType} = this.state;
+    const {
+      title,
+      metricTags,
+      searchQuery,
+      metricMetas,
+      queries,
+      displayType,
+    } = this.state;
     const orgSlug = organization.slug;
 
     if (loadingProjects) {
@@ -234,7 +249,8 @@ class MetricWidget extends AsyncView<Props, State> {
                     project={project}
                     widget={{
                       title,
-                      queries,
+                      searchQuery,
+                      groupings: queries,
                     }}
                   />
                 </VisualizationWrapper>
@@ -246,12 +262,11 @@ class MetricWidget extends AsyncView<Props, State> {
               >
                 <SearchBar
                   api={this.api}
-                  metricName={metric?.name ?? ''}
-                  tags={metric?.tags ?? []}
+                  tags={metricTags}
                   orgSlug={orgSlug}
                   projectSlug={project.slug}
-                  query=""
-                  onBlur={value => this.handleFieldChange('tags', value)}
+                  query={searchQuery}
+                  onBlur={value => this.handleFieldChange('searchQuery', value)}
                 />
               </BuildStep>
               <BuildStep
@@ -261,8 +276,8 @@ class MetricWidget extends AsyncView<Props, State> {
                 )}
               >
                 <Queries
-                  metrics={metrics}
-                  metric={metric}
+                  metricMetas={metricMetas}
+                  metricTags={metricTags}
                   queries={queries}
                   onAddQuery={this.handleAddQuery}
                   onRemoveQuery={this.handleRemoveQuery}
