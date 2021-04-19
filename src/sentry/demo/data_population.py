@@ -5,7 +5,7 @@ import os
 import random
 import time
 from collections import defaultdict
-from datetime import timedelta
+from datetime import timedelta, datetime
 from functools import wraps
 from hashlib import sha1
 from typing import List
@@ -24,8 +24,19 @@ from sentry.incidents.logic import (
     create_alert_rule,
     create_alert_rule_trigger,
     create_alert_rule_trigger_action,
+    create_incident,
+    update_incident_status,
 )
-from sentry.incidents.models import AlertRuleThresholdType, AlertRuleTriggerAction
+from sentry.incidents.models import (
+    AlertRuleActivity,
+    AlertRuleActivityType,
+    AlertRuleThresholdType,
+    AlertRuleTriggerAction,
+    IncidentStatus,
+    IncidentActivity,
+    IncidentType,
+    IncidentActivityType,
+)
 from sentry.interfaces.user import User as UserInterface
 from sentry.mediators import project_rules
 from sentry.models import (
@@ -193,6 +204,7 @@ def gen_base_context():
     return random.choice(contexts)
 
 
+# TODO: add releases to DataPopulation class so we can avoid queries
 def get_release_from_time(org_id, timestamp):
     """
     Returns the most release before a specific time
@@ -409,6 +421,48 @@ def update_context(event, trace=None):
     context["trace"] = base_trace
 
 
+# class HitCounter:
+#     def __init__(self, window, seconds_per_bucket=60):
+#         self.window = window
+#         self.seconds_per_bucket = seconds_per_bucket
+#         self.ring_buffer = [0] * self.size
+#         self.max_hits = 0
+#         self.max_hit_time = None
+#         self.last_pos = None
+
+#     @property
+#     def size(self):
+#         return int(self.window * 60 / self.seconds_per_bucket)
+
+#     def add(self, timestamp):
+#         pos = int(timestamp / self.seconds_per_bucket) % self.size
+#         if pos != self.last_pos:
+#             self.ring_buffer[pos] = 0
+#             self.last_pos = pos
+#         self.ring_buffer[pos] += 1
+
+#         # update are max hits
+#         hits = self.count()
+#         if hits > self.max_hits:
+#             self.max_hits = hits
+#             self.max_hit_time = timestamp
+
+#     def count(self):
+#         return sum(self.ring_buffer)
+
+
+class HitCounter:
+    def __init__(self, window):
+        self.window = window
+        self.hits = []
+
+    def add(self, timestamp):
+        self.hits.append(timestamp)
+
+    def count(self):
+        return sum(self.ring_buffer)
+
+
 class DataPopulation:
     """
     This class is used to populate data for a single organization
@@ -417,6 +471,10 @@ class DataPopulation:
     def __init__(self, org: Organization, quick: bool):
         self.org = org
         self.quick = quick
+        # assuming only one project has a metric alert
+        self.error_counter = HitCounter(self.get_config_var("METRIC_ALERT_TIME_WINDOW"))
+        self.metric_alert = None
+        self.metric_alert_project = None
 
     def get_config(self):
         """
@@ -430,6 +488,10 @@ class DataPopulation:
 
     def get_config_var(self, name):
         return self.get_config()[name]
+
+    def get_start_time(self):
+        MAX_DAYS = self.get_config_var("MAX_DAYS")
+        return timezone.now() - timedelta(days=MAX_DAYS)
 
     def log_info(self, message):
         log_context = {
@@ -501,11 +563,15 @@ class DataPopulation:
         config = self.get_config()
         try:
             create_sample_event_basic(data, project.id)
-            time.sleep(config["DEFAULT_BACKOFF_TIME"])
         except SnubaError:
             # if snuba fails, just back off and continue
             self.log_info("safe_send_event.snuba_error")
             time.sleep(config["ERROR_BACKOFF_TIME"])
+        else:
+            # make sure the error is for the project we are tracking
+            if data["type"] == "error" and project.id == self.metric_alert_project.id:
+                self.error_counter.add(data["timestamp"])
+            time.sleep(config["DEFAULT_BACKOFF_TIME"])
 
     @catch_and_log_errors
     def send_session(self, sid, user_id, dsn, time, release, **kwargs):
@@ -615,27 +681,85 @@ class DataPopulation:
         self.generate_issue_alert(project)
 
     def generate_metric_alert(self, project):
+        start_time = self.get_start_time()
+
         org = project.organization
-        team = Team.objects.filter(organization=org).first()
         alert_rule = create_alert_rule(
             org,
             [project],
             "High Error Rate",
             "level:error",
             "count()",
-            10,
+            self.get_config_var("METRIC_ALERT_TIME_WINDOW"),
             AlertRuleThresholdType.ABOVE,
             1,
         )
-        critical_trigger = create_alert_rule_trigger(alert_rule, "critical", 10)
-        warning_trigger = create_alert_rule_trigger(alert_rule, "warning", 7)
-        for trigger in [critical_trigger, warning_trigger]:
-            create_alert_rule_trigger_action(
-                trigger,
-                AlertRuleTriggerAction.Type.EMAIL,
-                AlertRuleTriggerAction.TargetType.TEAM,
-                target_identifier=str(team.id),
-            )
+
+        # fudge the creation times
+        alert_rule.date_added = start_time
+        alert_rule.date_modified = start_time
+        alert_rule.save()
+        self.metric_alert = alert_rule
+        self.metric_alert_project = project
+
+        # activity = AlertRuleActivity.objects.get(
+        #     alert_rule=alert_rule, type=AlertRuleActivityType.CREATED.value
+        # )
+        # activity.date_added = start_time
+        # activity.save()
+
+        print("start time", start_time)
+
+        AlertRuleActivity.objects.filter(
+            alert_rule=alert_rule,
+        ).update(date_added=start_time)
+
+    def add_trigger_and_incidents(self):
+        # self.error_counter.complete()
+
+        start_time = self.get_start_time()
+        alert_rule = self.metric_alert
+        team = Team.objects.filter(organization=alert_rule.organization).first()
+
+        # create a trigger at the max hits we saw
+        threshold = self.error_counter.max_hits
+        critical_trigger = create_alert_rule_trigger(alert_rule, "critical", threshold)
+        trigger_action = create_alert_rule_trigger_action(
+            critical_trigger,
+            AlertRuleTriggerAction.Type.EMAIL,
+            AlertRuleTriggerAction.TargetType.TEAM,
+            target_identifier=str(team.id),
+        )
+        trigger_action.date_added = start_time
+        trigger_action.save()
+
+        # create an incident at the time we had the most errors
+        date_started = datetime.fromtimestamp(self.error_counter.max_hit_time)
+        date_started_str = date_started.isoformat()
+        incident = create_incident(
+            self.org,
+            type_=IncidentType.DETECTED,
+            title="My Incident",
+            date_started=date_started_str,
+            alert_rule=alert_rule,
+            projects=[self.metric_alert_project],
+        )
+
+        IncidentActivity.objects.filter(
+            incident=incident, type=IncidentActivityType.CREATED.value
+        ).update(date_added=date_started_str)
+
+        # end_time = date_started + timedelta(minutes=10)
+        # update_incident_status(
+        #     incident,
+        #     IncidentStatus.CLOSED,
+        #     comment="This alert is resolved",
+        #     date_closed=end_time,
+        # )
+
+        # IncidentActivity.objects.filter(
+        #     incident=incident, type=IncidentActivityType.STATUS_CHANGE.value
+        # ).update(date_added=end_time.isoformat())
 
     def generate_issue_alert(self, project):
         org = project.organization
@@ -1078,27 +1202,30 @@ class DataPopulation:
             ):
                 self.populate_sessions(react_project, "sessions/react_unhandled_exception.json")
                 self.populate_sessions(python_project, "sessions/python_unhandled_exception.json")
-        with sentry_sdk.start_span(
-            op="handle_react_python_scenario", description="populate_connected_events"
-        ):
-            self.populate_connected_event_scenario_1(react_project, python_project)
-            self.populate_connected_event_scenario_1b(react_project, python_project)
-            self.populate_connected_event_scenario_2(react_project, python_project)
+        # with sentry_sdk.start_span(
+        #     op="handle_react_python_scenario", description="populate_connected_events"
+        # ):
+        #     self.populate_connected_event_scenario_1(react_project, python_project)
+        #     self.populate_connected_event_scenario_1b(react_project, python_project)
+        #     self.populate_connected_event_scenario_2(react_project, python_project)
         with sentry_sdk.start_span(
             op="handle_react_python_scenario", description="populate_errors"
         ):
-            self.populate_generic_error(
-                react_project, "errors/react/get_card_info.json", 3, starting_release=1
-            )
+            # self.populate_generic_error(
+            #     react_project, "errors/react/get_card_info.json", 3, starting_release=1
+            # )
             self.populate_generic_error(
                 python_project, "errors/python/cert_error.json", 5, starting_release=1
             )
-            self.populate_generic_error(
-                react_project, "errors/react/func_undefined.json", 2, starting_release=2
-            )
-            self.populate_generic_error(
-                python_project, "errors/python/concat_str_none.json", 4, starting_release=2
-            )
+            # self.populate_generic_error(
+            #     react_project, "errors/react/func_undefined.json", 2, starting_release=2
+            # )
+            # self.populate_generic_error(
+            #     python_project, "errors/python/concat_str_none.json", 4, starting_release=2
+            # )
+
+        # add the triggers at the end
+        self.add_trigger_and_incidents()
 
 
 def handle_react_python_scenario(react_project: Project, python_project: Project, quick=False):

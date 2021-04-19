@@ -43,6 +43,7 @@ DEMO_DATA_GEN_PARAMS = {
     "MIN_FRONTEND_DURATION": 400,  # absolute minimum duration of a FE transaction in ms
     "MAX_INITIALIZATION_TIME": 30,  # number of minutes to give an organization to initialize
     "DISABLE_SESSIONS": False,  # disables generating sessions
+    "METRIC_ALERT_TIME_WINDOW": 10,  # num minutes for the time window of a metric alert
 }
 
 # parameters for an org when quickly generating them synchronously

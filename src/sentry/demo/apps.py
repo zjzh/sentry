@@ -8,4 +8,4 @@ class Config(AppConfig):
         from .tasks import delete_initializing_orgs
 
         # also rebuilds the org buffer
-        delete_initializing_orgs.apply_async()
+        # delete_initializing_orgs.apply_async()
