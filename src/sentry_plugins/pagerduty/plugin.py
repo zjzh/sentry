@@ -10,7 +10,7 @@ from .client import PagerDutyClient
 class PagerDutyPlugin(CorePluginMixin, NotifyPlugin):
     description = "Send alerts to PagerDuty."
     slug = "pagerduty"
-    title = "PagerDuty"
+    title = "PagerDuty (Legacy)"
     conf_key = slug
     conf_title = title
     required_field = "service_key"
