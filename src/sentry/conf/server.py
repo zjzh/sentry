@@ -2189,5 +2189,8 @@ DEMO_DATA_GEN_PARAMS = {}
 # parameters for an org when quickly generating them synchronously
 DEMO_DATA_QUICK_GEN_PARAMS = {}
 
+# other generic options
+DEMO_OTHER_OPTIONS = {}
+
 # adds an extra JS to HTML template
 INJECTED_SCRIPT_ASSETS = []
