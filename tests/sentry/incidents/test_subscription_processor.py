@@ -130,9 +130,9 @@ class ProcessUpdateTest(TestCase):
             subscription = self.sub
         processor = SubscriptionProcessor(subscription)
         message = self.build_subscription_update(subscription, value=value, time_delta=time_delta)
-        with self.feature(
-            ["organizations:incidents", "organizations:performance-view"]
-        ), self.capture_on_commit_callbacks(execute=True):
+        with self.feature(["organizations:incidents"]), self.capture_on_commit_callbacks(
+            execute=True
+        ):
             processor.process_update(message)
         return processor
 
@@ -211,7 +211,7 @@ class ProcessUpdateTest(TestCase):
     def test_removed_alert_rule(self):
         message = self.build_subscription_update(self.sub)
         self.rule.delete()
-        with self.feature(["organizations:incidents", "organizations:performance-view"]):
+        with self.feature(["organizations:incidents"]):
             SubscriptionProcessor(self.sub).process_update(message)
         self.metrics.incr.assert_called_once_with(
             "incidents.alert_rules.no_alert_rule_for_subscription"
@@ -221,7 +221,7 @@ class ProcessUpdateTest(TestCase):
     def test_removed_project(self):
         message = self.build_subscription_update(self.sub)
         self.project.delete()
-        with self.feature(["organizations:incidents", "organizations:performance-view"]):
+        with self.feature(["organizations:incidents"]):
             SubscriptionProcessor(self.sub).process_update(message)
         self.metrics.incr.assert_called_once_with("incidents.alert_rules.ignore_deleted_project")
 

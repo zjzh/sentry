@@ -22,11 +22,10 @@ class KeyTransactionTest(APITestCase, SnubaTestCase):
         self.login_as(user=user, superuser=False)
 
         data = load_data("transaction")
-        with self.feature("organizations:performance-view"):
-            url = reverse("sentry-api-0-organization-key-transactions", args=[self.org.slug])
-            response = self.client.post(
-                url + f"?project={self.project.id}", {"transaction": data["transaction"]}
-            )
+        url = reverse("sentry-api-0-organization-key-transactions", args=[self.org.slug])
+        response = self.client.post(
+            url + f"?project={self.project.id}", {"transaction": data["transaction"]}
+        )
         assert response.status_code == 201
 
         key_transactions = KeyTransaction.objects.filter(owner=user)
@@ -34,11 +33,10 @@ class KeyTransactionTest(APITestCase, SnubaTestCase):
 
     def test_save_key_transaction(self):
         data = load_data("transaction")
-        with self.feature("organizations:performance-view"):
-            url = reverse("sentry-api-0-organization-key-transactions", args=[self.org.slug])
-            response = self.client.post(
-                url + f"?project={self.project.id}", {"transaction": data["transaction"]}
-            )
+        url = reverse("sentry-api-0-organization-key-transactions", args=[self.org.slug])
+        response = self.client.post(
+            url + f"?project={self.project.id}", {"transaction": data["transaction"]}
+        )
 
         assert response.status_code == 201
 
@@ -51,21 +49,21 @@ class KeyTransactionTest(APITestCase, SnubaTestCase):
 
     def test_multiple_user_save(self):
         data = load_data("transaction")
-        with self.feature("organizations:performance-view"):
-            url = reverse("sentry-api-0-organization-key-transactions", args=[self.org.slug])
-            response = self.client.post(
-                url + f"?project={self.project.id}", {"transaction": data["transaction"]}
-            )
+
+        url = reverse("sentry-api-0-organization-key-transactions", args=[self.org.slug])
+        response = self.client.post(
+            url + f"?project={self.project.id}", {"transaction": data["transaction"]}
+        )
 
         user = self.create_user()
         self.create_member(user=user, organization=self.org, role="member")
 
         self.login_as(user=user, superuser=False)
-        with self.feature("organizations:performance-view"):
-            url = reverse("sentry-api-0-organization-key-transactions", args=[self.org.slug])
-            response = self.client.post(
-                url + f"?project={self.project.id}", {"transaction": data["transaction"]}
-            )
+
+        url = reverse("sentry-api-0-organization-key-transactions", args=[self.org.slug])
+        response = self.client.post(
+            url + f"?project={self.project.id}", {"transaction": data["transaction"]}
+        )
         assert response.status_code == 201
 
         key_transactions = KeyTransaction.objects.filter(transaction=data["transaction"])
@@ -73,17 +71,17 @@ class KeyTransactionTest(APITestCase, SnubaTestCase):
 
     def test_duplicate_key_transaction(self):
         data = load_data("transaction")
-        with self.feature("organizations:performance-view"):
-            url = reverse("sentry-api-0-organization-key-transactions", args=[self.org.slug])
-            response = self.client.post(
-                url + f"?project={self.project.id}", {"transaction": data["transaction"]}
-            )
-            assert response.status_code == 201
 
-            response = self.client.post(
-                url + f"?project={self.project.id}", {"transaction": data["transaction"]}
-            )
-            assert response.status_code == 204
+        url = reverse("sentry-api-0-organization-key-transactions", args=[self.org.slug])
+        response = self.client.post(
+            url + f"?project={self.project.id}", {"transaction": data["transaction"]}
+        )
+        assert response.status_code == 201
+
+        response = self.client.post(
+            url + f"?project={self.project.id}", {"transaction": data["transaction"]}
+        )
+        assert response.status_code == 204
 
         key_transactions = KeyTransaction.objects.filter(owner=self.user)
         assert len(key_transactions) == 1
@@ -98,11 +96,10 @@ class KeyTransactionTest(APITestCase, SnubaTestCase):
         other_project = self.create_project(organization=other_org)
 
         data = load_data("transaction")
-        with self.feature("organizations:performance-view"):
-            url = reverse("sentry-api-0-organization-key-transactions", args=[other_org.slug])
-            response = self.client.post(
-                url + f"?project={other_project.id}", {"transaction": data["transaction"]}
-            )
+        url = reverse("sentry-api-0-organization-key-transactions", args=[other_org.slug])
+        response = self.client.post(
+            url + f"?project={other_project.id}", {"transaction": data["transaction"]}
+        )
 
         assert response.status_code == 403
 
@@ -110,22 +107,18 @@ class KeyTransactionTest(APITestCase, SnubaTestCase):
         other_project = self.create_project(organization=self.org)
 
         data = load_data("transaction")
-        with self.feature("organizations:performance-view"):
-            url = reverse("sentry-api-0-organization-key-transactions", args=[self.org.slug])
-            response = self.client.post(
-                url + f"?project={other_project.id}&project={self.project.id}",
-                {"transaction": data["transaction"]},
-            )
+        url = reverse("sentry-api-0-organization-key-transactions", args=[self.org.slug])
+        response = self.client.post(
+            url + f"?project={other_project.id}&project={self.project.id}",
+            {"transaction": data["transaction"]},
+        )
 
         assert response.status_code == 400
         assert response.data == {"detail": "Only 1 project per Key Transaction"}
 
     def test_create_with_overly_long_transaction(self):
-        with self.feature("organizations:performance-view"):
-            url = reverse("sentry-api-0-organization-key-transactions", args=[self.org.slug])
-            response = self.client.post(
-                url + f"?project={self.project.id}", {"transaction": "a" * 500}
-            )
+        url = reverse("sentry-api-0-organization-key-transactions", args=[self.org.slug])
+        response = self.client.post(url + f"?project={self.project.id}", {"transaction": "a" * 500})
 
         assert response.status_code == 400
         assert response.data == {
@@ -146,11 +139,10 @@ class KeyTransactionTest(APITestCase, SnubaTestCase):
                 transaction=data["transaction"] + str(i),
                 project=project,
             )
-        with self.feature("organizations:performance-view"):
-            url = reverse("sentry-api-0-organization-key-transactions", args=[self.org.slug])
-            response = self.client.post(
-                url + f"?project={self.project.id}", {"transaction": data["transaction"]}
-            )
+        url = reverse("sentry-api-0-organization-key-transactions", args=[self.org.slug])
+        response = self.client.post(
+            url + f"?project={self.project.id}", {"transaction": data["transaction"]}
+        )
 
         assert response.status_code == 400
         assert response.data == {
@@ -169,11 +161,10 @@ class KeyTransactionTest(APITestCase, SnubaTestCase):
             project=self.project,
         )
 
-        with self.feature("organizations:performance-view"):
-            url = reverse("sentry-api-0-organization-is-key-transactions", args=[self.org.slug])
-            response = self.client.get(
-                url, {"project": [self.project.id], "transaction": event_data["transaction"]}
-            )
+        url = reverse("sentry-api-0-organization-is-key-transactions", args=[self.org.slug])
+        response = self.client.get(
+            url, {"project": [self.project.id], "transaction": event_data["transaction"]}
+        )
 
         assert response.status_code == 200
         assert response.data["isKey"]
@@ -184,11 +175,10 @@ class KeyTransactionTest(APITestCase, SnubaTestCase):
         end_timestamp = iso_format(before_now(minutes=1))
         event_data.update({"start_timestamp": start_timestamp, "timestamp": end_timestamp})
 
-        with self.feature("organizations:performance-view"):
-            url = reverse("sentry-api-0-organization-is-key-transactions", args=[self.org.slug])
-            response = self.client.get(
-                url, {"project": [self.project.id], "transaction": event_data["transaction"]}
-            )
+        url = reverse("sentry-api-0-organization-is-key-transactions", args=[self.org.slug])
+        response = self.client.get(
+            url, {"project": [self.project.id], "transaction": event_data["transaction"]}
+        )
 
         assert response.status_code == 200
         assert not response.data["isKey"]
@@ -202,12 +192,11 @@ class KeyTransactionTest(APITestCase, SnubaTestCase):
             transaction=event_data["transaction"],
             project=self.project,
         )
-        with self.feature("organizations:performance-view"):
-            url = reverse("sentry-api-0-organization-key-transactions", args=[self.org.slug])
-            response = self.client.delete(
-                url + f"?project={self.project.id}",
-                {"transaction": event_data["transaction"]},
-            )
+        url = reverse("sentry-api-0-organization-key-transactions", args=[self.org.slug])
+        response = self.client.delete(
+            url + f"?project={self.project.id}",
+            {"transaction": event_data["transaction"]},
+        )
 
         assert response.status_code == 204
         assert (
@@ -238,12 +227,11 @@ class KeyTransactionTest(APITestCase, SnubaTestCase):
             transaction=event_data["transaction"],
             project=self.project,
         )
-        with self.feature("organizations:performance-view"):
-            url = reverse("sentry-api-0-organization-key-transactions", args=[self.org.slug])
-            response = self.client.delete(
-                url + f"?project={self.project.id}",
-                {"transaction": event_data["transaction"]},
-            )
+        url = reverse("sentry-api-0-organization-key-transactions", args=[self.org.slug])
+        response = self.client.delete(
+            url + f"?project={self.project.id}",
+            {"transaction": event_data["transaction"]},
+        )
 
         assert response.status_code == 204
         # Original user still has a key transaction
@@ -281,12 +269,11 @@ class KeyTransactionTest(APITestCase, SnubaTestCase):
             project=self.project,
         )
 
-        with self.feature("organizations:performance-view"):
-            url = reverse("sentry-api-0-organization-key-transactions", args=[self.org.slug])
-            response = self.client.delete(
-                url + f"?project={self.project.id}",
-                {"transaction": event_data["transaction"]},
-            )
+        url = reverse("sentry-api-0-organization-key-transactions", args=[self.org.slug])
+        response = self.client.delete(
+            url + f"?project={self.project.id}",
+            {"transaction": event_data["transaction"]},
+        )
         assert response.status_code == 204
 
         key_transactions = KeyTransaction.objects.filter(owner=user)
@@ -295,12 +282,11 @@ class KeyTransactionTest(APITestCase, SnubaTestCase):
     def test_delete_nonexistent_transaction(self):
         event_data = load_data("transaction")
 
-        with self.feature("organizations:performance-view"):
-            url = reverse("sentry-api-0-organization-key-transactions", args=[self.org.slug])
-            response = self.client.delete(
-                url + f"?project={self.project.id}",
-                {"transaction": event_data["transaction"]},
-            )
+        url = reverse("sentry-api-0-organization-key-transactions", args=[self.org.slug])
+        response = self.client.delete(
+            url + f"?project={self.project.id}",
+            {"transaction": event_data["transaction"]},
+        )
 
         assert response.status_code == 204
 
@@ -310,12 +296,11 @@ class KeyTransactionTest(APITestCase, SnubaTestCase):
         other_project = self.create_project(organization=other_org)
 
         data = load_data("transaction")
-        with self.feature("organizations:performance-view"):
-            url = reverse("sentry-api-0-organization-key-transactions", args=[other_org.slug])
-            response = self.client.delete(
-                url + f"?project={other_project.id}&project={self.project.id}",
-                {"transaction": data["transaction"]},
-            )
+        url = reverse("sentry-api-0-organization-key-transactions", args=[other_org.slug])
+        response = self.client.delete(
+            url + f"?project={other_project.id}&project={self.project.id}",
+            {"transaction": data["transaction"]},
+        )
 
         assert response.status_code == 403
 
@@ -329,18 +314,17 @@ class KeyTransactionTest(APITestCase, SnubaTestCase):
                 project=self.project,
             )
 
-        with self.feature("organizations:performance-view"):
-            url = reverse("sentry-api-0-organization-key-transactions", args=[self.org.slug])
-            response = self.client.delete(
-                url + f"?project={self.project.id}",
-                {"transaction": data["transaction"] + "0"},
-            )
-            assert response.status_code == 204
+        url = reverse("sentry-api-0-organization-key-transactions", args=[self.org.slug])
+        response = self.client.delete(
+            url + f"?project={self.project.id}",
+            {"transaction": data["transaction"] + "0"},
+        )
+        assert response.status_code == 204
 
-            response = self.client.post(
-                url + f"?project={self.project.id}", {"transaction": data["transaction"]}
-            )
-            assert response.status_code == 201
+        response = self.client.post(
+            url + f"?project={self.project.id}", {"transaction": data["transaction"]}
+        )
+        assert response.status_code == 201
 
     def test_delete_with_wrong_project(self):
         data = load_data("transaction")
@@ -354,20 +338,20 @@ class KeyTransactionTest(APITestCase, SnubaTestCase):
             project=other_project,
         )
 
-        with self.feature("organizations:performance-view"):
-            url = reverse("sentry-api-0-organization-key-transactions", args=[other_org.slug])
-            response = self.client.delete(
-                url + f"?project={other_project.id}", {"transaction": data["transaction"]}
-            )
+        url = reverse("sentry-api-0-organization-key-transactions", args=[other_org.slug])
+        response = self.client.delete(
+            url + f"?project={other_project.id}", {"transaction": data["transaction"]}
+        )
 
         assert response.status_code == 403
 
     def test_key_transactions_without_feature(self):
-        url = reverse("sentry-api-0-organization-key-transactions", args=[self.org.slug])
-        functions = [self.client.post, self.client.delete]
-        for function in functions:
-            response = function(url)
+        with self.feature({"organizations:performance-view": False}):
+            url = reverse("sentry-api-0-organization-key-transactions", args=[self.org.slug])
+            functions = [self.client.post, self.client.delete]
+            for function in functions:
+                response = function(url)
+                assert response.status_code == 404
+            url = reverse("sentry-api-0-organization-is-key-transactions", args=[self.org.slug])
+            response = self.client.get(url)
             assert response.status_code == 404
-        url = reverse("sentry-api-0-organization-is-key-transactions", args=[self.org.slug])
-        response = self.client.get(url)
-        assert response.status_code == 404

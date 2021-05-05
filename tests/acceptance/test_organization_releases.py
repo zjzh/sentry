@@ -57,7 +57,7 @@ class OrganizationReleasesTest(AcceptanceTestCase):
 
     # This is snapshotting features that are enable through the discover and performance features.
     def test_detail_with_discover_and_performance(self):
-        with self.feature(["organizations:discover-basic", "organizations:performance-view"]):
+        with self.feature(["organizations:discover-basic"]):
             release = self.create_release(project=self.project, version="1.0")
             self.browser.get(self.path + release.version)
             self.browser.wait_until_not(".loading")

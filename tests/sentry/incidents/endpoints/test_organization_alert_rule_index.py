@@ -363,7 +363,7 @@ class OrganizationCombinedRuleIndexEndpointTest(BaseAlertRuleSerializerTest, API
             resp = self.get_valid_response(self.organization.slug)
             assert perf_alert_rule.id not in [x["id"] for x in list(resp.data)]
 
-        with self.feature(["organizations:incidents", "organizations:performance-view"]):
+        with self.feature(["organizations:incidents"]):
             resp = self.get_valid_response(self.organization.slug)
             assert perf_alert_rule.id in [int(x["id"]) for x in list(resp.data)]
 
@@ -415,7 +415,7 @@ class OrganizationCombinedRuleIndexEndpointTest(BaseAlertRuleSerializerTest, API
 
     def test_invalid_limit(self):
         self.setup_project_and_rules()
-        with self.feature(["organizations:incidents", "organizations:performance-view"]):
+        with self.feature(["organizations:incidents"]):
             request_data = {"per_page": "notaninteger"}
             response = self.client.get(
                 path=self.combined_rules_url, data=request_data, content_type="application/json"
@@ -425,7 +425,7 @@ class OrganizationCombinedRuleIndexEndpointTest(BaseAlertRuleSerializerTest, API
     def test_limit_higher_than_results_no_cursor(self):
         self.setup_project_and_rules()
         # Test limit above result count (which is 4), no cursor.
-        with self.feature(["organizations:incidents", "organizations:performance-view"]):
+        with self.feature(["organizations:incidents"]):
             request_data = {"per_page": "5", "project": self.project_ids}
             response = self.client.get(
                 path=self.combined_rules_url, data=request_data, content_type="application/json"
@@ -442,7 +442,7 @@ class OrganizationCombinedRuleIndexEndpointTest(BaseAlertRuleSerializerTest, API
     def test_limit_as_1_with_paging_sort_name(self):
         self.setup_project_and_rules()
         # Test Limit as 1, no cursor:
-        with self.feature(["organizations:incidents", "organizations:performance-view"]):
+        with self.feature(["organizations:incidents"]):
             request_data = {"per_page": "1", "project": self.project.id, "sort": "name", "asc": 1}
             response = self.client.get(
                 path=self.combined_rules_url, data=request_data, content_type="application/json"
@@ -456,7 +456,7 @@ class OrganizationCombinedRuleIndexEndpointTest(BaseAlertRuleSerializerTest, API
         )
         next_cursor = links[1]["cursor"]
         # Test Limit as 1, next page of previous request:
-        with self.feature(["organizations:incidents", "organizations:performance-view"]):
+        with self.feature(["organizations:incidents"]):
             request_data = {
                 "cursor": next_cursor,
                 "per_page": "1",
@@ -477,7 +477,7 @@ class OrganizationCombinedRuleIndexEndpointTest(BaseAlertRuleSerializerTest, API
         self.setup_project_and_rules()
 
         # Test Limit as 1, no cursor:
-        with self.feature(["organizations:incidents", "organizations:performance-view"]):
+        with self.feature(["organizations:incidents"]):
             request_data = {"per_page": "1", "project": self.project_ids}
             response = self.client.get(
                 path=self.combined_rules_url, data=request_data, content_type="application/json"
@@ -494,7 +494,7 @@ class OrganizationCombinedRuleIndexEndpointTest(BaseAlertRuleSerializerTest, API
         next_cursor = links[1]["cursor"]
 
         # Test Limit as 1, next page of previous request:
-        with self.feature(["organizations:incidents", "organizations:performance-view"]):
+        with self.feature(["organizations:incidents"]):
             request_data = {"cursor": next_cursor, "per_page": "1", "project": self.project.id}
             response = self.client.get(
                 path=self.combined_rules_url, data=request_data, content_type="application/json"
@@ -509,7 +509,7 @@ class OrganizationCombinedRuleIndexEndpointTest(BaseAlertRuleSerializerTest, API
         self.setup_project_and_rules()
 
         # Test Limit as 2, no cursor:
-        with self.feature(["organizations:incidents", "organizations:performance-view"]):
+        with self.feature(["organizations:incidents"]):
             request_data = {"per_page": "2", "project": self.project_ids}
             response = self.client.get(
                 path=self.combined_rules_url, data=request_data, content_type="application/json"
@@ -527,7 +527,7 @@ class OrganizationCombinedRuleIndexEndpointTest(BaseAlertRuleSerializerTest, API
         )
         next_cursor = links[1]["cursor"]
         # Test Limit 2, next page of previous request:
-        with self.feature(["organizations:incidents", "organizations:performance-view"]):
+        with self.feature(["organizations:incidents"]):
             request_data = {"cursor": next_cursor, "per_page": "2", "project": self.project_ids}
             response = self.client.get(
                 path=self.combined_rules_url, data=request_data, content_type="application/json"
@@ -545,7 +545,7 @@ class OrganizationCombinedRuleIndexEndpointTest(BaseAlertRuleSerializerTest, API
         next_cursor = links[1]["cursor"]
 
         # Test Limit 2, next page of previous request - should get no results since there are only 4 total:
-        with self.feature(["organizations:incidents", "organizations:performance-view"]):
+        with self.feature(["organizations:incidents"]):
             request_data = {"cursor": next_cursor, "per_page": "2", "project": self.project_ids}
             response = self.client.get(
                 path=self.combined_rules_url, data=request_data, content_type="application/json"
@@ -573,7 +573,7 @@ class OrganizationCombinedRuleIndexEndpointTest(BaseAlertRuleSerializerTest, API
             organization=self.org, projects=[self.project]
         )
 
-        with self.feature(["organizations:incidents", "organizations:performance-view"]):
+        with self.feature(["organizations:incidents"]):
             request_data = {"per_page": "2", "project": self.project_ids}
             response = self.client.get(
                 path=self.combined_rules_url, data=request_data, content_type="application/json"
@@ -591,7 +591,7 @@ class OrganizationCombinedRuleIndexEndpointTest(BaseAlertRuleSerializerTest, API
         next_cursor = links[1]["cursor"]
         assert next_cursor.split(":")[1] == "1"  # Assert offset is properly calculated.
 
-        with self.feature(["organizations:incidents", "organizations:performance-view"]):
+        with self.feature(["organizations:incidents"]):
             request_data = {"cursor": next_cursor, "per_page": "2", "project": self.project_ids}
             response = self.client.get(
                 path=self.combined_rules_url, data=request_data, content_type="application/json"
@@ -622,7 +622,7 @@ class OrganizationCombinedRuleIndexEndpointTest(BaseAlertRuleSerializerTest, API
             organization=self.org, projects=[self.project2]
         )
 
-        with self.feature(["organizations:incidents", "organizations:performance-view"]):
+        with self.feature(["organizations:incidents"]):
             request_data = {"per_page": "2", "project": [self.project.id]}
             response = self.client.get(
                 path=self.combined_rules_url, data=request_data, content_type="application/json"
@@ -634,7 +634,7 @@ class OrganizationCombinedRuleIndexEndpointTest(BaseAlertRuleSerializerTest, API
         self.assert_alert_rule_serialized(self.one_alert_rule, result[0], skip_dates=True)
         self.assert_alert_rule_serialized(self.two_alert_rule, result[1], skip_dates=True)
 
-        with self.feature(["organizations:incidents", "organizations:performance-view"]):
+        with self.feature(["organizations:incidents"]):
             request_data = {"per_page": "2", "project": [self.project2.id]}
             response = self.client.get(
                 path=self.combined_rules_url, data=request_data, content_type="application/json"
@@ -648,7 +648,7 @@ class OrganizationCombinedRuleIndexEndpointTest(BaseAlertRuleSerializerTest, API
 
     def test_team_filter(self):
         self.setup_project_and_rules()
-        with self.feature(["organizations:incidents", "organizations:performance-view"]):
+        with self.feature(["organizations:incidents"]):
             request_data = {"per_page": "10", "project": [self.project.id]}
             response = self.client.get(
                 path=self.combined_rules_url, data=request_data, content_type="application/json"
@@ -657,7 +657,7 @@ class OrganizationCombinedRuleIndexEndpointTest(BaseAlertRuleSerializerTest, API
         result = json.loads(response.content)
         assert len(result) == 3
 
-        with self.feature(["organizations:incidents", "organizations:performance-view"]):
+        with self.feature(["organizations:incidents"]):
             request_data = {
                 "per_page": "10",
                 "project": [self.project.id],
@@ -670,7 +670,7 @@ class OrganizationCombinedRuleIndexEndpointTest(BaseAlertRuleSerializerTest, API
         result = json.loads(response.content)
         assert len(result) == 1
 
-        with self.feature(["organizations:incidents", "organizations:performance-view"]):
+        with self.feature(["organizations:incidents"]):
             request_data = {
                 "per_page": "10",
                 "project": [self.project.id],
@@ -683,7 +683,7 @@ class OrganizationCombinedRuleIndexEndpointTest(BaseAlertRuleSerializerTest, API
         result = json.loads(response.content)
         assert len(result) == 2
 
-        with self.feature(["organizations:incidents", "organizations:performance-view"]):
+        with self.feature(["organizations:incidents"]):
             request_data = {
                 "per_page": "10",
                 "project": [self.project.id, self.project2.id],
@@ -696,7 +696,7 @@ class OrganizationCombinedRuleIndexEndpointTest(BaseAlertRuleSerializerTest, API
         result = json.loads(response.content)
         assert len(result) == 3
 
-        with self.feature(["organizations:incidents", "organizations:performance-view"]):
+        with self.feature(["organizations:incidents"]):
             request_data = {"per_page": "10", "project": [self.project.id], "team": ["unassigned"]}
             response = self.client.get(
                 path=self.combined_rules_url, data=request_data, content_type="application/json"
@@ -711,7 +711,7 @@ class OrganizationCombinedRuleIndexEndpointTest(BaseAlertRuleSerializerTest, API
             date_added=before_now(minutes=3).replace(tzinfo=pytz.UTC),
             owner=None,
         )
-        with self.feature(["organizations:incidents", "organizations:performance-view"]):
+        with self.feature(["organizations:incidents"]):
             request_data = {"per_page": "10", "project": [self.project.id], "team": ["unassigned"]}
             response = self.client.get(
                 path=self.combined_rules_url, data=request_data, content_type="application/json"
@@ -720,14 +720,14 @@ class OrganizationCombinedRuleIndexEndpointTest(BaseAlertRuleSerializerTest, API
         result = json.loads(response.content)
         assert len(result) == 2
 
-        with self.feature(["organizations:incidents", "organizations:performance-view"]):
+        with self.feature(["organizations:incidents"]):
             request_data = {"per_page": "10", "project": [self.project.id], "team": ["notvalid"]}
             response = self.client.get(
                 path=self.combined_rules_url, data=request_data, content_type="application/json"
             )
         assert response.status_code == 400
 
-        with self.feature(["organizations:incidents", "organizations:performance-view"]):
+        with self.feature(["organizations:incidents"]):
             request_data = {"per_page": "10", "project": [self.project.id], "team": ["myteams"]}
             response = self.client.get(
                 path=self.combined_rules_url, data=request_data, content_type="application/json"
@@ -736,7 +736,7 @@ class OrganizationCombinedRuleIndexEndpointTest(BaseAlertRuleSerializerTest, API
         result = json.loads(response.content)
         assert len(result) == 2
 
-        with self.feature(["organizations:incidents", "organizations:performance-view"]):
+        with self.feature(["organizations:incidents"]):
             request_data = {
                 "per_page": "10",
                 "project": [self.project.id, self.project2.id],
@@ -760,7 +760,7 @@ class OrganizationCombinedRuleIndexEndpointTest(BaseAlertRuleSerializerTest, API
                 "owner": self.team.actor,
             }
         )
-        with self.feature(["organizations:incidents", "organizations:performance-view"]):
+        with self.feature(["organizations:incidents"]):
             request_data = {
                 "per_page": "10",
                 "project": [self.project.id],
@@ -802,7 +802,7 @@ class OrganizationCombinedRuleIndexEndpointTest(BaseAlertRuleSerializerTest, API
             }
         )
 
-        with self.feature(["organizations:incidents", "organizations:performance-view"]):
+        with self.feature(["organizations:incidents"]):
             request_data = {
                 "per_page": "10",
                 "project": [another_project.id],
@@ -814,7 +814,7 @@ class OrganizationCombinedRuleIndexEndpointTest(BaseAlertRuleSerializerTest, API
         assert response.status_code == 200
         assert len(response.data) == 2
 
-        with self.feature(["organizations:incidents", "organizations:performance-view"]):
+        with self.feature(["organizations:incidents"]):
             request_data = {
                 "per_page": "10",
                 "project": [another_project.id],
@@ -830,7 +830,7 @@ class OrganizationCombinedRuleIndexEndpointTest(BaseAlertRuleSerializerTest, API
         self.setup_project_and_rules()
         another_org = self.create_organization(owner=self.user, name="Rowdy Tiger")
         another_org_team = self.create_team(organization=another_org, name="Meow Band", members=[])
-        with self.feature(["organizations:incidents", "organizations:performance-view"]):
+        with self.feature(["organizations:incidents"]):
             request_data = {
                 "per_page": "10",
                 "project": [self.project.id],
@@ -843,7 +843,7 @@ class OrganizationCombinedRuleIndexEndpointTest(BaseAlertRuleSerializerTest, API
 
     def test_name_filter(self):
         self.setup_project_and_rules()
-        with self.feature(["organizations:incidents", "organizations:performance-view"]):
+        with self.feature(["organizations:incidents"]):
             request_data = {
                 "per_page": "10",
                 "project": [self.project.id],
@@ -857,7 +857,7 @@ class OrganizationCombinedRuleIndexEndpointTest(BaseAlertRuleSerializerTest, API
         assert len(result) == 1
         assert result[0]["name"] == "yet another alert rule"
 
-        with self.feature(["organizations:incidents", "organizations:performance-view"]):
+        with self.feature(["organizations:incidents"]):
             request_data = {
                 "per_page": "10",
                 "project": [self.project.id],
@@ -871,7 +871,7 @@ class OrganizationCombinedRuleIndexEndpointTest(BaseAlertRuleSerializerTest, API
         assert len(result) == 1
         assert result[0]["name"] == "Issue Rule Test"
 
-        with self.feature(["organizations:incidents", "organizations:performance-view"]):
+        with self.feature(["organizations:incidents"]):
             request_data = {
                 "per_page": "10",
                 "project": [self.project.id, self.project2.id],
@@ -884,7 +884,7 @@ class OrganizationCombinedRuleIndexEndpointTest(BaseAlertRuleSerializerTest, API
         result = json.loads(response.content)
         assert len(result) == 3
 
-        with self.feature(["organizations:incidents", "organizations:performance-view"]):
+        with self.feature(["organizations:incidents"]):
             request_data = {
                 "per_page": "10",
                 "project": [self.project.id, self.project2.id],
@@ -897,7 +897,7 @@ class OrganizationCombinedRuleIndexEndpointTest(BaseAlertRuleSerializerTest, API
         result = json.loads(response.content)
         assert len(result) == 0
 
-        with self.feature(["organizations:incidents", "organizations:performance-view"]):
+        with self.feature(["organizations:incidents"]):
             request_data = {
                 "per_page": "10",
                 "project": [self.project.id, self.project2.id],
@@ -967,7 +967,7 @@ class OrganizationCombinedRuleIndexEndpointTest(BaseAlertRuleSerializerTest, API
             alert_rule_trigger=trigger3,
             status=TriggerStatus.ACTIVE.value,
         )
-        with self.feature(["organizations:incidents", "organizations:performance-view"]):
+        with self.feature(["organizations:incidents"]):
             request_data = {
                 "per_page": "10",
                 "project": [self.project.id, self.project2.id],
@@ -991,7 +991,7 @@ class OrganizationCombinedRuleIndexEndpointTest(BaseAlertRuleSerializerTest, API
         ]
 
         # Test paging with the status setup:
-        with self.feature(["organizations:incidents", "organizations:performance-view"]):
+        with self.feature(["organizations:incidents"]):
             request_data = {
                 "per_page": "2",
                 "project": [self.project.id, self.project2.id],
@@ -1010,7 +1010,7 @@ class OrganizationCombinedRuleIndexEndpointTest(BaseAlertRuleSerializerTest, API
         )
         next_cursor = links[1]["cursor"]
         # Get next page, we should be between the two status':
-        with self.feature(["organizations:incidents", "organizations:performance-view"]):
+        with self.feature(["organizations:incidents"]):
             request_data = {
                 "cursor": next_cursor,
                 "per_page": "2",
@@ -1046,7 +1046,7 @@ class OrganizationCombinedRuleIndexEndpointTest(BaseAlertRuleSerializerTest, API
         IncidentTrigger.objects.create(
             incident=crit_incident, alert_rule_trigger=trigger, status=TriggerStatus.RESOLVED.value
         )
-        with self.feature(["organizations:incidents", "organizations:performance-view"]):
+        with self.feature(["organizations:incidents"]):
             request_data = {
                 "per_page": "10",
                 "project": [self.project.id],

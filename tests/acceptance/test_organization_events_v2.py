@@ -15,7 +15,6 @@ from sentry.utils.samples import load_data
 FEATURE_NAMES = [
     "organizations:discover-basic",
     "organizations:discover-query",
-    "organizations:performance-view",
 ]
 
 

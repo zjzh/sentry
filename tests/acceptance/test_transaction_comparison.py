@@ -8,8 +8,6 @@ from sentry.testutils.helpers.datetime import before_now, timestamp_format
 from sentry.utils.compat.mock import patch
 from tests.acceptance.test_organization_events_v2 import generate_transaction
 
-FEATURE_NAMES = ["organizations:performance-view"]
-
 
 class TransactionComparison(AcceptanceTestCase, SnubaTestCase):
     def setUp(self):
@@ -48,20 +46,19 @@ class TransactionComparison(AcceptanceTestCase, SnubaTestCase):
 
         comparison_page_path = f"/organizations/{self.org.slug}/performance/compare/{baseline_event_slug}/{regression_event_slug}/"
 
-        with self.feature(FEATURE_NAMES):
-            self.browser.get(comparison_page_path)
-            self.wait_until_loaded()
+        self.browser.get(comparison_page_path)
+        self.wait_until_loaded()
 
-            # screenshot for un-expanded span details are visually different from
-            # when a matched span is expanded
-            self.browser.snapshot("transaction comparison page")
+        # screenshot for un-expanded span details are visually different from
+        # when a matched span is expanded
+        self.browser.snapshot("transaction comparison page")
 
-            self.browser.elements('[data-test-id="span-row"]')[0].click()
-            self.browser.elements('[data-test-id="span-row"]')[1].click()
-            self.browser.elements('[data-test-id="span-row"]')[2].click()
-            self.browser.elements('[data-test-id="span-row"]')[10].click()
+        self.browser.elements('[data-test-id="span-row"]')[0].click()
+        self.browser.elements('[data-test-id="span-row"]')[1].click()
+        self.browser.elements('[data-test-id="span-row"]')[2].click()
+        self.browser.elements('[data-test-id="span-row"]')[10].click()
 
-            self.browser.snapshot("transaction comparison page - expanded span details")
+        self.browser.snapshot("transaction comparison page - expanded span details")
 
 
 def regress_spans(original_spans):

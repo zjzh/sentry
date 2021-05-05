@@ -67,9 +67,8 @@ class PerformanceTrendsTest(AcceptanceTestCase, SnubaTestCase):
 
         self.project.update(flags=F("flags").bitor(Project.flags.has_transactions))
 
-        with self.feature("organizations:performance-view"):
-            self.browser.get(self.path)
-            self.page.wait_until_loaded()
-            trend_item = '[data-test-id="trends-list-item-regression"]'
-            self.browser.wait_until(trend_item)
-            self.browser.snapshot("performance trends - with data")
+        self.browser.get(self.path)
+        self.page.wait_until_loaded()
+        trend_item = '[data-test-id="trends-list-item-regression"]'
+        self.browser.wait_until(trend_item)
+        self.browser.snapshot("performance trends - with data")

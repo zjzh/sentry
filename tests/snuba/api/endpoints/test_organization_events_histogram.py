@@ -58,8 +58,6 @@ class OrganizationEventsHistogramEndpointTest(APITestCase, SnubaTestCase):
         return data
 
     def do_request(self, query, features=None):
-        if features is None:
-            features = {"organizations:performance-view": True}
         self.login_as(user=self.user)
         url = reverse(
             "sentry-api-0-organization-events-histogram",

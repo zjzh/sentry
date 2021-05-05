@@ -4,7 +4,7 @@ from django.utils import timezone
 from sentry.testutils import AcceptanceTestCase, SnubaTestCase
 from sentry.testutils.helpers.datetime import before_now
 
-FEATURE_NAME = ["organizations:incidents", "organizations:performance-view"]
+FEATURE_NAME = ["organizations:incidents"]
 
 event_time = before_now(days=3).replace(tzinfo=pytz.utc)
 

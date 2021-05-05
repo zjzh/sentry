@@ -122,7 +122,7 @@ class HandleSnubaQueryUpdateTest(TestCase):
 
         subscriber_registry[INCIDENTS_SNUBA_SUBSCRIPTION_TYPE] = shutdown_callback
 
-        with self.feature(["organizations:incidents", "organizations:performance-view"]):
+        with self.feature(["organizations:incidents"]):
             with self.assertChanges(
                 lambda: active_incident().exists(), before=False, after=True
             ), self.tasks(), self.capture_on_commit_callbacks(execute=True):

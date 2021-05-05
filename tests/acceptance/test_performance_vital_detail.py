@@ -11,8 +11,6 @@ from sentry.utils.samples import load_data
 
 from .page_objects.base import BasePage
 
-FEATURE_NAMES = ("organizations:performance-view",)
-
 
 class PerformanceVitalDetailsTest(AcceptanceTestCase, SnubaTestCase):
     def setUp(self):
@@ -40,11 +38,10 @@ class PerformanceVitalDetailsTest(AcceptanceTestCase, SnubaTestCase):
         self.store_event(data=event, project_id=self.project.id)
         self.project.update(flags=F("flags").bitor(Project.flags.has_transactions))
 
-        with self.feature(FEATURE_NAMES):
-            self.browser.get(self.path)
-            self.page.wait_until_loaded()
+        self.browser.get(self.path)
+        self.page.wait_until_loaded()
 
-            self.browser.wait_until_not(
-                '[data-test-id="grid-editable"] [data-test-id="empty-state"]', timeout=2
-            )
-            self.browser.snapshot("performance vital detail - with data")
+        self.browser.wait_until_not(
+            '[data-test-id="grid-editable"] [data-test-id="empty-state"]', timeout=2
+        )
+        self.browser.snapshot("performance vital detail - with data")

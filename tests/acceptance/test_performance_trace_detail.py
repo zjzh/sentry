@@ -9,7 +9,6 @@ from sentry.utils.compat.mock import patch
 from sentry.utils.samples import load_data
 
 FEATURE_NAMES = [
-    "organizations:performance-view",
     "organizations:trace-view-summary",
 ]
 

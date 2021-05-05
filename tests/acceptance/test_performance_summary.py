@@ -9,8 +9,6 @@ from sentry.utils.samples import load_data
 
 from .page_objects.transaction_summary import TransactionSummaryPage
 
-FEATURE_NAMES = ("organizations:performance-view",)
-
 
 def make_event(event_data):
     event_data["event_id"] = "c" * 32
@@ -52,17 +50,16 @@ class PerformanceSummaryTest(AcceptanceTestCase, SnubaTestCase):
             project_id=self.project.id,
         )
 
-        with self.feature(FEATURE_NAMES):
-            self.browser.get(self.path)
-            self.page.wait_until_loaded()
-            # This test is flakey in that we sometimes load this page before the event is processed
-            # depend on pytest-retry to reload the page
-            self.browser.wait_until_not(
-                '[data-test-id="grid-editable"] [data-test-id="empty-state"]', timeout=2
-            )
-            # We have to wait for this again because there are loaders inside of the table
-            self.page.wait_until_loaded()
-            self.browser.snapshot("performance summary - with data")
+        self.browser.get(self.path)
+        self.page.wait_until_loaded()
+        # This test is flakey in that we sometimes load this page before the event is processed
+        # depend on pytest-retry to reload the page
+        self.browser.wait_until_not(
+            '[data-test-id="grid-editable"] [data-test-id="empty-state"]', timeout=2
+        )
+        # We have to wait for this again because there are loaders inside of the table
+        self.page.wait_until_loaded()
+        self.browser.snapshot("performance summary - with data")
 
     @patch("django.utils.timezone.now")
     def test_view_details_from_summary(self, mock_now):
@@ -75,14 +72,13 @@ class PerformanceSummaryTest(AcceptanceTestCase, SnubaTestCase):
         )
         self.store_event(data=event, project_id=self.project.id)
 
-        with self.feature(FEATURE_NAMES):
-            self.browser.get(self.path)
-            self.page.wait_until_loaded()
+        self.browser.get(self.path)
+        self.page.wait_until_loaded()
 
-            # View the first event details.
-            self.browser.element('[data-test-id="view-id"]').click()
-            self.page.wait_until_loaded()
-            self.browser.snapshot("performance event details")
+        # View the first event details.
+        self.browser.element('[data-test-id="view-id"]').click()
+        self.page.wait_until_loaded()
+        self.browser.snapshot("performance event details")
 
     @patch("django.utils.timezone.now")
     def test_transaction_vitals(self, mock_now):
@@ -101,11 +97,10 @@ class PerformanceSummaryTest(AcceptanceTestCase, SnubaTestCase):
         event = make_event(event_data)
         self.store_event(data=event, project_id=self.project.id)
 
-        with self.feature(FEATURE_NAMES):
-            self.browser.get(vitals_path)
-            self.page.wait_until_loaded()
+        self.browser.get(vitals_path)
+        self.page.wait_until_loaded()
 
-            self.browser.snapshot("real user monitoring")
+        self.browser.snapshot("real user monitoring")
 
     @patch("django.utils.timezone.now")
     def test_transaction_vitals_filtering(self, mock_now):
@@ -159,14 +154,13 @@ class PerformanceSummaryTest(AcceptanceTestCase, SnubaTestCase):
         event_data["measurements"]["cls"]["value"] = 3000000000
         self.store_event(data=event_data, project_id=self.project.id)
 
-        with self.feature(FEATURE_NAMES):
-            self.browser.get(vitals_path)
-            self.page.wait_until_loaded()
+        self.browser.get(vitals_path)
+        self.page.wait_until_loaded()
 
-            self.browser.snapshot("real user monitoring - exclude outliers")
+        self.browser.snapshot("real user monitoring - exclude outliers")
 
-            self.browser.element(xpath="//button//span[contains(text(), 'Exclude')]").click()
-            self.browser.element(xpath="//li//span[contains(text(), 'Include')]").click()
-            self.page.wait_until_loaded()
+        self.browser.element(xpath="//button//span[contains(text(), 'Exclude')]").click()
+        self.browser.element(xpath="//li//span[contains(text(), 'Include')]").click()
+        self.page.wait_until_loaded()
 
-            self.browser.snapshot("real user monitoring - view all data")
+        self.browser.snapshot("real user monitoring - view all data")

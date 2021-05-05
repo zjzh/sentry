@@ -9,10 +9,7 @@ from sentry.utils.samples import load_data
 
 from .page_objects.base import BasePage
 
-FEATURE_NAMES = (
-    "organizations:discover-basic",
-    "organizations:performance-view",
-)
+FEATURE_NAMES = ("organizations:discover-basic",)
 
 
 class PerformanceLandingTest(AcceptanceTestCase, SnubaTestCase):
