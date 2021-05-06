@@ -354,7 +354,9 @@ class ProjectCombinedRuleIndexEndpointTest(BaseAlertRuleSerializerTest, APITestC
         self.create_alert_rule()
         perf_alert_rule = self.create_alert_rule(query="p95", dataset=QueryDatasets.TRANSACTIONS)
         self.login_as(self.user)
-        with self.feature("organizations:incidents"):
+        with self.feature(
+            {"organizations:incidents": True, "organizations:performance-view": False}
+        ):
             resp = self.get_valid_response(self.organization.slug, self.project.slug)
             assert perf_alert_rule.id not in [x["id"] for x in list(resp.data)]
 
