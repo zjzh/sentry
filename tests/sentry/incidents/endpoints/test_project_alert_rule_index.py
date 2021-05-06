@@ -47,11 +47,13 @@ class AlertRuleListEndpointTest(APITestCase):
         alert_rule = self.create_alert_rule()
         perf_alert_rule = self.create_alert_rule(query="p95", dataset=QueryDatasets.TRANSACTIONS)
         self.login_as(self.user)
-        with self.feature("organizations:incidents"):
+        with self.feature(
+            {"organizations:incidents": True, "organizations:performance-view": False}
+        ):
             resp = self.get_valid_response(self.organization.slug, self.project.slug)
             assert resp.data == serialize([alert_rule])
 
-        with self.feature(["organizations:incidents"]):
+        with self.feature(["organizations:incidents", "organizations:performance-view"]):
             resp = self.get_valid_response(self.organization.slug, self.project.slug)
             assert resp.data == serialize([perf_alert_rule, alert_rule])
 
@@ -360,7 +362,7 @@ class ProjectCombinedRuleIndexEndpointTest(BaseAlertRuleSerializerTest, APITestC
             resp = self.get_valid_response(self.organization.slug, self.project.slug)
             assert perf_alert_rule.id not in [x["id"] for x in list(resp.data)]
 
-        with self.feature(["organizations:incidents"]):
+        with self.feature(["organizations:incidents", "organizations:performance-view"]):
             resp = self.get_valid_response(self.organization.slug, self.project.slug)
             assert perf_alert_rule.id in [int(x["id"]) for x in list(resp.data)]
 
