@@ -61,7 +61,9 @@ class OrganizationEventDetailsEndpointTest(APITestCase, SnubaTestCase):
                 "event_id": "a" * 32,
             },
         )
-        with self.feature({"organizations:discover-basic": False}):
+        with self.feature(
+            {"organizations:discover-basic": False, "organizations:performance-view": True}
+        ):
             response = self.client.get(url, format="json")
         assert response.status_code == 200, response.content
         assert response.data["id"] == "a" * 32
