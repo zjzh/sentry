@@ -57,14 +57,13 @@ class OrganizationEventsHistogramEndpointTest(APITestCase, SnubaTestCase):
                 data[measurement].append({"bin": spec.start, "count": count})
         return data
 
-    def do_request(self, query, features=None):
+    def do_request(self, query):
         self.login_as(user=self.user)
         url = reverse(
             "sentry-api-0-organization-events-histogram",
             kwargs={"organization_slug": self.organization.slug},
         )
-        with self.feature(features):
-            return self.client.get(url, query, format="json")
+        return self.client.get(url, query, format="json")
 
     def test_no_projects(self):
         response = self.do_request({})

@@ -8,10 +8,6 @@ from sentry.testutils.helpers.datetime import before_now, iso_format
 from sentry.utils.compat.mock import patch
 from sentry.utils.samples import load_data
 
-FEATURE_NAMES = [
-    "organizations:trace-view-summary",
-]
-
 
 def make_span_id() -> str:
     return uuid4().hex[:16]
@@ -193,8 +189,7 @@ class PerformanceTraceDetailTest(AcceptanceTestCase, SnubaTestCase):
     def test_with_data(self, mock_now):
         mock_now.return_value = before_now().replace(tzinfo=pytz.utc)
 
-        with self.feature(FEATURE_NAMES):
-            self.browser.get(self.path)
-            self.browser.wait_until_not(".loading-indicator")
-            self.browser.elements('[data-test-id="transaction-row-title"]')[1].click()
-            self.browser.snapshot("performance trace view - with data")
+        self.browser.get(self.path)
+        self.browser.wait_until_not(".loading-indicator")
+        self.browser.elements('[data-test-id="transaction-row-title"]')[1].click()
+        self.browser.snapshot("performance trace view - with data")
