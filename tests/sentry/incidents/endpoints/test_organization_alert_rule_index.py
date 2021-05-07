@@ -363,7 +363,7 @@ class OrganizationCombinedRuleIndexEndpointTest(BaseAlertRuleSerializerTest, API
             resp = self.get_valid_response(self.organization.slug)
             assert perf_alert_rule.id not in [x["id"] for x in list(resp.data)]
 
-        with self.feature(["organizations:incidents"]):
+        with self.feature(["organizations:incidents", "organizations:performance-view"]):
             resp = self.get_valid_response(self.organization.slug)
             assert perf_alert_rule.id in [int(x["id"]) for x in list(resp.data)]
 
