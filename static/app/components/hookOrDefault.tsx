@@ -98,7 +98,7 @@ function HookOrDefault<H extends HookName>({
         hookExists && this.state.hooks[0]({params})
           ? this.state.hooks[0]({params})
           : this.getDefaultComponent();
-
+      console.log('HookComponent', HookComponent);
       return <HookComponent {...this.props} />;
     },
   });

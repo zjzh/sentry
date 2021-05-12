@@ -7,6 +7,7 @@ import SidebarItem from 'app/components/sidebar/sidebarItem';
 import {IntegrationProvider, Organization, Project, User} from 'app/types';
 import {ExperimentKey} from 'app/types/experiments';
 import {NavigationItem, NavigationSection} from 'app/views/settings/types';
+import {IssueAlertRuleActionTemplate} from 'app/types/alerts';
 
 // XXX(epurkhiser): A Note about `_`.
 //
@@ -28,7 +29,8 @@ export type Hooks = {_: any} & RouteHooks &
   FeatureDisabledHooks &
   InterfaceChromeHooks &
   OnboardingHooks &
-  SettingsHooks;
+  SettingsHooks &
+  AlertHooks;
 
 export type HookName = keyof Hooks;
 
@@ -152,6 +154,11 @@ export type SettingsHooks = {
   'settings:api-navigation-config': SettingsItemsHook;
   'settings:organization-navigation': OrganizationSettingsHook;
   'settings:organization-navigation-config': SettingsConfigHook;
+};
+
+export type AlertHooks = {
+  'alerts:render-action-option': AlertsRenderOptionsHook;
+  'alerts:action-list': AlertsActionListHook;
 };
 
 /**
@@ -463,3 +470,13 @@ type InviteModalCustomizationHook = () => React.ComponentType<{
     sendInvites: () => void;
   }) => React.ReactElement;
 }>;
+
+// type IssueAlertActionsHook = ()
+
+type AlertsRenderOptionsHook = () => React.ComponentType<{
+  actions: IssueAlertRuleActionTemplate[];
+}>;
+
+type AlertsActionListHook = (
+  actions: IssueAlertRuleActionTemplate[]
+) => IssueAlertRuleActionTemplate[];

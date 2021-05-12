@@ -1,5 +1,6 @@
 import * as React from 'react';
 import {browserHistory, RouteComponentProps} from 'react-router';
+import {components as selectComponents} from 'react-select';
 import styled from '@emotion/styled';
 import classNames from 'classnames';
 import cloneDeep from 'lodash/cloneDeep';
@@ -17,6 +18,8 @@ import Feature from 'app/components/acl/feature';
 import Alert from 'app/components/alert';
 import Button from 'app/components/button';
 import Confirm from 'app/components/confirm';
+import HookOrDefault from 'app/components/hookOrDefault';
+import HookStore from 'app/stores/hookStore';
 import List from 'app/components/list';
 import ListItem from 'app/components/list/listItem';
 import LoadingMask from 'app/components/loadingMask';
@@ -83,6 +86,13 @@ const defaultRule: UnsavedIssueAlertRule = {
 };
 
 const POLLING_MAX_TIME_LIMIT = 3 * 60000;
+
+const RenderActionOptionHook = HookOrDefault({
+  hookName: 'alerts:render-action-option',
+  defaultComponent: ({actions: _actions, ...props}: any) => (
+    <selectComponents.Option {...props} />
+  ),
+});
 
 type ConditionOrActionProperty = 'conditions' | 'actions' | 'filters';
 
@@ -411,6 +421,20 @@ class IssueRuleEditor extends AsyncView<Props, State> {
     });
   };
 
+  getOptionHook = (props: any) => {
+    return (
+      <RenderActionOptionHook actions={this.state.configs?.actions || []} {...props} />
+    );
+  };
+
+  // hookDummy = (id: string, actions: IssueAlertRuleActionTemplate[]) => {
+
+  // }
+
+  // handleAddAction = (id: string) => {
+  //   if
+  // }
+
   handleAddRow = (type: ConditionOrActionProperty, id: string) => {
     this.setState(prevState => {
       const clonedState = cloneDeep(prevState);
@@ -486,6 +510,35 @@ class IssueRuleEditor extends AsyncView<Props, State> {
   handleOwnerChange = ({value}: {value: string; label: string}) => {
     const ownerValue = value && `team:${value}`;
     this.handleChange('owner', ownerValue);
+  };
+
+  mapActions = (actions?: IssueAlertRuleActionTemplate[]) => {
+    if (!actions) {
+      return null;
+    }
+    return actions.map(action => {
+      return {
+        ...action,
+        enabled: true,
+      };
+    });
+  };
+
+  getExtraActions = (): IssueAlertRuleActionTemplate[] => {
+    return [
+      {
+        id: 'upsell.slack',
+        label: 'Setup Slack Notifications',
+        prompt: 'Setup Slack Notifications',
+        enabled: true,
+      },
+    ];
+  };
+
+  getActions = () => {
+    const actions = this.state.configs?.actions || [];
+    return actions.concat(this.getExtraActions());
+    // TODO: use HookStore
   };
 
   renderLoading() {
@@ -793,7 +846,9 @@ class IssueRuleEditor extends AsyncView<Props, State> {
                         </StepLead>
 
                         <RuleNodeList
-                          nodes={this.state.configs?.actions ?? null}
+                          // nodes={this.mapActions(this.state.configs?.actions)}
+                          nodes={this.getActions()}
+                          optionComponentHook={this.getOptionHook}
                           selectType="grouped"
                           items={actions ?? []}
                           placeholder={t('Add action...')}

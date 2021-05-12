@@ -69,6 +69,8 @@ const validHookNames = new Set<HookName>([
   'sidebar:item-label',
   'sidebar:organization-dropdown-menu',
   'sidebar:organization-dropdown-menu-bottom',
+  'alerts:render-action-option',
+  'alerts:action-list',
 ]);
 
 type HookStoreInterface = {

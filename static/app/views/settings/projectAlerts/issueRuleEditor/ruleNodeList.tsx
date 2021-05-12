@@ -1,4 +1,5 @@
 import * as React from 'react';
+import {components as selectComponents} from 'react-select';
 import styled from '@emotion/styled';
 
 import SelectControl from 'app/components/forms/selectControl';
@@ -36,6 +37,10 @@ type Props = {
   onAddRow: (value: string) => void;
   onResetRow: (ruleIndex: number, name: string, value: string) => void;
   onDeleteRow: (ruleIndex: number) => void;
+  //TODO: improve typings
+  optionComponentHook?: (
+    props: React.ComponentProps<typeof selectComponents.Option>
+  ) => JSX.Element;
 };
 
 class RuleNodeList extends React.Component<Props> {
@@ -64,6 +69,7 @@ class RuleNodeList extends React.Component<Props> {
       disabled,
       error,
       selectType,
+      optionComponentHook,
     } = this.props;
 
     const shouldUsePrompt = project.features?.includes?.('issue-alerts-targeting');
@@ -75,6 +81,7 @@ class RuleNodeList extends React.Component<Props> {
         label: shouldUsePrompt && node.prompt?.length > 0 ? node.prompt : node.label,
       }));
 
+    // TODO: improve typing
     let options: any = !selectType ? createSelectOptions(enabledNodes) : [];
 
     if (selectType === 'grouped') {
@@ -130,6 +137,7 @@ class RuleNodeList extends React.Component<Props> {
           onChange={obj => onAddRow(obj ? obj.value : obj)}
           options={options}
           disabled={disabled}
+          components={optionComponentHook ? {Option: optionComponentHook} : undefined}
         />
       </React.Fragment>
     );
