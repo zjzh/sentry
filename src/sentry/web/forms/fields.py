@@ -1,12 +1,26 @@
-from django.forms import CharField, EmailField, Field, TypedChoiceField, ValidationError
+import logging
+
+from django.forms import (
+    CharField,
+    EmailField,
+    Field,
+    HiddenInput,
+    TypedChoiceField,
+    ValidationError,
+)
 from django.forms.utils import flatatt
 from django.forms.widgets import TextInput, Widget
 from django.utils.html import format_html
 from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext_lazy as _
 
+from sentry import options
+from sentry.app import env
+from sentry.http import safe_urlopen
 from sentry.models import User
 from sentry.security import is_valid_email_address
+
+logger = logging.getLogger("sentry.auth")
 
 
 class CustomTypedChoiceField(TypedChoiceField):
@@ -37,7 +51,7 @@ class UserField(CharField):
                 attrs["placeholder"] = "username"
             if isinstance(value, int):
                 value = User.objects.get(id=value).username
-            return super(UserField.widget, self).render(name, value, attrs)
+            return super().render(name, value, attrs)
 
     def clean(self, value):
         value = super().clean(value)
@@ -78,3 +92,35 @@ def email_address_validator(value):
 
 class AllowedEmailField(EmailField):
     default_validators = EmailField.default_validators + [email_address_validator]
+
+
+class InvisibleReCaptchaField(CharField):
+    def __init__(self, *args, **kwargs):
+        kwargs["widget"] = HiddenInput()
+        super().__init__(*args, **kwargs)
+
+    def clean(self, value):
+        if not value:
+            raise ValidationError(
+                _(
+                    "Missing value for reCAPTCHA. If you believe this is an error, please contact support."
+                )
+            )
+
+        resp = safe_urlopen(
+            url="https://www.google.com/recaptcha/api/siteverify",
+            method="POST",
+            data={
+                "secret": options.get("recaptcha.secret-key"),
+                "response": value,
+                "remoteip": env.request.META["REMOTE_ADDR"] if env.request else "",
+            },
+        )
+        data = resp.json()
+        if not data.get("success"):
+            logger.error(
+                "repatcha.failed-verify", extra={"reason": ", ".join(data.get("error-codes", []))}
+            )
+            raise ValidationError(_("reCAPTCHA verification failed"))
+
+        return value

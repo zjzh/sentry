@@ -8,12 +8,16 @@ from django.utils.safestring import mark_safe
 from django.utils.text import capfirst
 from django.utils.translation import ugettext_lazy as _
 
-from sentry import newsletter, options
+from sentry import features, newsletter, options
 from sentry.app import ratelimiter
 from sentry.auth import password_validation
 from sentry.models import User
 from sentry.utils.auth import find_users, logger
-from sentry.web.forms.fields import AllowedEmailField, CustomTypedChoiceField
+from sentry.web.forms.fields import (
+    AllowedEmailField,
+    CustomTypedChoiceField,
+    InvisibleReCaptchaField,
+)
 
 
 def _get_timezone_choices():
@@ -192,6 +196,10 @@ class PasswordlessRegistrationForm(forms.ModelForm):
                 notice.format(privacy_link=settings.PRIVACY_URL)
             )
 
+        # If captcha is required, embed the field
+        if features.has("recaptcha:auth-register"):
+            self.fields["g-recaptcha-response"] = InvisibleReCaptchaField()
+
     class Meta:
         fields = ("username", "name")
         model = User
@@ -246,6 +254,13 @@ class RecoverPasswordForm(forms.Form):
         max_length=128,
         widget=forms.TextInput(attrs={"placeholder": _("username or email")}),
     )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # If captcha is required, embed the field
+        if features.has("recaptcha:auth-recover-password"):
+            self.fields["g-recaptcha-response"] = InvisibleReCaptchaField()
 
     def clean_user(self):
         value = (self.cleaned_data.get("user") or "").strip()

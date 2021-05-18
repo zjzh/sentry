@@ -1,4 +1,5 @@
 import pytest
+import responses
 from django.conf import settings
 from django.test import override_settings
 from django.urls import reverse
@@ -271,8 +272,9 @@ class AuthLoginNewsletterTest(TestCase):
         self.addCleanup(disable_newsletter)
         newsletter.backend.enable()
 
-    def test_registration_requires_subscribe_choice_with_newsletter(self):
         options.set("auth.allow-registration", True)
+
+    def test_registration_requires_subscribe_choice_with_newsletter(self):
         with self.feature("auth:register"):
             resp = self.client.post(
                 self.path,
@@ -307,7 +309,6 @@ class AuthLoginNewsletterTest(TestCase):
         assert newsletter.get_subscriptions(user) == {"subscriptions": []}
 
     def test_registration_subscribe_to_newsletter(self):
-        options.set("auth.allow-registration", True)
         with self.feature("auth:register"):
             resp = self.client.post(
                 self.path,
@@ -331,3 +332,52 @@ class AuthLoginNewsletterTest(TestCase):
         assert results[0].list_id == newsletter.get_default_list_id()
         assert results[0].subscribed
         assert not results[0].verified
+
+
+class AuthLoginCaptchaTest(TestCase):
+    @fixture
+    def path(self):
+        return reverse("sentry-login")
+
+    def setUp(self):
+        options.set("auth.allow-registration", True)
+        super().setUp()
+
+    @responses.activate
+    def test_registration_requires_captcha_with_flag(self):
+        options.set("auth.allow-registration", True)
+        with self.feature({"auth:register", "recaptcha:auth-register"}):
+            resp = self.client.post(
+                self.path,
+                {
+                    "username": "test-a-really-long-email-address@example.com",
+                    "password": "foobar",
+                    "name": "Foo Bar",
+                    "op": "register",
+                },
+            )
+
+        assert resp.status_code == 200
+        self.assertTemplateUsed("sentry/login.html")
+        assert resp.context["register_form"]
+        assert resp.context["register_form"].errors.get("g-recaptcha-response") == [
+            "Missing value for reCAPTCHA. If you believe this is an error, please contact support."
+        ], resp.context["register_form"].errors
+
+        with self.feature({"auth:register", "recaptcha:auth-register"}):
+            resp = self.client.post(
+                self.path,
+                {
+                    "username": "test-a-really-long-email-address@example.com",
+                    "password": "foobar",
+                    "name": "Foo Bar",
+                    "op": "register",
+                    "g-recaptcha-response": "captcha-response",
+                },
+            )
+
+        assert resp.status_code == 302, (
+            resp.context["register_form"].errors if resp.status_code == 200 else None
+        )
+
+        assert False

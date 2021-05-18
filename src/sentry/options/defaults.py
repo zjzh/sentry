@@ -324,3 +324,8 @@ register("store.background-grouping-sample-rate", default=0.0)
 
 # True if background grouping should run before secondary and primary grouping
 register("store.background-grouping-before", default=False)
+
+
+# Recaptcha
+
+register("recaptcha.secret-key", flags=FLAG_PRIORITIZE_DISK)

@@ -48,6 +48,8 @@ default_manager = FeatureManager()  # NOQA
 
 # Unscoped features
 default_manager.add("auth:register")
+default_manager.add("recaptcha:auth-register")
+default_manager.add("recaptcha:auth-recover-password")
 default_manager.add("organizations:create")
 
 # Organization scoped features
