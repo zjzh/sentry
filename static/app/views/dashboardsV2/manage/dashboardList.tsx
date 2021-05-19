@@ -236,7 +236,6 @@ const DashboardGrid = styled('div')`
 const WidgetGrid = styled('div')`
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  grid-template-rows: repeat(3, max-content);
   grid-auto-flow: row dense;
   grid-gap: ${space(0.25)};
 
