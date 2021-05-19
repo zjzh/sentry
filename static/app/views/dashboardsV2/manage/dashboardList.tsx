@@ -136,11 +136,15 @@ function DashboardList({
               {dashboard.widgetDisplay.map((displayType, i) => {
                 return displayType === DisplayType.BIG_NUMBER ? (
                   <BigNumberWidgetWrapper
+                    width={159}
+                    height={46}
                     key={`${i}-${displayType}`}
                     src={miniWidget(displayType)}
                   />
                 ) : (
                   <MiniWidgetWrapper
+                    width={159}
+                    height={81}
                     key={`${i}-${displayType}`}
                     src={miniWidget(displayType)}
                   />
@@ -253,8 +257,8 @@ const WidgetGrid = styled('div')`
 `;
 
 const BigNumberWidgetWrapper = styled('img')`
-  width: 159px;
-  height: 46px;
+  width: 100%;
+  height: 100%;
   /* 2 cols */
   grid-area: span 1 / span 2;
 
@@ -270,8 +274,8 @@ const BigNumberWidgetWrapper = styled('img')`
 `;
 
 const MiniWidgetWrapper = styled('img')`
-  width: 159px;
-  height: 81px;
+  width: 100%;
+  height: 100%;
   grid-area: span 2 / span 2;
 `;
 
