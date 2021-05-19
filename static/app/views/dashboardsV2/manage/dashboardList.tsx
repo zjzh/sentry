@@ -236,6 +236,7 @@ const DashboardGrid = styled('div')`
 const WidgetGrid = styled('div')`
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(3, max-content);
   grid-auto-flow: row dense;
   grid-gap: ${space(0.25)};
 
@@ -253,8 +254,8 @@ const WidgetGrid = styled('div')`
 `;
 
 const BigNumberWidgetWrapper = styled('img')`
-  width: 100%;
-  height: 100%;
+  width: 159px;
+  height: 46px;
   /* 2 cols */
   grid-area: span 1 / span 2;
 
@@ -270,8 +271,8 @@ const BigNumberWidgetWrapper = styled('img')`
 `;
 
 const MiniWidgetWrapper = styled('img')`
-  width: 100%;
-  height: 100%;
+  width: 159px;
+  height: 81px;
   grid-area: span 2 / span 2;
 `;
 
