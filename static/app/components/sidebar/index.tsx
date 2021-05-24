@@ -376,7 +376,6 @@ class Sidebar extends React.Component<Props, State> {
           label={t('Dashboards')}
           to={`/organizations/${organization.slug}/dashboards/`}
           id="customizable-dashboards"
-          isNew
         />
       </Feature>
     );
