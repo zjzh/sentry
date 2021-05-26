@@ -35,6 +35,9 @@ ALLOWED_EVENTS_GEO_REFERRERS = {
 
 
 class OrganizationEventsV2Endpoint(OrganizationEventsV2EndpointBase):
+    def has_arithmetic(self, organization, request):
+        return features.has("organizations:discover-arithmetic", organization, actor=request.user)
+
     def get(self, request, organization):
         if not self.has_feature(organization, request):
             return Response(status=404)
@@ -54,6 +57,9 @@ class OrganizationEventsV2Endpoint(OrganizationEventsV2EndpointBase):
                 selected_columns=request.GET.getlist("field")[:],
                 query=request.GET.get("query"),
                 params=params,
+                equations=request.GET.getlist("equation")[:]
+                if self.has_arithmetic(organization, request)
+                else [],
                 orderby=self.get_orderby(request),
                 offset=offset,
                 limit=limit,

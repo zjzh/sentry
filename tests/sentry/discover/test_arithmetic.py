@@ -30,6 +30,10 @@ def test_single_term():
         ("+12", "+", "+34"),
         ("-12", "+", "+34"),
         ("+12", "+", "-34"),
+        (1.2345, "+", 6.7890),
+        (1.2345, "-", 6.7890),
+        (1.2345, "*", 6.7890),
+        (1.2345, "/", 6.7890),
     ],
 )
 def test_simple_arithmetic(a, op, b):
@@ -41,27 +45,27 @@ def test_simple_arithmetic(a, op, b):
 
 
 @pytest.mark.parametrize(
-    "a,op1,b,op2,c",
+    "op1,op2",
     [
-        ("12", "+", "34", "+", "56"),
-        ("12", "+", "34", "-", "56"),
-        ("12", "-", "34", "+", "56"),
-        ("12", "-", "34", "-", "56"),
-        ("12", "*", "34", "*", "56"),
-        ("12", "*", "34", "/", "56"),
-        ("12", "/", "34", "*", "56"),
-        ("12", "/", "34", "/", "56"),
+        ("+", "+"),
+        ("+", "-"),
+        ("-", "+"),
+        ("-", "-"),
+        ("*", "*"),
+        ("*", "/"),
+        ("/", "*"),
+        ("/", "/"),
     ],
 )
-def test_homogenous_arithmetic(a, op1, b, op2, c):
+def test_homogenous_arithmetic(op1, op2):
     """ Test that literal order of ops is respected assuming we don't have to worry about BEDMAS """
-    equation = f"{a}{op1}{b}{op2}{c}"
+    equation = f"12{op1}34{op2}56"
     result = parse_arithmetic(equation)
     assert result.operator == op_map[op2.strip()], equation
     assert result.lhs.operator == op_map[op1.strip()], equation
-    assert result.lhs.lhs == float(a), equation
-    assert result.lhs.rhs == float(b), equation
-    assert result.rhs == float(c), equation
+    assert result.lhs.lhs == 12, equation
+    assert result.lhs.rhs == 34, equation
+    assert result.rhs == 56, equation
 
 
 def test_mixed_arithmetic():
@@ -92,32 +96,32 @@ def test_four_terms():
 
 
 @pytest.mark.parametrize(
-    "a,op1,b,op2,c,op3,d",
+    "op1,op2,op3",
     [
-        ("12", "+", "34", "+", "56", "+", "78"),
-        ("12", "-", "34", "-", "56", "-", "78"),
-        ("12", "+", "34", "-", "56", "+", "78"),
-        ("12", "-", "34", "+", "56", "-", "78"),
-        ("12", "*", "34", "*", "56", "*", "78"),
-        ("12", "/", "34", "/", "56", "/", "78"),
-        ("12", "*", "34", "/", "56", "*", "78"),
-        ("12", "/", "34", "*", "56", "/", "78"),
+        ("+", "+", "+"),
+        ("-", "-", "-"),
+        ("+", "-", "+"),
+        ("-", "+", "-"),
+        ("*", "*", "*"),
+        ("/", "/", "/"),
+        ("*", "/", "*"),
+        ("/", "*", "/"),
     ],
 )
-def test_homogenous_four_terms(a, op1, b, op2, c, op3, d):
+def test_homogenous_four_terms(op1, op2, op3):
     """This basically tests flatten in the ArithmeticVisitor
 
     flatten only kicks in when its a chain of the same operator type
     """
-    equation = f"{a}{op1}{b}{op2}{c}{op3}{d}"
+    equation = f"12{op1}34{op2}56{op3}78"
     result = parse_arithmetic(equation)
     assert result.operator == op_map[op3.strip()], equation
     assert result.lhs.operator == op_map[op2.strip()], equation
     assert result.lhs.lhs.operator == op_map[op1.strip()], equation
-    assert result.lhs.lhs.lhs == float(a), equation
-    assert result.lhs.lhs.rhs == float(b), equation
-    assert result.lhs.rhs == float(c), equation
-    assert result.rhs == float(d), equation
+    assert result.lhs.lhs.lhs == 12, equation
+    assert result.lhs.lhs.rhs == 34, equation
+    assert result.lhs.rhs == 56, equation
+    assert result.rhs == 78, equation
 
 
 def test_max_operators():
@@ -129,15 +133,24 @@ def test_max_operators():
 
 
 @pytest.mark.parametrize(
-    "equation",
+    "a,op,b",
     [
-        "1 +",
-        "+ 1 + 1",
-        "1 + 1 +",
-        "1 ** 2",
-        "1 -- 1",
-        "hello world",
+        ("spans.http", "+", "spans.db"),
+        ("transaction.duration", "*", 2),
+        (3.1415, "+", "spans.resource"),
     ],
+)
+def test_field_values(a, op, b):
+    equation = f"{a}{op}{b}"
+    result = parse_arithmetic(equation)
+    assert result.operator == op_map[op.strip()], equation
+    assert result.lhs == a
+    assert result.rhs == b
+
+
+@pytest.mark.parametrize(
+    "equation",
+    ["1 +", "+ 1 + 1", "1 + 1 +", "1 ** 2", "1 -- 1", "hello world", "1.1.1.1 + 1.1.1.1"],
 )
 def test_bad_arithmetic(equation):
     with pytest.raises(ArithmeticParseError):

@@ -9,6 +9,7 @@ from sentry import features
 from sentry.api.base import LINK_HEADER
 from sentry.api.bases import NoProjects, OrganizationEndpoint
 from sentry.api.serializers.snuba import SnubaTSResultSerializer
+from sentry.discover.arithmetic import ArithmeticError
 from sentry.exceptions import InvalidSearchQuery
 from sentry.models.group import Group
 from sentry.search.events.fields import get_function_alias
@@ -103,6 +104,10 @@ class OrganizationEventsEndpointBase(OrganizationEndpoint):
         try:
             yield
         except discover.InvalidSearchQuery as error:
+            message = str(error)
+            sentry_sdk.set_tag("query.error_reason", message)
+            raise ParseError(detail=message)
+        except ArithmeticError as error:
             message = str(error)
             sentry_sdk.set_tag("query.error_reason", message)
             raise ParseError(detail=message)

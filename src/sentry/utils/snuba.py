@@ -838,6 +838,9 @@ def _snuba_query(params: Tuple[SnubaQuery, Hub, Mapping[str, str]]) -> RawResult
             if SNUBA_INFO:
                 # We want debug in the body, but not in the logger, so dump the json twice
                 logger.info(f"{referrer}.body: {json.dumps(query_params)}")
+                from pprint import pprint
+
+                pprint(query_params)
                 query_params["debug"] = True
             body = json.dumps(query_params)
             with thread_hub.start_span(op="snuba", description=f"query {referrer}") as span:

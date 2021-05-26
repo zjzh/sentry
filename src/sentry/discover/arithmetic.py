@@ -28,6 +28,10 @@ class Operation:
         self.lhs = lhs
         self.rhs = rhs
 
+    def validate(self):
+        if self.operator == "divide" and self.rhs == 0:
+            raise ArithmeticError("division by 0 is not allowed")
+
     def __repr__(self):
         return repr([self.operator, self.lhs, self.rhs])
 
@@ -46,7 +50,7 @@ mul_div              = mul_div_operator primary
 add_sub_operator     = spaces (plus / minus) spaces
 mul_div_operator     = spaces (multiply / divide) spaces
 # TODO(wmak) allow variables
-primary              = spaces numeric_value spaces
+primary              = spaces (numeric_value / field_value) spaces
 
 # Operator names should match what's in clickhouse
 plus                 = "+"
@@ -55,7 +59,8 @@ multiply             = "*"
 divide               = "/"
 
 # TODO(wmak) share these with api/event_search and support decimals
-numeric_value        = ~r"[+-]?[0-9]+"
+numeric_value        = ~r"[+-]?[0-9]+\.?[0-9]*"
+field_value          = ~r"[a-zA-Z_.]+"
 spaces               = ~r"\ *"
 """
 )
@@ -66,6 +71,15 @@ class ArithmeticVisitor(NodeVisitor):
 
     # Don't wrap in VisitationErrors
     unwrapped_exceptions = (MaxOperatorError,)
+
+    allowlist = {
+        "transaction.duration",
+        "spans.http",
+        "spans.db",
+        "spans.resource",
+        "spans.browser",
+        "spans.total.time",
+    }
 
     def __init__(self, max_operators):
         super().__init__()
@@ -126,7 +140,8 @@ class ArithmeticVisitor(NodeVisitor):
         return self.strip_spaces(children)
 
     def visit_primary(self, _, children):
-        return self.strip_spaces(children)
+        # Return the 0th element since this is a (numeric/field)
+        return self.strip_spaces(children)[0]
 
     @staticmethod
     def parse_operator(operator):
@@ -142,6 +157,13 @@ class ArithmeticVisitor(NodeVisitor):
     def visit_numeric_value(self, node, _):
         return float(node.text)
 
+    def visit_field_value(self, node, _):
+        # if not in allowlist error
+        field = node.text
+        if field not in self.allowlist:
+            raise ArithmeticParseError(f"{field} not allowed in arithmetic")
+        return field
+
     def generic_visit(self, node, children):
         return children or node
 
@@ -155,3 +177,32 @@ def parse_arithmetic(equation: str, max_operators: Optional[int] = None) -> Oper
             "Unable to parse your equation, make sure it is well formed arithmetic"
         )
     return ArithmeticVisitor(max_operators).visit(tree)
+
+
+def convert_equation_to_snuba_json(parsed_equation, alias=None):
+    """ Convert a parsed equation to the equivalent json for snuba """
+    if isinstance(parsed_equation, Operation):
+        parsed_equation.validate()
+        snuba_json = [
+            parsed_equation.operator,
+            [
+                convert_equation_to_snuba_json(parsed_equation.lhs),
+                convert_equation_to_snuba_json(parsed_equation.rhs),
+            ],
+        ]
+        if alias:
+            snuba_json.append(alias)
+        return convert_equation_to_snuba_json
+    else:
+        return parsed_equation
+
+
+def resolve_equation_list(equations, snuba_filter):
+    selected_columns = snuba_filter.selected_columns
+    for index, equation in enumerate(equations):
+        # only supporting 1 operation for now
+        parsed_equation = parse_arithmetic(equation, max_operators=2)
+        selected_columns.append(
+            convert_equation_to_snuba_json(parsed_equation, f"equation[{index}]")
+        )
+    return {"selected_columns": selected_columns}
