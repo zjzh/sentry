@@ -1,7 +1,11 @@
-from typing import Optional
+from typing import Any, Dict, List, Optional, Union
 
 from parsimonious.exceptions import ParseError
 from parsimonious.grammar import Grammar, NodeVisitor
+
+from sentry import eventstore
+
+SUPPORTED_OPERATORS = {"plus", "minus", "multiply", "divide"}
 
 
 class ArithmeticError(Exception):
@@ -20,19 +24,37 @@ class ArithmeticParseError(ArithmeticError):
     pass
 
 
+class ArithmeticValidationError(ArithmeticError):
+    """ The math itself isn't valid """
+
+    pass
+
+
+OperationSideType = Union["Operation", float]
+
+
 class Operation:
     __slots__ = "operator", "lhs", "rhs"
 
-    def __init__(self, operator, lhs=None, rhs=None):
+    def __init__(
+        self,
+        operator: str,
+        lhs: Optional[OperationSideType] = None,
+        rhs: Optional[OperationSideType] = None,
+    ) -> None:
         self.operator = operator
-        self.lhs = lhs
-        self.rhs = rhs
+        self.lhs: Optional[OperationSideType] = lhs
+        self.rhs: Optional[OperationSideType] = rhs
 
-    def validate(self):
+    def validate(self) -> None:
+        # This shouldn't really happen, but the operator value is based on the grammar so enforcing it to be safe
+        if self.operator not in SUPPORTED_OPERATORS:
+            raise ArithmeticParseError(f"{self.operator} is not a supported operator")
+
         if self.operator == "divide" and self.rhs == 0:
-            raise ArithmeticError("division by 0 is not allowed")
+            raise ArithmeticValidationError("division by 0 is not allowed")
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return repr([self.operator, self.lhs, self.rhs])
 
 
@@ -179,7 +201,9 @@ def parse_arithmetic(equation: str, max_operators: Optional[int] = None) -> Oper
     return ArithmeticVisitor(max_operators).visit(tree)
 
 
-def convert_equation_to_snuba_json(parsed_equation, alias=None):
+def convert_equation_to_snuba_json(
+    parsed_equation: Optional[OperationSideType], alias: Optional[str] = None
+) -> Union[List[Any], float, None]:
     """ Convert a parsed equation to the equivalent json for snuba """
     if isinstance(parsed_equation, Operation):
         parsed_equation.validate()
@@ -192,12 +216,12 @@ def convert_equation_to_snuba_json(parsed_equation, alias=None):
         ]
         if alias:
             snuba_json.append(alias)
-        return convert_equation_to_snuba_json
+        return snuba_json
     else:
         return parsed_equation
 
 
-def resolve_equation_list(equations, snuba_filter):
+def resolve_equation_list(equations: List[str], snuba_filter: eventstore.Filter) -> Dict[str, Any]:
     selected_columns = snuba_filter.selected_columns
     for index, equation in enumerate(equations):
         # only supporting 1 operation for now
