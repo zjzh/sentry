@@ -114,7 +114,7 @@ class OrganizationEventsEndpointBase(OrganizationEndpoint):
             sentry_sdk.set_tag("query.error_reason", message)
             raise ParseError(detail=message)
         except snuba.SnubaError as error:
-            message = "Internal error. Please try again."
+            message = str(error)
             if isinstance(
                 error,
                 (

@@ -22,6 +22,12 @@ from django.http import Http404, HttpRequest, HttpResponse
 from rest_framework.exceptions import ParseError
 from rest_framework.response import Response
 from sentry_relay.consts import SPAN_STATUS_CODE_TO_NAME
+from snuba_sdk.column import Column
+from snuba_sdk.conditions import Condition, Op
+from snuba_sdk.entity import Entity
+from snuba_sdk.expressions import Limit
+from snuba_sdk.function import Function
+from snuba_sdk.query import Query
 
 from sentry import eventstore, features
 from sentry.api.bases import NoProjects, OrganizationEventsV2EndpointBase
@@ -29,7 +35,7 @@ from sentry.api.serializers.models.event import get_tags_with_meta
 from sentry.eventstore.models import Event
 from sentry.models import Organization
 from sentry.snuba import discover
-from sentry.utils.snuba import Dataset, SnubaQueryParams, bulk_raw_query
+from sentry.utils.snuba import Dataset, SnubaQueryParams, bulk_raw_query, raw_snql_query
 from sentry.utils.validators import INVALID_EVENT_DETAILS, is_event_id
 
 logger: logging.Logger = logging.getLogger(__name__)
@@ -720,17 +726,32 @@ class OrganizationEventsTraceMetaEndpoint(OrganizationEventsTraceEndpointBase):
             return Response(status=404)
 
         with self.handle_query_errors():
-            result = discover.query(
-                selected_columns=[
-                    "count_unique(project_id) as projects",
-                    "count_if(event.type, equals, transaction) as transactions",
-                    "count_if(event.type, notEquals, transaction) as errors",
+            query = Query(
+                dataset=Dataset.Discover.value,
+                match=Entity("discover"),
+                select=[
+                    Function("uniq", [Column("project_id")], "projects"),
+                    Function(
+                        "countIf",
+                        [Function("equals", [Column("type"), "transaction"])],
+                        "transactions",
+                    ),
+                    Function(
+                        "countIf",
+                        [Function("notEquals", [Column("type"), "transaction"])],
+                        "errors",
+                    ),
                 ],
-                params=params,
-                query=f"trace:{trace_id}",
-                limit=1,
-                referrer="api.trace-view.get-meta",
+                where=[
+                    Condition(Column("trace_id"), Op.GTE, trace_id),
+                    Condition(Column("timestamp"), Op.GTE, params["start"]),
+                    Condition(Column("timestamp"), Op.LT, params["end"]),
+                    Condition(Column("project_id"), Op.IN, params["project_id"]),
+                ],
+                groupby=[],
+                limit=Limit(1),
             )
+            result = raw_snql_query(query, referrer="trace_view")
             if len(result["data"]) == 0:
                 return Response(status=404)
         return Response(self.serialize(result["data"][0]))
