@@ -23,7 +23,6 @@ from rest_framework.exceptions import ParseError
 from rest_framework.response import Response
 from sentry_relay.consts import SPAN_STATUS_CODE_TO_NAME
 from snuba_sdk.column import Column
-from snuba_sdk.conditions import Condition, Op
 from snuba_sdk.entity import Entity
 from snuba_sdk.expressions import Limit
 from snuba_sdk.function import Function
@@ -34,6 +33,7 @@ from sentry.api.bases import NoProjects, OrganizationEventsV2EndpointBase
 from sentry.api.serializers.models.event import get_tags_with_meta
 from sentry.eventstore.models import Event
 from sentry.models import Organization
+from sentry.search.events.snql_filter import get_filter
 from sentry.snuba import discover
 from sentry.utils.snuba import Dataset, SnubaQueryParams, bulk_raw_query, raw_snql_query
 from sentry.utils.validators import INVALID_EVENT_DETAILS, is_event_id
@@ -742,13 +742,7 @@ class OrganizationEventsTraceMetaEndpoint(OrganizationEventsTraceEndpointBase):
                         "errors",
                     ),
                 ],
-                where=[
-                    Condition(Column("trace_id"), Op.GTE, trace_id),
-                    Condition(Column("timestamp"), Op.GTE, params["start"]),
-                    Condition(Column("timestamp"), Op.LT, params["end"]),
-                    Condition(Column("project_id"), Op.IN, params["project_id"]),
-                ],
-                groupby=[],
+                where=get_filter(f"trace_id:{trace_id}", params),
                 limit=Limit(1),
             )
             result = raw_snql_query(query, referrer="trace_view")
