@@ -19,7 +19,7 @@ OPERATOR_MAP: Mapping[str, Op] = {
 }
 
 
-class Filter:
+class Where:
     # Starting with an allowlist for now so we can convert things incrementally
     # At a certain point we should just flip to a denylist of what's left
     field_allowlist = {

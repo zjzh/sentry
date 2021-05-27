@@ -4,13 +4,13 @@ from django.utils import timezone
 from snuba_sdk.column import Column
 from snuba_sdk.conditions import Condition, Op, Or
 
-from sentry.search.events.snql_filter import Filter
+from sentry.search.events.snql_filter import Where
 from sentry.testutils.cases import TestCase
 
 
 class GetSnubaQueryArgsTest(TestCase):
     def test_simple(self):
-        _filter = Filter(
+        result = Where(
             "user.email:foo@example.com release:1.2.1",
             {
                 "project_id": [1, 2, 3],
@@ -20,7 +20,7 @@ class GetSnubaQueryArgsTest(TestCase):
             },
         )
 
-        assert _filter.conditions == [
+        assert result.conditions == [
             Condition(Column("email"), Op.EQ, "foo@example.com"),
             Condition(Column("release"), Op.EQ, "1.2.1"),
             Condition(
@@ -37,14 +37,14 @@ class GetSnubaQueryArgsTest(TestCase):
         ]
 
     def test_trace_id(self):
-        result = Filter("trace:a0fa8803753e40fd8124b21eeb2986b5")
+        result = Where("trace:a0fa8803753e40fd8124b21eeb2986b5")
         assert result.conditions == [
             Condition(Column("contexts[trace.trace_id]"), Op.EQ, "a0fa8803753e40fd8124b21eeb2986b5")
         ]
 
     def test_environment_param(self):
         params = {"environment": ["", "prod"]}
-        result = Filter("", params)
+        result = Where("", params)
         # Should generate OR conditions
         assert result.conditions == [
             Or(
@@ -56,7 +56,7 @@ class GetSnubaQueryArgsTest(TestCase):
         ]
 
         params = {"environment": ["dev", "prod"]}
-        result = Filter("", params)
+        result = Where("", params)
         assert result.conditions == [
             Condition(Column("environment"), Op.IN, ["dev", "prod"]),
         ]
