@@ -33,7 +33,7 @@ from sentry.api.bases import NoProjects, OrganizationEventsV2EndpointBase
 from sentry.api.serializers.models.event import get_tags_with_meta
 from sentry.eventstore.models import Event
 from sentry.models import Organization
-from sentry.search.events.snql_filter import get_filter
+from sentry.search.events.snql_filter import Filter
 from sentry.snuba import discover
 from sentry.utils.snuba import Dataset, SnubaQueryParams, bulk_raw_query, raw_snql_query
 from sentry.utils.validators import INVALID_EVENT_DETAILS, is_event_id
@@ -742,7 +742,9 @@ class OrganizationEventsTraceMetaEndpoint(OrganizationEventsTraceEndpointBase):
                         "errors",
                     ),
                 ],
-                where=get_filter(f"trace_id:{trace_id}", params),
+                where=Filter(
+                    f"trace:{trace_id} transaction.duration:123", params, Dataset.Discover
+                ).conditions,
                 limit=Limit(1),
             )
             result = raw_snql_query(query, referrer="trace_view")
