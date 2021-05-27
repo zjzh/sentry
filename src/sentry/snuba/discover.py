@@ -3,6 +3,9 @@ import math
 from collections import namedtuple
 
 import sentry_sdk
+from snuba_sdk.entity import Entity
+from snuba_sdk.expressions import Limit
+from snuba_sdk.query import Query
 
 from sentry import options
 from sentry.models import Group
@@ -15,6 +18,8 @@ from sentry.search.events.fields import (
     resolve_field_list,
 )
 from sentry.search.events.filter import get_filter
+from sentry.search.events.snql_fields import Fields
+from sentry.search.events.snql_filter import Filter
 from sentry.tagstore.base import TOP_VALUES_DEFAULT_LIMIT
 from sentry.utils.compat import filter
 from sentry.utils.math import nice_int
@@ -31,6 +36,7 @@ from sentry.utils.snuba import (
     is_span_op_breakdown,
     naiveify_datetime,
     raw_query,
+    raw_snql_query,
     resolve_column,
     resolve_snuba_aliases,
     to_naive_timestamp,
@@ -181,6 +187,7 @@ def query(
     use_aggregate_conditions=False,
     conditions=None,
     functions_acl=None,
+    use_snql=False,
 ):
     """
     High-level API for doing arbitrary user queries against events.
@@ -212,46 +219,93 @@ def query(
     # We clobber this value throughout this code, so copy the value
     selected_columns = selected_columns[:]
 
-    snuba_query = prepare_discover_query(
+    if use_snql:
+        snql_query = prepare_snql_discover_query(
+            selected_columns,
+            query,
+            params,
+            orderby,
+            auto_fields,
+            auto_aggregations,
+            use_aggregate_conditions,
+            conditions,
+            functions_acl,
+            limit,
+        )
+        with sentry_sdk.start_span(op="discover.discover", description="query.snql_query"):
+            result = raw_snql_query(snql_query)
+
+        # TODO: transform results
+        return result
+    else:
+        snuba_query = prepare_discover_query(
+            selected_columns,
+            query,
+            params,
+            orderby,
+            auto_fields,
+            auto_aggregations,
+            use_aggregate_conditions,
+            conditions,
+            functions_acl,
+        )
+        snuba_filter = snuba_query.filter
+
+        with sentry_sdk.start_span(op="discover.discover", description="query.snuba_query"):
+            result = raw_query(
+                start=snuba_filter.start,
+                end=snuba_filter.end,
+                groupby=snuba_filter.groupby,
+                conditions=snuba_filter.conditions,
+                aggregations=snuba_filter.aggregations,
+                selected_columns=snuba_filter.selected_columns,
+                filter_keys=snuba_filter.filter_keys,
+                having=snuba_filter.having,
+                orderby=snuba_filter.orderby,
+                dataset=Dataset.Discover,
+                limit=limit,
+                offset=offset,
+                referrer=referrer,
+            )
+
+        with sentry_sdk.start_span(
+            op="discover.discover", description="query.transform_results"
+        ) as span:
+            span.set_data("result_count", len(result.get("data", [])))
+            return transform_results(
+                result,
+                snuba_query.fields["functions"],
+                snuba_query.columns,
+                snuba_filter,
+            )
+
+
+def prepare_snql_discover_query(
+    selected_columns,
+    query,
+    params,
+    orderby=None,
+    auto_fields=False,
+    auto_aggregations=False,
+    use_aggregate_conditions=False,
+    conditions=None,
+    functions_acl=None,
+    limit=50,
+):
+    snql_filter = Filter(query, params, Dataset.Discover)
+    snql_fields = Fields(
         selected_columns,
-        query,
-        params,
-        orderby,
-        auto_fields,
-        auto_aggregations,
-        use_aggregate_conditions,
-        conditions,
-        functions_acl,
+        snql_filter,
     )
-    snuba_filter = snuba_query.filter
-
-    with sentry_sdk.start_span(op="discover.discover", description="query.snuba_query"):
-        result = raw_query(
-            start=snuba_filter.start,
-            end=snuba_filter.end,
-            groupby=snuba_filter.groupby,
-            conditions=snuba_filter.conditions,
-            aggregations=snuba_filter.aggregations,
-            selected_columns=snuba_filter.selected_columns,
-            filter_keys=snuba_filter.filter_keys,
-            having=snuba_filter.having,
-            orderby=snuba_filter.orderby,
-            dataset=Dataset.Discover,
-            limit=limit,
-            offset=offset,
-            referrer=referrer,
-        )
-
-    with sentry_sdk.start_span(
-        op="discover.discover", description="query.transform_results"
-    ) as span:
-        span.set_data("result_count", len(result.get("data", [])))
-        return transform_results(
-            result,
-            snuba_query.fields["functions"],
-            snuba_query.columns,
-            snuba_filter,
-        )
+    return Query(
+        dataset=Dataset.Discover.value,
+        match=Entity("discover"),
+        select=snql_fields.select,
+        groupby=snql_fields.groupby,
+        where=snql_filter.where,
+        having=snql_filter.having,
+        limit=Limit(limit),
+    )
 
 
 def prepare_discover_query(

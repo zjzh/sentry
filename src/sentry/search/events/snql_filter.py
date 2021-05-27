@@ -19,7 +19,7 @@ OPERATOR_MAP: Mapping[str, Op] = {
 }
 
 
-class Where:
+class Filter:
     # Starting with an allowlist for now so we can convert things incrementally
     # At a certain point we should just flip to a denylist of what's left
     field_allowlist = {
@@ -41,7 +41,8 @@ class Where:
         if dataset is None:
             dataset = Dataset.Discover
         self.dataset = dataset
-        self.conditions = []
+        self.where = []
+        self.having = []
         self.resolve_column_name = resolve_column(self.dataset)
         # NOTE: this function assumes project permissions check already happened
         self.projects_to_filter = set()
@@ -65,7 +66,7 @@ class Where:
     def column(self, name: str) -> Column:
         return Column(self.resolve_column_name(name))
 
-    def convert_search_filter_to_snql_conditions(
+    def convert_search_filter_to_snql_where(
         self,
         search_filter: SearchFilter,
     ) -> Optional[Condition]:
@@ -108,9 +109,9 @@ class Where:
             raise NotImplementedError(f"{name} not implemented in snql filter parsing yet")
 
     def format_search_filter(self, term):
-        converted_filter = self.convert_search_filter_to_snql_conditions(term)
+        converted_filter = self.convert_search_filter_to_snql_where(term)
         if converted_filter:
-            self.conditions.append(converted_filter)
+            self.where.append(converted_filter)
 
     def parse_params(self, params):
         """Keys included as url params take precedent if same key is included in search
@@ -118,12 +119,12 @@ class Where:
         from the query string.
         """
         if "start" in params:
-            self.conditions.append(Condition(self.column("timestamp"), Op.GTE, params["start"]))
+            self.where.append(Condition(self.column("timestamp"), Op.GTE, params["start"]))
         if "end" in params:
-            self.conditions.append(Condition(self.column("timestamp"), Op.LT, params["end"]))
+            self.where.append(Condition(self.column("timestamp"), Op.LT, params["end"]))
 
         if "project_id" in params:
-            self.conditions.append(
+            self.where.append(
                 Condition(
                     self.column("project_id"),
                     Op.IN,
@@ -133,7 +134,7 @@ class Where:
 
         if "environment" in params:
             term = SearchFilter(SearchKey("environment"), "=", SearchValue(params["environment"]))
-            self.conditions.append(self.convert_search_filter_to_snql_conditions(term))
+            self.where.append(self.convert_search_filter_to_snql_where(term))
 
     def _environment_filter_converter(
         self,

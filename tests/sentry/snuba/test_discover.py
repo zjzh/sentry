@@ -32,6 +32,23 @@ class QueryIntegrationTest(SnubaTestCase, TestCase):
             project_id=self.project.id,
         )
 
+    def test_simple_snql(self):
+        result = discover.query(
+            selected_columns=["user.email", "message"],
+            query="user.email:bruce@example.com",
+            params={
+                "project_id": [self.project.id],
+                "start": self.event_time - timedelta(minutes=1),
+                "end": self.event_time + timedelta(minutes=1),
+            },
+            use_snql=True,
+        )
+
+        data = result["data"]
+        assert len(data) == 1
+        assert data[0]["email"] == "bruce@example.com"
+        assert data[0]["message"] == "oh no"
+
     def test_project_mapping(self):
         other_project = self.create_project(organization=self.organization)
         self.store_event(
