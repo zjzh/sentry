@@ -1,9 +1,10 @@
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 from parsimonious.exceptions import ParseError
 from parsimonious.grammar import Grammar, NodeVisitor
 
 from sentry import eventstore
+from sentry.exceptions import InvalidSearchQuery
 
 SUPPORTED_OPERATORS = {"plus", "minus", "multiply", "divide"}
 
@@ -31,6 +32,7 @@ class ArithmeticValidationError(ArithmeticError):
 
 
 OperationSideType = Union["Operation", float]
+JsonQueryType = List[Union[str, float, List[Any]]]
 
 
 class Operation:
@@ -53,6 +55,14 @@ class Operation:
 
         if self.operator == "divide" and self.rhs == 0:
             raise ArithmeticValidationError("division by 0 is not allowed")
+
+    def to_json(self, alias: Optional[str] = None) -> JsonQueryType:
+        lhs = self.lhs.to_json() if isinstance(self.lhs, Operation) else self.lhs
+        rhs = self.rhs.to_json() if isinstance(self.rhs, Operation) else self.rhs
+        result = [self.operator, [lhs, rhs]]
+        if alias:
+            result.append(alias)
+        return result
 
     def __repr__(self) -> str:
         return repr([self.operator, self.lhs, self.rhs])
@@ -92,7 +102,7 @@ class ArithmeticVisitor(NodeVisitor):
     DEFAULT_MAX_OPERATORS = 10
 
     # Don't wrap in VisitationErrors
-    unwrapped_exceptions = (MaxOperatorError,)
+    unwrapped_exceptions = ArithmeticError
 
     allowlist = {
         "transaction.duration",
@@ -107,6 +117,7 @@ class ArithmeticVisitor(NodeVisitor):
         super().__init__()
         self.operators = 0
         self.max_operators = max_operators if max_operators else self.DEFAULT_MAX_OPERATORS
+        self.fields: set[str] = set()
 
     def flatten(self, remaining):
         """ Take all the remaining terms and reduce them to a single tree """
@@ -184,13 +195,16 @@ class ArithmeticVisitor(NodeVisitor):
         field = node.text
         if field not in self.allowlist:
             raise ArithmeticParseError(f"{field} not allowed in arithmetic")
+        self.fields.add(field)
         return field
 
     def generic_visit(self, node, children):
         return children or node
 
 
-def parse_arithmetic(equation: str, max_operators: Optional[int] = None) -> Operation:
+def parse_arithmetic(
+    equation: str, max_operators: Optional[int] = None
+) -> Tuple[Operation, List[str]]:
     """ Given a string equation try to parse it into a set of Operations """
     try:
         tree = arithmetic_grammar.parse(equation)
@@ -198,35 +212,20 @@ def parse_arithmetic(equation: str, max_operators: Optional[int] = None) -> Oper
         raise ArithmeticParseError(
             "Unable to parse your equation, make sure it is well formed arithmetic"
         )
-    return ArithmeticVisitor(max_operators).visit(tree)
+    visitor = ArithmeticVisitor(max_operators)
+    result = visitor.visit(tree)
+    return result, list(visitor.fields)
 
 
-def convert_equation_to_snuba_json(
-    parsed_equation: Optional[OperationSideType], alias: Optional[str] = None
-) -> Union[List[Any], float, None]:
-    """ Convert a parsed equation to the equivalent json for snuba """
-    if isinstance(parsed_equation, Operation):
-        parsed_equation.validate()
-        snuba_json = [
-            parsed_equation.operator,
-            [
-                convert_equation_to_snuba_json(parsed_equation.lhs),
-                convert_equation_to_snuba_json(parsed_equation.rhs),
-            ],
-        ]
-        if alias:
-            snuba_json.append(alias)
-        return snuba_json
-    else:
-        return parsed_equation
-
-
-def resolve_equation_list(equations: List[str], snuba_filter: eventstore.Filter) -> Dict[str, Any]:
+def resolve_equation_list(
+    equations: List[str], snuba_filter: eventstore.Filter
+) -> Dict[str, JsonQueryType]:
     selected_columns = snuba_filter.selected_columns
     for index, equation in enumerate(equations):
         # only supporting 1 operation for now
-        parsed_equation = parse_arithmetic(equation, max_operators=2)
-        selected_columns.append(
-            convert_equation_to_snuba_json(parsed_equation, f"equation[{index}]")
-        )
+        parsed_equation, fields = parse_arithmetic(equation, max_operators=1)
+        for field in fields:
+            if field not in fields:
+                raise InvalidSearchQuery(f"{field} used in an equation but is not a selected field")
+        selected_columns.append(parsed_equation.to_json(f"equation[{index}]"))
     return {"selected_columns": selected_columns}

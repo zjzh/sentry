@@ -11,7 +11,7 @@ op_map = {
 
 
 def test_single_term():
-    result = parse_arithmetic("12")
+    result, _ = parse_arithmetic("12")
     assert result == 12.0
 
 
@@ -38,7 +38,7 @@ def test_single_term():
 )
 def test_simple_arithmetic(a, op, b):
     equation = f"{a}{op}{b}"
-    result = parse_arithmetic(equation)
+    result, _ = parse_arithmetic(equation)
     assert result.operator == op_map[op.strip()], equation
     assert result.lhs == float(a), equation
     assert result.rhs == float(b), equation
@@ -60,7 +60,7 @@ def test_simple_arithmetic(a, op, b):
 def test_homogenous_arithmetic(op1, op2):
     """ Test that literal order of ops is respected assuming we don't have to worry about BEDMAS """
     equation = f"12{op1}34{op2}56"
-    result = parse_arithmetic(equation)
+    result, _ = parse_arithmetic(equation)
     assert result.operator == op_map[op2.strip()], equation
     assert result.lhs.operator == op_map[op1.strip()], equation
     assert result.lhs.lhs == 12, equation
@@ -69,14 +69,14 @@ def test_homogenous_arithmetic(op1, op2):
 
 
 def test_mixed_arithmetic():
-    result = parse_arithmetic("12 + 34 * 56")
+    result, _ = parse_arithmetic("12 + 34 * 56")
     result.operator == "plus"
     result.lhs = 12.0
     result.rhs.operator = "multiply"
     result.rhs.lhs = 34.0
     result.rhs.rhs = 56.0
 
-    result = parse_arithmetic("12 / 34 - 56")
+    result, _ = parse_arithmetic("12 / 34 - 56")
     result.operator == "subtract"
     result.lhs.operator = "divide"
     result.lhs.lhs = 12.0
@@ -85,7 +85,7 @@ def test_mixed_arithmetic():
 
 
 def test_four_terms():
-    result = parse_arithmetic("1 + 2 / 3 * 4")
+    result, _ = parse_arithmetic("1 + 2 / 3 * 4")
     assert result.operator == "plus"
     assert result.lhs == 1.0
     assert result.rhs.operator == "multiply"
@@ -114,7 +114,7 @@ def test_homogenous_four_terms(op1, op2, op3):
     flatten only kicks in when its a chain of the same operator type
     """
     equation = f"12{op1}34{op2}56{op3}78"
-    result = parse_arithmetic(equation)
+    result, _ = parse_arithmetic(equation)
     assert result.operator == op_map[op3.strip()], equation
     assert result.lhs.operator == op_map[op2.strip()], equation
     assert result.lhs.lhs.operator == op_map[op1.strip()], equation
@@ -142,10 +142,14 @@ def test_max_operators():
 )
 def test_field_values(a, op, b):
     equation = f"{a}{op}{b}"
-    result = parse_arithmetic(equation)
+    result, fields = parse_arithmetic(equation)
     assert result.operator == op_map[op.strip()], equation
-    assert result.lhs == a
-    assert result.rhs == b
+    assert result.lhs == a, equation
+    assert result.rhs == b, equation
+    if isinstance(a, str):
+        assert a in fields, equation
+    if isinstance(b, str):
+        assert b in fields, equation
 
 
 @pytest.mark.parametrize(
