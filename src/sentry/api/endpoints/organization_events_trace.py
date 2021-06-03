@@ -28,6 +28,7 @@ from sentry.api.bases import NoProjects, OrganizationEventsV2EndpointBase
 from sentry.api.serializers.models.event import get_tags_with_meta
 from sentry.eventstore.models import Event
 from sentry.models import Organization
+from sentry.search.events.base import FilterParams
 from sentry.snuba import discover
 from sentry.utils.snuba import Dataset, SnubaQueryParams, bulk_raw_query
 from sentry.utils.validators import INVALID_EVENT_DETAILS, is_event_id
@@ -222,7 +223,7 @@ def group_length(length: int) -> str:
 
 
 def query_trace_data(
-    trace_id: str, params: Mapping[str, str]
+    trace_id: str, params: FilterParams
 ) -> Tuple[Sequence[SnubaTransaction], Sequence[SnubaError]]:
     transaction_query = discover.prepare_discover_query(
         selected_columns=[

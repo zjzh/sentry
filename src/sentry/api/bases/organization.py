@@ -1,5 +1,8 @@
+from typing import List, Optional
+
 import sentry_sdk
 from django.core.cache import cache
+from django.http import HttpRequest
 from rest_framework.exceptions import ParseError, PermissionDenied
 
 from sentry.api.base import Endpoint
@@ -22,6 +25,7 @@ from sentry.models import (
     ProjectStatus,
     ReleaseProject,
 )
+from sentry.search.events.base import FilterParams
 from sentry.utils import auth
 from sentry.utils.compat import map
 from sentry.utils.hashlib import hash_values
@@ -261,8 +265,12 @@ class OrganizationEndpoint(Endpoint):
         return get_teams(request, organization)
 
     def get_filter_params(
-        self, request, organization, date_filter_optional=False, project_ids=None
-    ):
+        self,
+        request: HttpRequest,
+        organization: Organization,
+        date_filter_optional: Optional[bool] = False,
+        project_ids: Optional[List[int]] = None,
+    ) -> FilterParams:
         """
         Extracts common filter parameters from the request and returns them
         in a standard format.
@@ -273,12 +281,7 @@ class OrganizationEndpoint(Endpoint):
         validated yet
         parameters are passed. If False, no date filtering occurs. If True, we
         provide default values.
-        :return: A dict with keys:
-         - start: start date of the filter
-         - end: end date of the filter
-         - project_id: A list of project ids to filter on
-         - environment(optional): If environments were passed in, a list of
-         environment names
+        :return: A FilterParams class
         """
         # get the top level params -- projects, time range, and environment
         # from the request
@@ -316,23 +319,25 @@ class OrganizationEndpoint(Endpoint):
             "<10" if len_projects < 10 else "<100" if len_projects < 100 else ">100",
         )
 
-        params = {
-            "start": start,
-            "end": end,
-            "project_id": [p.id for p in projects],
-            "organization_id": organization.id,
-        }
-
         environments = self.get_environments(request, organization)
         if environments:
-            params["environment"] = [env.name for env in environments]
-            params["environment_objects"] = environments
+            environment = [env.name for env in environments]
+            environment_objects = environments
+        else:
+            environment = environment_objects = None
 
         teams = self.get_teams(request, organization)
-        if teams:
-            params["team_id"] = [team.id for team in teams]
 
-        return params
+        return FilterParams(
+            start=start,
+            end=end,
+            project_id=[p.id for p in projects],
+            organization_id=organization.id,
+            environment=environment,
+            environment_objects=environment_objects,
+            team_id=[team.id for team in teams] if teams else None,
+            user_id=request.user.id if request.user else None,
+        )
 
     def convert_args(self, request, organization_slug, *args, **kwargs):
         try:

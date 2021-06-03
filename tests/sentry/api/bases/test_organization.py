@@ -421,17 +421,17 @@ class GetFilterParamsTest(BaseOrganizationEndpointTest):
             date_filter_optional=date_filter_optional,
         )
 
-        assert {p.id for p in expected_projects} == set(result["project_id"])
-        assert expected_start == result["start"]
-        assert expected_end == result["end"]
+        assert {p.id for p in expected_projects} == set(result.project_id)
+        assert expected_start == result.start
+        assert expected_end == result.end
         if expected_envs:
-            assert {e.name for e in expected_envs} == set(result["environment"])
+            assert {e.name for e in expected_envs} == set(result.environment)
         else:
-            assert "environment" not in result
+            assert result.environment is None
         if expected_teams:
-            assert {t.id for t in expected_teams} == set(result["team_id"])
+            assert {t.id for t in expected_teams} == set(result.team_id)
         else:
-            assert "team_id" not in result
+            assert result.team_id is None
 
     @freeze_time("2018-12-11 03:21:34")
     def test_no_params(self):

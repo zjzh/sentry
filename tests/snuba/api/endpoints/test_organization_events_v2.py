@@ -3052,7 +3052,7 @@ class OrganizationEventsV2EndpointTest(APITestCase, SnubaTestCase):
         assert data[0]["count"] == 8
         assert data[0]["failure_count"] == 6
 
-    @mock.patch("sentry.utils.snuba.quantize_time")
+    @mock.patch("sentry.search.events.base.quantize_time")
     def test_quantize_dates(self, mock_quantize):
         self.create_project()
         mock_quantize.return_value = before_now(days=1).replace(tzinfo=utc)

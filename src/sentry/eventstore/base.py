@@ -52,6 +52,7 @@ class Filter:
         orderby=None,
         condition_aggregates=None,
         aliases=None,
+        params=None,
     ):
         self.start = start
         self.end = end
@@ -71,6 +72,7 @@ class Filter:
         self.orderby = orderby
         self.condition_aggregates = condition_aggregates
         self.aliases = aliases
+        self.params = params
 
     @property
     def filter_keys(self):
@@ -89,22 +91,6 @@ class Filter:
             filter_keys["event_id"] = self.event_ids
 
         return filter_keys
-
-    @property
-    def params(self):
-        """
-        Get the datetime parameters as a dictionary
-        """
-        return {
-            "start": self.start,
-            "end": self.end,
-            # needed for the key transaction column
-            "user_id": self.user_id,
-            "organization_id": self.organization_id,
-            # needed for the team key transaction column
-            "team_id": self.team_id,
-            "project_id": self.project_ids,
-        }
 
     def update_with(self, updates):
         keys = ("selected_columns", "aggregations", "conditions", "orderby", "groupby")

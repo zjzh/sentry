@@ -1,6 +1,8 @@
 from contextlib import contextmanager
+from typing import Optional
 
 import sentry_sdk
+from django.http import HttpRequest
 from django.utils.http import urlquote
 from rest_framework.exceptions import APIException, ParseError
 from sentry_relay.consts import SPAN_STATUS_CODE_TO_NAME
@@ -11,7 +13,9 @@ from sentry.api.bases import NoProjects, OrganizationEndpoint
 from sentry.api.serializers.snuba import SnubaTSResultSerializer
 from sentry.discover.arithmetic import ArithmeticError
 from sentry.exceptions import InvalidSearchQuery
+from sentry.models import Organization
 from sentry.models.group import Group
+from sentry.search.events.base import FilterParams
 from sentry.search.events.fields import get_function_alias
 from sentry.search.events.filter import get_filter
 from sentry.snuba import discover
@@ -36,25 +40,34 @@ class OrganizationEventsEndpointBase(OrganizationEndpoint):
         except InvalidSearchQuery as e:
             raise ParseError(detail=str(e))
 
-    def get_snuba_params(self, request, organization, check_global_views=True):
+    def get_snuba_params(
+        self,
+        request: HttpRequest,
+        organization: Organization,
+        check_global_views: Optional[bool] = True,
+    ) -> FilterParams:
         with sentry_sdk.start_span(op="discover.endpoint", description="filter_params"):
             if len(request.GET.getlist("field")) > MAX_FIELDS:
                 raise ParseError(
                     detail=f"You can view up to {MAX_FIELDS} fields at a time. Please delete some and try again."
                 )
 
-            params = self.get_filter_params(request, organization)
-            params = self.quantize_date_params(request, params)
-            params["user_id"] = request.user.id if request.user else None
+            filter_params = self.get_filter_params(request, organization)
+            if "statsPeriod" in request.GET:
+                filter_params.quantize_date_params()
 
             if check_global_views:
                 has_global_views = features.has(
                     "organizations:global-views", organization, actor=request.user
                 )
-                if not has_global_views and len(params.get("project_id", [])) > 1:
+                if (
+                    not has_global_views
+                    and filter_params.project_id
+                    and len(filter_params.project_id) > 1
+                ):
                     raise ParseError(detail="You cannot view events from multiple projects.")
 
-            return params
+            return filter_params
 
     def get_orderby(self, request):
         sort = request.GET.getlist("sort")
@@ -82,22 +95,6 @@ class OrganizationEventsEndpointBase(OrganizationEndpoint):
         }
 
         return snuba_args
-
-    def quantize_date_params(self, request, params):
-        # We only need to perform this rounding on relative date periods
-        if "statsPeriod" not in request.GET:
-            return params
-        results = params.copy()
-        duration = (params["end"] - params["start"]).total_seconds()
-        # Only perform rounding on durations longer than an hour
-        if duration > 3600:
-            # Round to 15 minutes if over 30 days, otherwise round to the minute
-            round_to = 15 * 60 if duration >= 30 * 24 * 3600 else 60
-            for key in ["start", "end"]:
-                results[key] = snuba.quantize_time(
-                    params[key], params.get("organization_id", 0), duration=round_to
-                )
-        return results
 
     @contextmanager
     def handle_query_errors(self):

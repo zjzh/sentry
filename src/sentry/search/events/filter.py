@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Callable, Mapping, Optional, Sequence, Union
+from typing import Any, Callable, Mapping, Optional, Sequence
 
 from parsimonious.exceptions import ParseError
 from sentry_relay.consts import SPAN_STATUS_NAME_TO_CODE
@@ -19,7 +19,7 @@ from sentry.api.event_search import (
 from sentry.exceptions import InvalidSearchQuery
 from sentry.models import Project
 from sentry.models.group import Group
-from sentry.search.events.base import QueryBase
+from sentry.search.events.base import FilterParams, QueryBase
 from sentry.search.events.constants import (
     ARRAY_FIELDS,
     EQUALITY_OPERATORS,
@@ -91,8 +91,12 @@ def convert_aggregate_filter_to_snuba_query(aggregate_filter, params):
     name = aggregate_filter.key.name
     value = aggregate_filter.value.value
 
-    if params is not None and name in params.get("aliases", {}):
-        return params["aliases"][name].converter(aggregate_filter)
+    if (
+        params is not None
+        and params.function_aliases is not None
+        and name in params.function_aliases
+    ):
+        return params.function_aliases[name].converter(aggregate_filter)
 
     value = (
         int(to_timestamp(value)) if isinstance(value, datetime) and name != "timestamp" else value
@@ -121,7 +125,7 @@ def convert_function_to_condition(func):
 def _environment_filter_converter(
     search_filter: SearchFilter,
     name: str,
-    params: Optional[Mapping[str, Union[int, str, datetime]]],
+    params: Optional[FilterParams],
 ):
     # conditions added to env_conditions are OR'd
     env_conditions = []
@@ -144,7 +148,7 @@ def _environment_filter_converter(
 def _message_filter_converter(
     search_filter: SearchFilter,
     name: str,
-    params: Optional[Mapping[str, Union[int, str, datetime]]],
+    params: Optional[FilterParams],
 ):
     value = search_filter.value.value
     if search_filter.value.is_wildcard():
@@ -181,7 +185,7 @@ def _message_filter_converter(
 def _transaction_status_filter_converter(
     search_filter: SearchFilter,
     name: str,
-    params: Optional[Mapping[str, Union[int, str, datetime]]],
+    params: Optional[FilterParams],
 ):
     # Handle "has" queries
     if search_filter.value.raw_value == "":
@@ -200,7 +204,7 @@ def _transaction_status_filter_converter(
 def _issue_id_filter_converter(
     search_filter: SearchFilter,
     name: str,
-    params: Optional[Mapping[str, Union[int, str, datetime]]],
+    params: Optional[FilterParams],
 ):
     value = search_filter.value.value
     # Handle "has" queries
@@ -227,7 +231,7 @@ def _issue_id_filter_converter(
 def _user_display_filter_converter(
     search_filter: SearchFilter,
     name: str,
-    params: Optional[Mapping[str, Union[int, str, datetime]]],
+    params: Optional[FilterParams],
 ):
     value = search_filter.value.value
     user_display_expr = FIELD_ALIASES[USER_DISPLAY_ALIAS].get_expression(params)
@@ -247,7 +251,7 @@ def _user_display_filter_converter(
 def _error_unhandled_filter_converter(
     search_filter: SearchFilter,
     name: str,
-    params: Optional[Mapping[str, Union[int, str, datetime]]],
+    params: Optional[FilterParams],
 ):
     value = search_filter.value.value
     # This field is the inversion of error.handled, otherwise the logic is the same.
@@ -266,7 +270,7 @@ def _error_unhandled_filter_converter(
 def _error_handled_filter_converter(
     search_filter: SearchFilter,
     name: str,
-    params: Optional[Mapping[str, Union[int, str, datetime]]],
+    params: Optional[FilterParams],
 ):
     value = search_filter.value.value
     # Treat has filter as equivalent to handled
@@ -284,7 +288,7 @@ def _error_handled_filter_converter(
 def _key_transaction_filter_converter(
     search_filter: SearchFilter,
     name: str,
-    params: Optional[Mapping[str, Union[int, str, datetime]]],
+    params: Optional[FilterParams],
 ):
     value = search_filter.value.value
     key_transaction_expr = FIELD_ALIASES[KEY_TRANSACTION_ALIAS].get_expression(params)
@@ -304,7 +308,7 @@ def _key_transaction_filter_converter(
 def _team_key_transaction_filter_converter(
     search_filter: SearchFilter,
     name: str,
-    params: Optional[Mapping[str, Union[int, str, datetime]]],
+    params: Optional[FilterParams],
 ):
     value = search_filter.value.value
     key_transaction_expr = FIELD_ALIASES[TEAM_KEY_TRANSACTION_ALIAS].get_field(params)
@@ -323,7 +327,7 @@ def _team_key_transaction_filter_converter(
 
 key_conversion_map: Mapping[
     str,
-    Callable[[SearchFilter, str, Mapping[str, Union[int, str, datetime]]], Optional[Sequence[any]]],
+    Callable[[SearchFilter, str, Optional[FilterParams]], Optional[Sequence[Any]]],
 ] = {
     "environment": _environment_filter_converter,
     "message": _message_filter_converter,
@@ -340,7 +344,7 @@ key_conversion_map: Mapping[
 def convert_search_filter_to_snuba_query(
     search_filter: SearchFilter,
     key: Optional[str] = None,
-    params: Optional[Mapping[str, Union[int, str, datetime]]] = None,
+    params: Optional[FilterParams] = None,
 ) -> Optional[Sequence[any]]:
     name = search_filter.key.name if key is None else key
     value = search_filter.value.value
@@ -455,7 +459,7 @@ def flatten_condition_tree(tree, condition_function):
     return flattened
 
 
-def convert_snuba_condition_to_function(term, params=None):
+def convert_snuba_condition_to_function(term, params: Optional[FilterParams] = None):
     if isinstance(term, ParenExpression):
         return convert_search_boolean_to_snuba_query(term.children, params)
 
@@ -489,7 +493,7 @@ def convert_snuba_condition_to_function(term, params=None):
     return None, None, projects_to_filter, group_ids
 
 
-def convert_search_boolean_to_snuba_query(terms, params=None):
+def convert_search_boolean_to_snuba_query(terms, params: Optional[FilterParams] = None):
     if len(terms) == 1:
         return convert_snuba_condition_to_function(terms[0], params)
 
@@ -576,7 +580,7 @@ def convert_search_boolean_to_snuba_query(terms, params=None):
     return condition, having, projects_to_filter, group_ids
 
 
-def get_filter(query=None, params=None):
+def get_filter(query: Optional[str] = None, params: Optional[FilterParams] = None):
     """
     Returns an eventstore filter given the search text provided by the user and
     URL params
@@ -600,7 +604,8 @@ def get_filter(query=None, params=None):
         "project_ids": [],
         "group_ids": [],
         "condition_aggregates": [],
-        "aliases": params.get("aliases", {}) if params is not None else {},
+        "aliases": params.function_aliases or {} if params is not None else {},
+        "params": params,
     }
 
     projects_to_filter = []
@@ -652,33 +657,28 @@ def get_filter(query=None, params=None):
     # They are also considered safe and to have had access rules applied unlike conditions
     # from the query string.
     if params:
-        for key in ("start", "end"):
-            kwargs[key] = params.get(key, None)
-        if "user_id" in params:
-            kwargs["user_id"] = params["user_id"]
-        if "organization_id" in params:
-            kwargs["organization_id"] = params["organization_id"]
-        if "team_id" in params:
-            kwargs["team_id"] = params["team_id"]
-        # OrganizationEndpoint.get_filter() uses project_id, but eventstore.Filter uses project_ids
-        if "project_id" in params:
+        kwargs["start"] = params.start
+        kwargs["end"] = params.end
+        if params.user_id is not None:
+            kwargs["user_id"] = params.user_id
+        kwargs["organization_id"] = params.organization_id
+        if params.team_id:
+            kwargs["team_id"] = params.team_id
+        if params.project_id:
             if projects_to_filter:
                 kwargs["project_ids"] = projects_to_filter
             else:
-                kwargs["project_ids"] = params["project_id"]
-        if "environment" in params:
-            term = SearchFilter(SearchKey("environment"), "=", SearchValue(params["environment"]))
+                kwargs["project_ids"] = params.project_id
+        if params.environment:
+            term = SearchFilter(SearchKey("environment"), "=", SearchValue(params.environment))
             kwargs["conditions"].append(convert_search_filter_to_snuba_query(term))
-        if "group_ids" in params:
-            kwargs["group_ids"] = to_list(params["group_ids"])
-        # Deprecated alias, use `group_ids` instead
-        if ISSUE_ID_ALIAS in params:
-            kwargs["group_ids"] = to_list(params["issue.id"])
+        if params.group_id:
+            kwargs["group_ids"] = params.group_id
 
     return eventstore.Filter(**kwargs)
 
 
-def format_search_filter(term, params):
+def format_search_filter(term, params: Optional[FilterParams]):
     projects_to_filter = []  # Used to avoid doing multiple conditions on project ID
     conditions = []
     group_ids = None
@@ -689,8 +689,7 @@ def format_search_filter(term, params):
             raise InvalidSearchQuery("Invalid query for 'has' search: 'project' cannot be empty.")
         slugs = to_list(value)
         projects = {
-            p.slug: p.id
-            for p in Project.objects.filter(id__in=params.get("project_id", []), slug__in=slugs)
+            p.slug: p.id for p in Project.objects.filter(id__in=params.project_id, slug__in=slugs)
         }
         missing = [slug for slug in slugs if slug not in projects]
         if missing and term.operator in EQUALITY_OPERATORS:
@@ -720,10 +719,10 @@ def format_search_filter(term, params):
         group_short_ids = [v for v in value if v and v != "unknown"]
         filter_values = ["" for v in value if not v or v == "unknown"]
 
-        if group_short_ids and params and "organization_id" in params:
+        if group_short_ids and params and params.organization_id:
             try:
                 groups = Group.objects.by_qualified_short_id_bulk(
-                    params["organization_id"],
+                    params.organization_id,
                     group_short_ids,
                 )
             except Exception:
@@ -746,9 +745,9 @@ def format_search_filter(term, params):
         value = [
             parse_release(
                 v,
-                params["project_id"],
-                params.get("environment_objects"),
-                params.get("organization_id"),
+                params.project_id,
+                params.environment_objects,
+                params.organization_id,
             )
             for v in to_list(value)
         ]
@@ -791,34 +790,24 @@ class QueryFilter(QueryBase):
         from the query string.
         """
         # start/end are required so that we can run a query in a reasonable amount of time
-        if "start" not in self.params or "end" not in self.params:
+        if self.params.start is None or self.params.end is None:
             raise InvalidSearchQuery("Cannot query without a valid date range")
-        start, end = self.params["start"], self.params["end"]
-
-        # TODO: this validation should be done when we create the params dataclass instead
-        assert isinstance(start, datetime) and isinstance(
-            end, datetime
-        ), "Both start and end params must be datetime objects"
-        assert all(
-            isinstance(project_id, int) for project_id in self.params.get("project_id", [])
-        ), "All project id params must be ints"
+        start, end = self.params.start, self.params.end
 
         self.where.append(Condition(self.column("timestamp"), Op.GTE, start))
         self.where.append(Condition(self.column("timestamp"), Op.LT, end))
 
-        if "project_id" in self.params:
+        if self.params.project_id:
             self.where.append(
                 Condition(
                     self.column("project_id"),
                     Op.IN,
-                    self.params["project_id"],
+                    self.params.project_id,
                 )
             )
 
-        if "environment" in self.params:
-            term = SearchFilter(
-                SearchKey("environment"), "=", SearchValue(self.params["environment"])
-            )
+        if self.params.environment:
+            term = SearchFilter(SearchKey("environment"), "=", SearchValue(self.params.environment))
             condition = self._environment_filter_converter(term, "environment")
             if condition:
                 self.where.append(condition)

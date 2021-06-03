@@ -116,7 +116,7 @@ class OrganizationEventsRelatedIssuesEndpoint(OrganizationEventsEndpointBase, En
             with sentry_sdk.start_span(op="discover.endpoint", description="filter_creation"):
                 projects = self.get_projects(request, organization)
                 query_kwargs = build_query_params_from_request(
-                    request, organization, projects, params.get("environment")
+                    request, organization, projects, params.environment
                 )
                 query_kwargs["limit"] = 5
                 try:

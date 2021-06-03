@@ -3,6 +3,7 @@ from datetime import timedelta
 from django.urls import reverse
 
 from sentry.api.endpoints.organization_events_trends import OrganizationEventsTrendsEndpointBase
+from sentry.search.events.base import FilterParams
 from sentry.search.events.filter import get_filter
 from sentry.testutils import APITestCase, SnubaTestCase
 from sentry.testutils.cases import TestCase
@@ -856,20 +857,19 @@ class OrganizationEventsTrendsAliasTest(TestCase):
         self.regression_aliases = OrganizationEventsTrendsEndpointBase.get_function_aliases(
             "regression"
         )
+        self.filter_params = FilterParams(start=None, end=None, project_id=[], organization_id=1)
 
     def test_simple(self):
-        result = get_filter(
-            "trend_percentage():>0% trend_difference():>0", {"aliases": self.improved_aliases}
-        )
+        self.filter_params.function_aliases = self.improved_aliases
+        result = get_filter("trend_percentage():>0% trend_difference():>0", self.filter_params)
 
         assert result.having == [
             ["trend_percentage", "<", 1.0],
             ["trend_difference", "<", 0.0],
         ]
 
-        result = get_filter(
-            "trend_percentage():>0% trend_difference():>0", {"aliases": self.regression_aliases}
-        )
+        self.filter_params.function_aliases = self.regression_aliases
+        result = get_filter("trend_percentage():>0% trend_difference():>0", self.filter_params)
 
         assert result.having == [
             ["trend_percentage", ">", 1.0],
@@ -877,24 +877,24 @@ class OrganizationEventsTrendsAliasTest(TestCase):
         ]
 
     def test_and_query(self):
+        self.filter_params.function_aliases = self.improved_aliases
         result = get_filter(
-            "trend_percentage():>0% AND trend_percentage():<100%",
-            {"aliases": self.improved_aliases},
+            "trend_percentage():>0% AND trend_percentage():<100%", self.filter_params
         )
 
         assert result.having == [["trend_percentage", "<", 1.0], ["trend_percentage", ">", 0.0]]
 
+        self.filter_params.function_aliases = self.regression_aliases
         result = get_filter(
-            "trend_percentage():>0% AND trend_percentage():<100%",
-            {"aliases": self.regression_aliases},
+            "trend_percentage():>0% AND trend_percentage():<100%", self.filter_params
         )
 
         assert result.having == [["trend_percentage", ">", 1.0], ["trend_percentage", "<", 2.0]]
 
     def test_or_query(self):
+        self.filter_params.function_aliases = self.improved_aliases
         result = get_filter(
-            "trend_percentage():>0% OR trend_percentage():<100%",
-            {"aliases": self.improved_aliases},
+            "trend_percentage():>0% OR trend_percentage():<100%", self.filter_params
         )
 
         assert result.having == [
@@ -908,9 +908,9 @@ class OrganizationEventsTrendsAliasTest(TestCase):
             ]
         ]
 
+        self.filter_params.function_aliases = self.regression_aliases
         result = get_filter(
-            "trend_percentage():>0% OR trend_percentage():<100%",
-            {"aliases": self.regression_aliases},
+            "trend_percentage():>0% OR trend_percentage():<100%", self.filter_params
         )
 
         assert result.having == [
@@ -925,19 +925,23 @@ class OrganizationEventsTrendsAliasTest(TestCase):
         ]
 
     def test_greater_than(self):
-        result = get_filter("trend_difference():>=0", {"aliases": self.improved_aliases})
+        self.filter_params.function_aliases = self.improved_aliases
+        result = get_filter("trend_difference():>=0", self.filter_params)
 
         assert result.having == [["trend_difference", "<=", 0.0]]
 
-        result = get_filter("trend_difference():>=0", {"aliases": self.regression_aliases})
+        self.filter_params.function_aliases = self.regression_aliases
+        result = get_filter("trend_difference():>=0", self.filter_params)
 
         assert result.having == [["trend_difference", ">=", 0.0]]
 
     def test_negation(self):
-        result = get_filter("!trend_difference():>=0", {"aliases": self.improved_aliases})
+        self.filter_params.function_aliases = self.improved_aliases
+        result = get_filter("!trend_difference():>=0", self.filter_params)
 
         assert result.having == [["trend_difference", ">", 0.0]]
 
-        result = get_filter("!trend_difference():>=0", {"aliases": self.regression_aliases})
+        self.filter_params.function_aliases = self.regression_aliases
+        result = get_filter("!trend_difference():>=0", self.filter_params)
 
         assert result.having == [["trend_difference", "<", 0.0]]

@@ -14,10 +14,10 @@ class OrganizationTagsEndpoint(OrganizationEventsEndpointBase):
 
         with self.handle_query_errors():
             results = tagstore.get_tag_keys_for_projects(
-                filter_params["project_id"],
-                filter_params.get("environment"),
-                filter_params["start"],
-                filter_params["end"],
+                filter_params.project_id,
+                filter_params.environment,
+                filter_params.start,
+                filter_params.end,
                 use_cache=request.GET.get("use_cache", "0") == "1",
                 # Defaults to True, because the frontend caches these tags globally
                 include_transactions=request.GET.get("include_transactions", "1") == "1",

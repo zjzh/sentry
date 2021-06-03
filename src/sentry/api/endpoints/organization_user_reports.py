@@ -30,16 +30,14 @@ class OrganizationUserReportsEndpoint(OrganizationEndpoint):
             return Response([])
 
         queryset = UserReport.objects.filter(
-            project_id__in=filter_params["project_id"], group_id__isnull=False
+            project_id__in=filter_params.project_id, group_id__isnull=False
         )
-        if "environment" in filter_params:
+        if filter_params.environment:
             queryset = queryset.filter(
-                environment_id__in=[env.id for env in filter_params["environment_objects"]]
+                environment_id__in=[env.id for env in filter_params.environment_objects]
             )
-        if filter_params["start"] and filter_params["end"]:
-            queryset = queryset.filter(
-                date_added__range=(filter_params["start"], filter_params["end"])
-            )
+        if filter_params.start and filter_params.end:
+            queryset = queryset.filter(date_added__range=(filter_params.start, filter_params.end))
 
         status = request.GET.get("status", "unresolved")
         paginate_kwargs = {}

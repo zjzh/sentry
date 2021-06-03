@@ -67,20 +67,20 @@ class ProjectReleaseStatsEndpoint(ProjectEndpoint):
             raise ResourceDoesNotExist
 
         stats, totals = get_project_release_stats(
-            project_id=params["project_id"][0],
+            project_id=params.project_id[0],
             release=version,
             stat=stats_type,
             rollup=rollup,
-            start=params["start"],
-            end=params["end"],
-            environments=params.get("environment"),
+            start=params.start,
+            end=params.end,
+            environments=params.environment,
         )
 
         users_breakdown = []
         for data in get_crash_free_breakdown(
-            project_id=params["project_id"][0],
+            project_id=params.project_id[0],
             release=version,
-            environments=params.get("environment"),
+            environments=params.environment,
             start=release.date_added,
         ):
             users_breakdown.append(

@@ -500,11 +500,6 @@ class ResolveFieldListTest(unittest.TestCase):
             resolve_field_list(fields, eventstore.Filter())
         assert "epm(): invalid arguments: function called without default" in str(err)
 
-        with pytest.raises(InvalidSearchQuery) as err:
-            fields = ["epm()"]
-            resolve_field_list(fields, eventstore.Filter(start="abc", end="def"))
-        assert "epm(): invalid arguments: function called with invalid default" in str(err)
-
         fields = ["epm()"]
         result = resolve_field_list(
             fields, eventstore.Filter(start=before_now(hours=2), end=before_now(hours=1))

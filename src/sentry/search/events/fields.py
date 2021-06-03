@@ -270,9 +270,9 @@ FIELD_ALIASES = {
             KEY_TRANSACTION_ALIAS,
             KEY_TRANSACTION_ALIAS,
             expression_fn=lambda params: key_transaction_expression(
-                params.get("user_id"),
-                params.get("organization_id"),
-                params.get("project_id"),
+                params.user_id,
+                params.organization_id,
+                params.project_id,
             ),
             result_type="boolean",
         ),
@@ -280,17 +280,17 @@ FIELD_ALIASES = {
             PROJECT_THRESHOLD_CONFIG_ALIAS,
             PROJECT_THRESHOLD_CONFIG_ALIAS,
             expression_fn=lambda params: project_threshold_config_expression(
-                params.get("organization_id"),
-                params.get("project_id"),
+                params.organization_id,
+                params.project_id,
             ),
         ),
         PseudoField(
             TEAM_KEY_TRANSACTION_ALIAS,
             TEAM_KEY_TRANSACTION_ALIAS,
             expression_fn=lambda params: team_key_transaction_expression(
-                params.get("organization_id"),
-                params.get("team_id"),
-                params.get("project_id"),
+                params.organization_id,
+                params.team_id,
+                params.project_id,
             ),
             result_type="boolean",
         ),
@@ -597,8 +597,12 @@ def resolve_field(field, params=None, functions_acl=None):
 
 
 def resolve_function(field, match=None, params=None, functions_acl=False):
-    if params is not None and field in params.get("aliases", {}):
-        alias = params["aliases"][field]
+    if (
+        params is not None
+        and params.function_aliases is not None
+        and field in params.function_aliases
+    ):
+        alias = params.function_aliases[field]
         return ResolvedFunction(
             FunctionDetails(field, FUNCTIONS["percentage"], []),
             None,
@@ -1016,14 +1020,12 @@ class IntervalDefault(NumberRange):
         self.has_default = True
 
     def get_default(self, params):
-        if not params or not params.get("start") or not params.get("end"):
+        if not params or params.start is None or params.end is None:
             raise InvalidFunctionArgument("function called without default")
-        elif not isinstance(params.get("start"), datetime) or not isinstance(
-            params.get("end"), datetime
-        ):
+        elif not isinstance(params.start, datetime) or not isinstance(params.end, datetime):
             raise InvalidFunctionArgument("function called with invalid default")
 
-        interval = (params["end"] - params["start"]).total_seconds()
+        interval = (params.end - params.start).total_seconds()
         return int(interval)
 
 

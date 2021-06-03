@@ -4,9 +4,10 @@ from snuba_sdk.entity import Entity
 from snuba_sdk.expressions import Limit
 from snuba_sdk.query import Query
 
+from sentry.search.events.base import FilterParams
 from sentry.search.events.fields import QueryFields
 from sentry.search.events.filter import QueryFilter
-from sentry.search.events.types import ParamsType, SelectType
+from sentry.search.events.types import SelectType
 from sentry.utils.snuba import Dataset
 
 
@@ -16,7 +17,7 @@ class QueryBuilder(QueryFields, QueryFilter):
     def __init__(
         self,
         dataset: Dataset,
-        params: ParamsType,
+        params: FilterParams,
         query: Optional[str] = None,
         selected_columns: Optional[List[str]] = None,
         orderby: Optional[List[str]] = None,

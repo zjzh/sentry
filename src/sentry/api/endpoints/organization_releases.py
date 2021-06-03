@@ -48,18 +48,18 @@ _release_suffix = re.compile(r"^(.*)\s+\(([^)]+)\)\s*$")
 
 
 def add_environment_to_queryset(queryset, filter_params):
-    if "environment" in filter_params:
+    if filter_params.environment:
         return queryset.filter(
-            releaseprojectenvironment__environment__name__in=filter_params["environment"],
-            releaseprojectenvironment__project_id__in=filter_params["project_id"],
+            releaseprojectenvironment__environment__name__in=filter_params.environment,
+            releaseprojectenvironment__project_id__in=filter_params.project_id,
         )
     return queryset
 
 
 def add_date_filter_to_queryset(queryset, filter_params):
     """Once date has been coalesced over released and added, use it to filter releases"""
-    if filter_params["start"] and filter_params["end"]:
-        return queryset.filter(date__gte=filter_params["start"], date__lte=filter_params["end"])
+    if filter_params.start and filter_params.end:
+        return queryset.filter(date__gte=filter_params.start, date__lte=filter_params.end)
     return queryset
 
 
@@ -169,7 +169,7 @@ class OrganizationReleasesEndpoint(
 
         # This should get us all the projects into postgres that have received
         # health data in the last 24 hours.
-        debounce_update_release_health_data(organization, filter_params["project_id"])
+        debounce_update_release_health_data(organization, filter_params.project_id)
 
         queryset = Release.objects.filter(organization=organization)
 
@@ -204,9 +204,7 @@ class OrganizationReleasesEndpoint(
             select_extra["_for_project_id"] = "sentry_release_project.project_id"
 
         if sort == "date":
-            queryset = queryset.filter(projects__id__in=filter_params["project_id"]).order_by(
-                "-date"
-            )
+            queryset = queryset.filter(projects__id__in=filter_params.project_id).order_by("-date")
             paginator_kwargs["order_by"] = "-date"
         elif sort in (
             "crash_free_sessions",
@@ -224,8 +222,8 @@ class OrganizationReleasesEndpoint(
             paginator_cls = MergingOffsetPaginator
             paginator_kwargs.update(
                 data_load_func=lambda offset, limit: get_project_releases_by_stability(
-                    project_ids=filter_params["project_id"],
-                    environments=filter_params.get("environment"),
+                    project_ids=filter_params.project_id,
+                    environments=filter_params.environment,
                     scope=sort,
                     offset=offset,
                     stats_period=summary_stats_period,
@@ -253,7 +251,7 @@ class OrganizationReleasesEndpoint(
                 health_stat=health_stat,
                 health_stats_period=health_stats_period,
                 summary_stats_period=summary_stats_period,
-                environments=filter_params.get("environment") or None,
+                environments=filter_params.environment or None,
             ),
             **paginator_kwargs,
         )
@@ -434,7 +432,7 @@ class OrganizationReleasesStatsEndpoint(OrganizationReleasesBaseEndpoint, Enviro
 
         queryset = (
             Release.objects.filter(
-                organization=organization, projects__id__in=filter_params["project_id"]
+                organization=organization, projects__id__in=filter_params.project_id
             )
             .annotate(
                 date=F("date_added"),

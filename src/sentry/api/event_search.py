@@ -324,7 +324,7 @@ class SearchVisitor(NodeVisitor):
 
     def __init__(self, allow_boolean=True, params=None):
         self.allow_boolean = allow_boolean
-        self.params = params if params is not None else {}
+        self.params = params
         super().__init__()
 
     @cached_property

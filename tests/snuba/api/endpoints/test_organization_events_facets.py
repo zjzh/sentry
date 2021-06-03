@@ -559,7 +559,7 @@ class OrganizationEventsFacetsEndpointTest(SnubaTestCase, APITestCase):
                 )
         assert response.status_code == 400
 
-    @mock.patch("sentry.utils.snuba.quantize_time")
+    @mock.patch("sentry.search.events.base.quantize_time")
     def test_quantize_dates(self, mock_quantize):
         mock_quantize.return_value = before_now(days=1).replace(tzinfo=utc)
         with self.feature("organizations:discover-basic"):

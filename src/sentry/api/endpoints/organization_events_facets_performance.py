@@ -9,6 +9,7 @@ from rest_framework.response import Response
 from sentry import features, tagstore
 from sentry.api.bases import NoProjects, OrganizationEventsV2EndpointBase
 from sentry.api.paginator import GenericOffsetPaginator
+from sentry.search.events.base import FilterParams
 from sentry.snuba import discover
 from sentry.utils.snuba import Dataset
 
@@ -46,7 +47,7 @@ class OrganizationEventsFacetsPerformanceEndpointBase(OrganizationEventsV2Endpoi
         if aggregate_column not in ALLOWED_AGGREGATE_COLUMNS:
             raise ParseError(detail=f"'{aggregate_column}' is not a supported tags column.")
 
-        if len(params.get("project_id", [])) > 1:
+        if len(params.project_id) > 1:
             raise ParseError(detail="You cannot view facet performance for multiple projects.")
 
         return params, aggregate_column, filter_query
@@ -108,7 +109,7 @@ class OrganizationEventsFacetsPerformanceEndpoint(OrganizationEventsFacetsPerfor
                 request=request,
                 paginator=GenericOffsetPaginator(data_fn=data_fn),
                 on_results=lambda results: self.handle_results_with_meta(
-                    request, organization, params["project_id"], results
+                    request, organization, params.project_id, results
                 ),
                 default_per_page=5,
                 max_per_page=20,
@@ -172,7 +173,7 @@ class OrganizationEventsFacetsPerformanceHistogramEndpoint(
                 request=request,
                 paginator=GenericOffsetPaginator(data_fn=data_fn),
                 on_results=lambda results: self.handle_results_with_meta(
-                    request, organization, params["project_id"], results
+                    request, organization, params.project_id, results
                 ),
                 default_per_page=5,
                 max_per_page=10,
@@ -180,7 +181,7 @@ class OrganizationEventsFacetsPerformanceHistogramEndpoint(
 
 
 def query_tag_data(
-    params: Mapping[str, str],
+    params: FilterParams,
     filter_query: Optional[str] = None,
     aggregate_column: Optional[str] = None,
     referrer: Optional[str] = None,
@@ -230,7 +231,7 @@ def query_tag_data(
 
 
 def query_facet_performance(
-    params: Mapping[str, str],
+    params: FilterParams,
     tag_data: Mapping[str, Any],
     aggregate_column: Optional[str] = None,
     filter_query: Optional[str] = None,
@@ -336,7 +337,7 @@ def query_facet_performance(
 
 
 def query_facet_performance_key_histogram(
-    params: Mapping[str, str],
+    params: FilterParams,
     tag_data: Mapping[str, Any],
     tag_key: str,
     aggregate_column: Optional[str] = None,

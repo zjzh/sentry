@@ -15,6 +15,7 @@ from sentry.api.paginator import GenericOffsetPaginator
 from sentry.api.serializers import EventSerializer, SimpleEventSerializer, serialize
 from sentry.api.utils import InvalidParams, get_date_range_from_params
 from sentry.exceptions import InvalidSearchQuery
+from sentry.search.events.base import FilterParams
 from sentry.search.events.filter import get_filter
 from sentry.search.utils import InvalidQuery, parse_query
 
@@ -64,19 +65,19 @@ class GroupEventsEndpoint(GroupEndpoint, EnvironmentMixin):
     def _get_events_snuba(self, request, group, environments, query, tags, start, end):
         default_end = timezone.now()
         default_start = default_end - timedelta(days=90)
-        params = {
-            "group_ids": [group.id],
-            "project_id": [group.project_id],
-            "organization_id": group.project.organization_id,
-            "start": start if start else default_start,
-            "end": end if end else default_end,
-        }
+        params = FilterParams(
+            project_id=[group.project_id],
+            organization_id=group.project.organization_id,
+            start=start if start else default_start,
+            end=end if end else default_end,
+            group_id=[group.id],
+        )
         direct_hit_resp = get_direct_hit_response(request, query, params, "api.group-events")
         if direct_hit_resp:
             return direct_hit_resp
 
         if environments:
-            params["environment"] = [env.name for env in environments]
+            params.environment = [env.name for env in environments]
 
         full = request.GET.get("full", False)
         try:

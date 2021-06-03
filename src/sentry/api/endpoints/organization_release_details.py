@@ -85,7 +85,7 @@ class OrganizationReleaseDetailsPaginationMixin:
         queryset = Release.objects.filter(
             date_query_q,
             organization=org,
-            projects__id__in=filter_params["project_id"],
+            projects__id__in=filter_params.project_id,
         )
 
         # Add env filter
@@ -148,11 +148,11 @@ class OrganizationReleaseDetailsPaginationMixin:
         ):
             # Get primary results from snuba
             prev_and_next_releases_list = get_adjacent_releases_based_on_adoption(
-                project_id=filter_params["project_id"][0],
+                project_id=filter_params.project_id[0],
                 org_id=org.id,
                 release=release.version,
                 scope=sort,
-                environments=filter_params.get("environment"),
+                environments=filter_params.environment,
                 stats_period=stats_period,
             )
 

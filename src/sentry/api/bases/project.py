@@ -8,6 +8,7 @@ from sentry.api.utils import InvalidParams, get_date_range_from_params
 from sentry.auth.superuser import is_active_superuser
 from sentry.auth.system import is_system_auth
 from sentry.models import OrganizationMember, Project, ProjectRedirect, ProjectStatus, SentryApp
+from sentry.search.events.base import FilterParams
 from sentry.utils.sdk import bind_organization_context, configure_scope
 
 from .organization import OrganizationPermission
@@ -170,7 +171,7 @@ class ProjectEndpoint(Endpoint):
         kwargs["project"] = project
         return (args, kwargs)
 
-    def get_filter_params(self, request, project, date_filter_optional=False):
+    def get_filter_params(self, request, project, date_filter_optional=False) -> FilterParams:
         """Similar to the version on the organization just for a single project."""
         # get the top level params -- projects, time range, and environment
         # from the request
@@ -179,12 +180,19 @@ class ProjectEndpoint(Endpoint):
         except InvalidParams as e:
             raise ProjectEventsError(str(e))
 
-        environments = [env.name for env in get_environments(request, project.organization)]
-        params = {"start": start, "end": end, "project_id": [project.id]}
-        if environments:
-            params["environment"] = environments
+        environments = get_environments(request, project.organization)
 
-        return params
+        return FilterParams(
+            start=start,
+            end=end,
+            project_id=project.id,
+            organization_id=project.organization.id,
+            environment=[env.name for env in environments] if environments else None,
+            environment_objects=environments if environments else None,
+            team_id=None,
+            user_id=None,
+            function_aliases=[],
+        )
 
     def handle_exception(self, request, exc):
         if isinstance(exc, ProjectMoved):

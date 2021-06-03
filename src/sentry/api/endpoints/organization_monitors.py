@@ -39,7 +39,7 @@ class OrganizationMonitorsEndpoint(OrganizationEndpoint):
             return self.respond([])
 
         queryset = Monitor.objects.filter(
-            organization_id=organization.id, project_id__in=filter_params["project_id"]
+            organization_id=organization.id, project_id__in=filter_params.project_id
         ).exclude(status__in=[MonitorStatus.PENDING_DELETION, MonitorStatus.DELETION_IN_PROGRESS])
         query = request.GET.get("query")
         if query:

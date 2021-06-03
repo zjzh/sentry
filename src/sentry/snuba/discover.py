@@ -571,7 +571,7 @@ def top_events_timeseries(
         if "issue" in selected_columns:
             issues = Group.issues_mapping(
                 {event["issue.id"] for event in top_events["data"]},
-                params["project_id"],
+                params.project_id,
                 organization,
             )
         # so the result key is consistent
@@ -674,7 +674,7 @@ def get_facets(query, params, limit=10, referrer=None):
     multiplier = 1 / sample_rate if sample_rate is not None else 1
 
     fetch_projects = False
-    if len(params.get("project_id", [])) > 1:
+    if len(params.project_id) > 1:
         if len(top_tags) == limit:
             top_tags.pop()
         fetch_projects = True

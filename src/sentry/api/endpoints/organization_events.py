@@ -101,7 +101,7 @@ class OrganizationEventsV2Endpoint(OrganizationEventsV2EndpointBase):
                     self.handle_results_with_meta(
                         request,
                         organization,
-                        params["project_id"],
+                        params.project_id,
                         data_fn(0, self.get_per_page(request)),
                     )
                 )
@@ -110,7 +110,7 @@ class OrganizationEventsV2Endpoint(OrganizationEventsV2EndpointBase):
                     request=request,
                     paginator=GenericOffsetPaginator(data_fn=data_fn),
                     on_results=lambda results: self.handle_results_with_meta(
-                        request, organization, params["project_id"], results
+                        request, organization, params.project_id, results
                     ),
                 )
 
@@ -158,7 +158,7 @@ class OrganizationEventsGeoEndpoint(OrganizationEventsV2EndpointBase):
                 self.handle_results_with_meta(
                     request,
                     organization,
-                    params["project_id"],
+                    params.project_id,
                     # Expect Discover query output to be at most 251 rows, which corresponds
                     # to the number of possible two-letter country codes as defined in ISO 3166-1 alpha-2.
                     #

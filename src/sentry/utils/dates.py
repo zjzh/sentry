@@ -1,6 +1,6 @@
 import re
 from datetime import datetime, timedelta
-from typing import Any, Mapping, Union
+from typing import Union
 
 import pytz
 from dateutil.parser import parse
@@ -124,12 +124,14 @@ def get_interval_from_range(date_range: timedelta, high_fidelity: bool) -> str:
 
 def get_rollup_from_request(
     request: HttpRequest,
-    params: Mapping[str, Any],
+    params,
     default_interval: Union[None, str],
     error: Exception,
     top_events: int = 0,
 ) -> int:
-    date_range = params["end"] - params["start"]
+    assert isinstance(params.start, datetime), "start timestamp is required for rollup"
+    assert isinstance(params.end, datetime), "end timestamp is required for rollup"
+    date_range = params.end - params.start
 
     if default_interval is None:
         default_interval = get_interval_from_range(date_range, False)

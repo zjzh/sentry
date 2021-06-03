@@ -1,4 +1,3 @@
-from collections import namedtuple
 from datetime import datetime, timedelta
 
 import sentry_sdk
@@ -9,12 +8,9 @@ from sentry import features
 from sentry.api.bases import NoProjects, OrganizationEventsV2EndpointBase
 from sentry.api.paginator import GenericOffsetPaginator
 from sentry.search.events.fields import DateArg, parse_function
+from sentry.search.events.types import Alias
 from sentry.search.utils import InvalidQuery, parse_datetime_string
 from sentry.snuba import discover
-
-# converter is to convert the aggregate filter to snuba query
-Alias = namedtuple("Alias", "converter aggregate")
-
 
 # This is to flip conditions beteween trend types
 CORRESPONDENCE_MAP = {
@@ -194,13 +190,13 @@ class OrganizationEventsTrendsEndpointBase(OrganizationEventsV2EndpointBase):
                     middle = parse_datetime_string(middle_date)
                 except InvalidQuery:
                     raise ParseError(detail=f"{middle_date} is not a valid date format")
-                if middle <= params["start"] or middle >= params["end"]:
+                if middle <= params.start or middle >= params.end:
                     raise ParseError(
                         detail="The middle date should be within the duration of the query"
                     )
             else:
-                middle = params["start"] + timedelta(
-                    seconds=(params["end"] - params["start"]).total_seconds() * 0.5
+                middle = params.start + timedelta(
+                    seconds=(params.end - params.start).total_seconds() * 0.5
                 )
             middle = datetime.strftime(middle, DateArg.date_format)
 
@@ -208,7 +204,7 @@ class OrganizationEventsTrendsEndpointBase(OrganizationEventsV2EndpointBase):
         if trend_type not in TREND_TYPES:
             raise ParseError(detail=f"{trend_type} is not a supported trend type")
 
-        params["aliases"] = self.get_function_aliases(trend_type)
+        params.function_aliases = self.get_function_aliases(trend_type)
 
         trend_function = request.GET.get("trendFunction", "p50()")
         function, columns, alias = parse_function(trend_function)
@@ -286,7 +282,7 @@ class OrganizationEventsTrendsStatsEndpoint(OrganizationEventsTrendsEndpointBase
 
             return {
                 "events": self.handle_results_with_meta(
-                    request, organization, params["project_id"], events_results
+                    request, organization, params.project_id, events_results
                 ),
                 "stats": stats_results,
             }
@@ -299,5 +295,5 @@ class OrganizationEventsTrendsEndpoint(OrganizationEventsTrendsEndpointBase):
         self, request, organization, params, trend_function, selected_columns, orderby, query
     ):
         return lambda events_results: self.handle_results_with_meta(
-            request, organization, params["project_id"], events_results
+            request, organization, params.project_id, events_results
         )
