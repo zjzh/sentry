@@ -24,11 +24,13 @@ enum Actions {
   CREATE_ALERT_LATER,
 }
 
-const UNIQUE_USER_FREQUENCY_CONDITION =
+export const UNIQUE_USER_FREQUENCY_CONDITION =
   'sentry.rules.conditions.event_frequency.EventUniqueUserFrequencyCondition';
-const EVENT_FREQUENCY_CONDITION =
+export const EVENT_FREQUENCY_CONDITION =
   'sentry.rules.conditions.event_frequency.EventFrequencyCondition';
-const NOTIFY_EVENT_ACTION = 'sentry.rules.actions.notify_event.NotifyEventAction';
+export const NOTIFY_EVENT_ACTION = 'sentry.rules.actions.notify_event.NotifyEventAction';
+export const FIRST_SEEN_EVENT_CONDITION =
+  'sentry.rules.conditions.first_seen_event.FirstSeenEventCondition';
 
 const METRIC_CONDITION_MAP = {
   [MetricValues.ERRORS]: EVENT_FREQUENCY_CONDITION,

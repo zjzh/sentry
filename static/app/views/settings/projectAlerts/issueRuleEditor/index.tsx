@@ -5,6 +5,7 @@ import classNames from 'classnames';
 import cloneDeep from 'lodash/cloneDeep';
 import omit from 'lodash/omit';
 import set from 'lodash/set';
+import * as qs from 'query-string';
 
 import {
   addErrorMessage,
@@ -17,6 +18,7 @@ import Feature from 'app/components/acl/feature';
 import Alert from 'app/components/alert';
 import Button from 'app/components/button';
 import Confirm from 'app/components/confirm';
+import Link from 'app/components/links/link';
 import List from 'app/components/list';
 import ListItem from 'app/components/list/listItem';
 import LoadingMask from 'app/components/loadingMask';
@@ -48,6 +50,7 @@ import Form from 'app/views/settings/components/forms/form';
 import SelectField from 'app/views/settings/components/forms/selectField';
 
 import RuleNodeList from './ruleNodeList';
+import {convertIssueAlertToQuery} from './utils';
 
 const FREQUENCY_CHOICES = [
   ['5', t('5 minutes')],
@@ -112,6 +115,7 @@ type State = AsyncView['state'] & {
   } | null;
   uuid: null | string;
   rule?: UnsavedIssueAlertRule | IssueAlertRule | null;
+  issueMatchCount?: number;
 };
 
 function isSavedAlertRule(rule: State['rule']): rule is IssueAlertRule {
@@ -214,6 +218,23 @@ class IssueRuleEditor extends AsyncView<Props, State> {
       this.setState({loading: false});
     }
   };
+
+  async fetchIssueCount() {
+    const {project, organization} = this.props;
+    const {filters, conditions} = this.state.rule || {};
+    const issueQuery = convertIssueAlertToQuery(conditions, filters);
+
+    const url = `/organizations/${organization.slug}/issues-count/`;
+    const response = await this.api.requestPromise(url, {
+      method: 'GET',
+      data: qs.stringify({
+        query: issueQuery,
+        project: project.id,
+      }),
+    });
+
+    this.setState({issueMatchCount: (Object.values(response)[0] as number) ?? 0});
+  }
 
   fetchStatus() {
     // pollHandler calls itself until it gets either a success
@@ -355,6 +376,7 @@ class IssueRuleEditor extends AsyncView<Props, State> {
   };
 
   handleChange = <T extends keyof IssueAlertRule>(prop: T, val: IssueAlertRule[T]) => {
+    this.fetchIssueCount();
     this.setState(prevState => {
       const clonedState = cloneDeep(prevState);
       set(clonedState, `rule[${prop}]`, val);
@@ -368,6 +390,7 @@ class IssueRuleEditor extends AsyncView<Props, State> {
     prop: T,
     val: IssueAlertRuleAction[T]
   ) => {
+    this.fetchIssueCount();
     this.setState(prevState => {
       const clonedState = cloneDeep(prevState);
       set(clonedState, `rule[${type}][${idx}][${prop}]`, val);
@@ -505,7 +528,7 @@ class IssueRuleEditor extends AsyncView<Props, State> {
 
   renderBody() {
     const {project, organization, teams} = this.props;
-    const {environments} = this.state;
+    const {environments, issueMatchCount} = this.state;
     const environmentChoices = [
       [ALL_ENVIRONMENTS_KEY, t('All Environments')],
       ...(environments?.map(env => [env.name, getDisplayName(env)]) ?? []),
@@ -526,6 +549,8 @@ class IssueRuleEditor extends AsyncView<Props, State> {
     if (ownerId) {
       filteredTeamIds.add(ownerId);
     }
+
+    const issueQuery = convertIssueAlertToQuery(conditions, filters);
 
     // Note `key` on `<Form>` below is so that on initial load, we show
     // the form with a loading mask on top of it, but force a re-render by using
@@ -824,6 +849,20 @@ class IssueRuleEditor extends AsyncView<Props, State> {
                       </StepContent>
                     </StepContainer>
                   </Step>
+                  <StyledPanelFooter>
+                    {issueMatchCount} issues match these filters.{' '}
+                    <Link
+                      to={{
+                        pathname: `/organizations/${organization.slug}/issues/`,
+                        query: {
+                          query: issueQuery,
+                          project: project.id,
+                        },
+                      }}
+                    >
+                      View issues
+                    </Link>
+                  </StyledPanelFooter>
                 </PanelBody>
               </ConditionsPanel>
               <StyledListItem>{t('Set action interval')}</StyledListItem>
@@ -860,7 +899,6 @@ const StyledForm = styled(Form)<Form['props']>`
 
 const ConditionsPanel = styled(Panel)`
   padding-top: ${space(0.5)};
-  padding-bottom: ${space(2)};
 `;
 
 const StyledAlert = styled(Alert)`
@@ -943,4 +981,10 @@ const StyledField = styled(Field)`
   :last-child {
     padding-bottom: ${space(2)};
   }
+`;
+
+const StyledPanelFooter = styled('div')`
+  border-top: 1px solid ${p => p.theme.border};
+  padding: ${space(1)} ${space(3)};
+  font-size: ${p => p.theme.fontSizeMedium};
 `;
