@@ -49,8 +49,8 @@ import Field from 'app/views/settings/components/forms/field';
 import Form from 'app/views/settings/components/forms/form';
 import SelectField from 'app/views/settings/components/forms/selectField';
 
+import {convertIssueAlertToQuery} from './convertRuleToQuery';
 import RuleNodeList from './ruleNodeList';
-import {convertIssueAlertToQuery} from './utils';
 
 const FREQUENCY_CHOICES = [
   ['5', t('5 minutes')],
@@ -228,7 +228,7 @@ class IssueRuleEditor extends AsyncView<Props, State> {
     const response = await this.api.requestPromise(url, {
       method: 'GET',
       data: qs.stringify({
-        query: issueQuery,
+        ...issueQuery,
         project: project.id,
       }),
     });
@@ -855,7 +855,7 @@ class IssueRuleEditor extends AsyncView<Props, State> {
                       to={{
                         pathname: `/organizations/${organization.slug}/issues/`,
                         query: {
-                          query: issueQuery,
+                          ...issueQuery,
                           project: project.id,
                         },
                       }}
