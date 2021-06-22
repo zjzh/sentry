@@ -263,7 +263,7 @@ class WidgetCardChart extends React.Component<WidgetCardChartProps> {
       formatter: (seriesName: string) => {
         const arg = getAggregateArg(seriesName);
         if (arg !== null) {
-          const slug = getMeasurementSlug(arg);
+          const slug = getMeasurementSlug(arg[0]);
           if (slug !== null) {
             seriesName = slug.toUpperCase();
           }

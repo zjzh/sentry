@@ -46,6 +46,14 @@ describe('getAggregateAlias', function () {
     expect(
       getAggregateAlias('to_other(release,"release:beta@1.1.1 (2)",others,current)')
     ).toEqual('to_other_release__release_beta_1_1_1__2___others_current');
+
+    expect(
+      getAggregateAlias(
+        'to_other(release,"release:lol,(commas) and (function(looking, things))",others,current)'
+      )
+    ).toEqual(
+      'to_other_release__release_lol__commas__and__function_looking__things____others_current'
+    );
   });
 });
 

@@ -39,6 +39,14 @@ type ParameterDescription =
       value: FieldValue | null;
       options: FieldValueOption[];
       required: boolean;
+    }
+  | {
+      kind: 'dropdown';
+      value: ColumnType;
+      options: SelectValue<string>;
+      dataType: ColumnType;
+      required: boolean;
+      placeholder?: string;
     };
 
 type Props = {
@@ -146,6 +154,8 @@ class QueryField extends React.Component<Props> {
           }
         } else if (param.kind === 'value') {
           fieldValue.function[i + 1] = param.defaultValue || '';
+        } else if (param.kind === 'dropdown') {
+          fieldValue.function[i + 1] = param.defaultValue || '';
         }
       });
 
@@ -177,20 +187,24 @@ class QueryField extends React.Component<Props> {
     this.triggerChange(newColumn);
   };
 
-  handleScalarParameterChange = (value: string) => {
-    const newColumn = cloneDeep(this.props.fieldValue);
-    if (newColumn.kind === 'function') {
-      newColumn.function[1] = value;
-    }
-    this.triggerChange(newColumn);
+  handleDropdownParameterChange = (index: number) => {
+    return (value: string) => {
+      const newColumn = cloneDeep(this.props.fieldValue);
+      if (newColumn.kind === 'function') {
+        newColumn.function[index] = value.value;
+      }
+      this.triggerChange(newColumn);
+    };
   };
 
-  handleRefinementChange = (value: string) => {
-    const newColumn = cloneDeep(this.props.fieldValue);
-    if (newColumn.kind === 'function') {
-      newColumn.function[2] = value;
-    }
-    this.triggerChange(newColumn);
+  handleScalarParameterChange = (index: number) => {
+    return (value: string) => {
+      const newColumn = cloneDeep(this.props.fieldValue);
+      if (newColumn.kind === 'function') {
+        newColumn.function[index] = value;
+      }
+      this.triggerChange(newColumn);
+    };
   };
 
   triggerChange(fieldValue: QueryFieldValue) {
@@ -288,6 +302,18 @@ class QueryField extends React.Component<Props> {
                   validateColumnTypes(param.columnTypes as ValidateColumnTypes, value)
               ),
             };
+          } else if (param.kind === 'dropdown') {
+            return {
+              kind: 'dropdown',
+              options: param.options,
+              dataType: param.dataType,
+              required: param.required,
+              placeholder: param.placeholder,
+              value:
+                (fieldValue.kind === 'function' && fieldValue.function[index + 1]) ||
+                param.defaultValue ||
+                '',
+            };
           }
 
           return {
@@ -354,13 +380,10 @@ class QueryField extends React.Component<Props> {
         );
       }
       if (descriptor.kind === 'value') {
-        const handler =
-          index === 0 ? this.handleScalarParameterChange : this.handleRefinementChange;
-
         const inputProps = {
           required: descriptor.required,
           value: descriptor.value,
-          onUpdate: handler,
+          onUpdate: this.handleScalarParameterChange(index + 1),
           placeholder: descriptor.placeholder,
           disabled,
         };
@@ -397,6 +420,21 @@ class QueryField extends React.Component<Props> {
               />
             );
         }
+      }
+      if (descriptor.kind === 'dropdown') {
+        return (
+          <SelectControl
+            key="dropdown-select"
+            name="dropdown"
+            placeholder={t('Select value')}
+            options={descriptor.options}
+            value={descriptor.value}
+            required={descriptor.required}
+            onChange={this.handleDropdownParameterChange(index + 1)}
+            inFieldLabel={inFieldLabels ? t('Parameter: ') : undefined}
+            disabled={disabled}
+          />
+        );
       }
       throw new Error(`Unknown parameter type encountered for ${this.props.fieldValue}`);
     });
@@ -515,10 +553,14 @@ class QueryField extends React.Component<Props> {
       );
     }
 
+    // if there's more than 2 parameters, set gridColumns to 2 so they go onto the next line instead
+    const columns =
+      parameters.length > 2 ? 2 : gridColumns ? gridColumns : parameters.length + 1;
     return (
       <Container
         className={className}
-        gridColumns={gridColumns ? gridColumns : parameters.length + 1}
+        gridColumns={columns}
+        tripleLayout={parameters.length > 2 && gridColumns === 3}
       >
         {!hidePrimarySelector && (
           <SelectControl
@@ -557,9 +599,12 @@ function validateColumnTypes(
   return columnTypes.includes(input.meta.dataType);
 }
 
-const Container = styled('div')<{gridColumns: number}>`
+const Container = styled('div')<{gridColumns: number; tripleLayout: boolean}>`
   display: grid;
-  grid-template-columns: repeat(${p => p.gridColumns}, 1fr);
+  ${p =>
+    p.tripleLayout
+      ? `grid-template-columns: 1fr 2fr;`
+      : `grid-template-columns: repeat(${p.gridColumns}, 1fr);`}
   grid-column-gap: ${space(1)};
   align-items: center;
 
