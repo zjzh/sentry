@@ -31,15 +31,8 @@ updates:
       - dependency-name: "@sentry/release-parser"
       - dependency-name: "@size-limit/preset-small-lib"
       - dependency-name: "@types/echarts"
-      - dependency-name: "@types/jquery"
       - dependency-name: "@types/marked"
-      - dependency-name: "@types/react-router"
-      - dependency-name: "@types/react-select"
-      - dependency-name: "@types/reflux"
-      - dependency-name: "@visual-snapshot/jest"
       - dependency-name: "@wojtekmaj/enzyme-adapter-react-17"
-      - dependency-name: "babel-jest"
-      - dependency-name: "bootstrap"
       - dependency-name: "clean-webpack-plugin"
       - dependency-name: "compression-webpack-plugin"
       - dependency-name: "copy-text-to-clipboard"
@@ -51,23 +44,51 @@ updates:
       - dependency-name: "eslint-plugin-simple-import-sort"
       - dependency-name: "fuse.js"
       - dependency-name: "gettext-parser"
-      - dependency-name: "jest"
-      - dependency-name: "jest-circus"
-      - dependency-name: "jest-junit"
-      - dependency-name: "jquery"
       - dependency-name: "less"
       - dependency-name: "less-loader"
       - dependency-name: "marked"
       - dependency-name: "mini-css-extract-plugin"
       - dependency-name: "react-date-range"
       - dependency-name: "react-lazyload"
-      - dependency-name: "react-popper"
       - dependency-name: "react-refresh"
-      - dependency-name: "react-router"
-      - dependency-name: "react-select"
-      - dependency-name: "reflux"
       - dependency-name: "rrweb"
       - dependency-name: "rrweb-player"
       - dependency-name: "size-limit"
       - dependency-name: "terser-webpack-plugin"
       - dependency-name: "u2f-api"
+
+      # Jest will be upgraded soon in https://github.com/getsentry/sentry/pull/26393
+      - dependency-name: "jest"
+      - dependency-name: "jest-circus"
+      - dependency-name: "jest-junit"
+      - dependency-name: "babel-jest"
+      - dependency-name: "@visual-snapshot/jest"
+
+      # We use 3 javascript parts of bootstrap. All of the less styles have
+      # been vendored already
+      - dependency-name: "bootstrap"
+
+      # Hopefully we can get rid of this somewhat soon.. but for now bootstrap
+      # and the app still needs it in a few places...
+      - dependency-name: "jquery"
+      - dependency-name: "@types/jquery"
+
+      # Going from 1.x -> 2.x is a pretty big refactoring in terms of how
+      # popper is used.
+      - dependency-name: "react-popper"
+
+      # In 4.x the values provided to onChange have changed (for the better).
+      # But this will require some refactoring. This holds part of our app on
+      # emotion 10.
+      - dependency-name: "react-select"
+      - dependency-name: "@types/react-select"
+
+      # We're stuck on react-router 3.x until we figure out how to use 5.x
+      - dependency-name: "react-router"
+      - dependency-name: "@types/react-router"
+
+      # We're stuck on very old reflux as we'll likely deprecate this
+      # sometime in the near-term for something more modern like
+      # react-contexts, recoil, mobx, etc
+      - dependency-name: "reflux"
+      - dependency-name: "@types/reflux"
