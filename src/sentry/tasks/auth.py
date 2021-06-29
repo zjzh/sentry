@@ -19,6 +19,7 @@ from sentry.models import (
     UserEmail,
 )
 from sentry.tasks.base import instrumented_task
+from sentry.utils.auth import EmailVerificationRequirementChecker
 from sentry.utils.email import MessageBuilder
 from sentry.utils.http import absolute_uri
 
@@ -66,24 +67,36 @@ class OrganizationComplianceTask(abc.ABC):
 
     log_label = ""
 
+    def __init__(self, org_id):
+        self.org = Organization.objects.get_from_cache(id=org_id)
+
     @abc.abstractmethod
     def is_compliant(self, member: OrganizationMember) -> bool:
         """Check whether a member complies with the new requirement."""
         raise NotImplementedError()
 
     @abc.abstractmethod
-    def call_to_action(self, org: Organization, user: User, member: OrganizationMember):
+    def call_to_action(self, user: User, member: OrganizationMember):
         """Prompt a member to comply with the new requirement."""
         raise NotImplementedError()
 
-    def remove_non_compliant_members(self, org_id, actor_id, actor_key_id, ip_address):
-        org = Organization.objects.get_from_cache(id=org_id)
+    def check_feature(self):
+        return True
+
+    def remove_non_compliant_members(self, actor_id, actor_key_id, ip_address):
+        if not self.check_feature():
+            return
+
         actor = User.objects.get(id=actor_id) if actor_id else None
         actor_key = ApiKey.objects.get(id=actor_key_id) if actor_key_id else None
 
         def remove_member(member):
             user = member.user
-            logging_data = {"organization_id": org.id, "user_id": user.id, "member_id": member.id}
+            logging_data = {
+                "organization_id": self.org.id,
+                "user_id": user.id,
+                "member_id": member.id,
+            }
 
             try:
                 member.remove_user()
@@ -103,15 +116,15 @@ class OrganizationComplianceTask(abc.ABC):
                     ip_address=ip_address,
                     event=AuditLogEntryEvent.MEMBER_PENDING,
                     data=member.get_audit_log_data(),
-                    organization=org,
-                    target_object=org.id,
+                    organization=self.org,
+                    target_object=self.org.id,
                     target_user=user,
                 )
 
-                self.call_to_action(org, user, member)
+                self.call_to_action(user, member)
 
         for member in OrganizationMember.objects.select_related("user").filter(
-            organization=org, user__isnull=False
+            organization=self.org, user__isnull=False
         ):
             if not self.is_compliant(member):
                 remove_member(member)
@@ -123,11 +136,11 @@ class TwoFactorComplianceTask(OrganizationComplianceTask):
     def is_compliant(self, member: OrganizationMember) -> bool:
         return Authenticator.objects.user_has_2fa(member.user)
 
-    def call_to_action(self, org: Organization, user: User, member: OrganizationMember):
+    def call_to_action(self, user: User, member: OrganizationMember):
         # send invite to setup 2fa
-        email_context = {"url": member.get_invite_link(), "organization": org}
+        email_context = {"url": member.get_invite_link(), "organization": self.org}
         subject = "{} {} Mandatory: Enable Two-Factor Authentication".format(
-            options.get("mail.subject-prefix"), org.name.capitalize()
+            options.get("mail.subject-prefix"), self.org.name.capitalize()
         )
         message = MessageBuilder(
             subject=subject,
@@ -146,18 +159,23 @@ class TwoFactorComplianceTask(OrganizationComplianceTask):
     max_retries=5,
 )
 def remove_2fa_non_compliant_members(org_id, actor_id=None, actor_key_id=None, ip_address=None):
-    TwoFactorComplianceTask().remove_non_compliant_members(
-        org_id, actor_id, actor_key_id, ip_address
-    )
+    TwoFactorComplianceTask(org_id).remove_non_compliant_members(actor_id, actor_key_id, ip_address)
 
 
 class VerifiedEmailComplianceTask(OrganizationComplianceTask):
     log_label = "verified email"
 
-    def is_compliant(self, member: OrganizationMember) -> bool:
-        return UserEmail.get_primary_email(member.user).is_verified
+    def __init__(self, org_id):
+        super().__init__(org_id)
+        self.checker = EmailVerificationRequirementChecker(self.org)
 
-    def call_to_action(self, org: Organization, user: User, member: OrganizationMember):
+    def check_feature(self):
+        return features.has("organizations:required-email-verification", self.org)
+
+    def is_compliant(self, member: OrganizationMember) -> bool:
+        return self.checker.is_compliant(member)
+
+    def call_to_action(self, user: User, member: OrganizationMember):
         import django.contrib.auth.models
 
         if isinstance(user, django.contrib.auth.models.User):
@@ -176,10 +194,10 @@ class VerifiedEmailComplianceTask(OrganizationComplianceTask):
             ),
             "invite_url": member.get_invite_link(),
             "email": email.email,
-            "organization": org,
+            "organization": self.org,
         }
         subject = "{} {} Mandatory: Verify Email Address".format(
-            options.get("mail.subject-prefix"), org.name.capitalize()
+            options.get("mail.subject-prefix"), self.org.name.capitalize()
         )
         message = MessageBuilder(
             subject=subject,
@@ -200,8 +218,6 @@ class VerifiedEmailComplianceTask(OrganizationComplianceTask):
 def remove_email_verification_non_compliant_members(
     org_id, actor_id=None, actor_key_id=None, ip_address=None
 ):
-    org = Organization.objects.get_from_cache(id=org_id)
-    if features.has("organizations:required-email-verification", org):
-        VerifiedEmailComplianceTask().remove_non_compliant_members(
-            org_id, actor_id, actor_key_id, ip_address
-        )
+    VerifiedEmailComplianceTask(org_id).remove_non_compliant_members(
+        actor_id, actor_key_id, ip_address
+    )

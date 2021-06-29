@@ -11,12 +11,11 @@ from sentry.models import (
     AuthIdentity,
     AuthProvider,
     OrganizationMember,
-    User,
-    UserEmail,
 )
 from sentry.signals import member_joined
 from sentry.utils import metrics
 from sentry.utils.audit import create_audit_entry
+from sentry.utils.auth import EmailVerificationRequirementChecker
 
 INVITE_COOKIE = "pending-invite"
 COOKIE_MAX_AGE = 60 * 60 * 24 * 7  # 7 days
@@ -223,11 +222,7 @@ class ApiInviteHelper:
         ):
             return False
 
-        user = self.request.user
-        primary_email_is_verified = (
-            isinstance(user, User) and UserEmail.get_primary_email(user).is_verified
-        )
-        return not primary_email_is_verified
+        return EmailVerificationRequirementChecker(organization).is_compliant(self.om)
 
     def get_onboarding_steps(self) -> Dict[str, bool]:
         return {

@@ -7,7 +7,16 @@ from django.contrib.auth.backends import ModelBackend
 from django.urls import resolve, reverse
 from django.utils.http import is_safe_url
 
-from sentry.models import Authenticator, User
+from sentry import features
+from sentry.models import (
+    Authenticator,
+    AuthIdentity,
+    AuthProvider,
+    Organization,
+    OrganizationMember,
+    User,
+    UserEmail,
+)
 
 logger = logging.getLogger("sentry.auth")
 
@@ -289,3 +298,53 @@ class EmailAuthBackend(ModelBackend):
     # conditionally importing).
     def user_can_authenticate(self, user):
         return True
+
+
+class EmailVerificationRequirementChecker:
+    def __init__(self, organization: Organization) -> None:
+        self.organization = organization
+        self.has_feature = features.has(
+            "organizations:required-email-verification", self.organization
+        )
+        if self.has_feature:
+            self.required_auth_providers = tuple(
+                provider
+                for provider in AuthProvider.objects.filter(organization=organization)
+                if not provider.flags.allow_unlinked
+            )
+
+    def is_compliant(self, member: OrganizationMember) -> bool:
+        """Check an organization's email verification requirement.
+
+        If the organization requires SSO, then the user must have
+        verified an email address associated with the SSO provider. Else,
+        their primary email address must be verified.
+
+        The argument must belong to the organization for which this
+        object was initialized.
+        """
+
+        if not self.has_feature:
+            return True
+
+        if member.organization != self.organization:
+            raise ValueError(
+                f"OrganizationMember ({member.id}) does not belong to "
+                f"this object's Organization ({self.organization.slug})"
+            )
+
+        if self.required_auth_providers:
+            return any(
+                self._has_verified_email_from(member, provider)
+                for provider in self.required_auth_providers
+            )
+        else:
+            return UserEmail.get_primary_email(member.user).is_verified
+
+    @staticmethod
+    def _has_verified_email_from(member: OrganizationMember, auth_provider: AuthProvider) -> bool:
+        auth_identity = AuthIdentity.objects.get(user=member.user, auth_provider=auth_provider)
+        user_email = UserEmail.objects.get(
+            # TODO: Recover from auth_identity how exactly?
+        )
+        return user_email.is_verified
