@@ -4,6 +4,7 @@ import styled from '@emotion/styled';
 import {Location} from 'history';
 
 import {SectionHeading} from 'app/components/charts/styles';
+import EmptyStateWarning from 'app/components/emptyStateWarning';
 import SearchBar from 'app/components/events/searchBar';
 import {getParams} from 'app/components/organizations/globalSelectionHeader/getParams';
 import QuestionTooltip from 'app/components/questionTooltip';
@@ -100,23 +101,23 @@ const InnerContent = (
   const {eventView: _eventView, location, organization, tableData} = props;
   const eventView = _eventView.clone();
 
-  if (!tableData) {
-    return null;
-  }
-
-  const tagOptions = getTagKeyOptions(tableData);
+  const tagOptions = tableData ? getTagKeyOptions(tableData) : null;
+  const suspectTags = tagOptions ? tagOptions.suspectTags : [];
+  const otherTags = tagOptions ? tagOptions.otherTags : [];
 
   const decodedTagKey = decodeSelectedTagKey(location);
 
-  const allTags = [...tagOptions.suspectTags, ...tagOptions.otherTags];
+  const allTags = [...suspectTags, ...otherTags];
   const decodedTagFromOptions = decodedTagKey
     ? allTags.find(tag => tag === decodedTagKey)
     : undefined;
 
-  const defaultTag = tagOptions.suspectTags.length
-    ? tagOptions.suspectTags[0]
-    : tagOptions.otherTags.length
-    ? tagOptions.otherTags[0]
+  const defaultTag = tagOptions
+    ? tagOptions.suspectTags.length
+      ? tagOptions.suspectTags[0]
+      : tagOptions.otherTags.length
+      ? tagOptions.otherTags[0]
+      : ''
     : '';
 
   const initialTag = decodedTagFromOptions ?? defaultTag;
@@ -166,8 +167,8 @@ const InnerContent = (
   return (
     <ReversedLayoutBody>
       <TagsSideBar
-        suspectTags={tagOptions.suspectTags}
-        otherTags={tagOptions.otherTags}
+        suspectTags={suspectTags}
+        otherTags={otherTags}
         tagSelected={tagSelected}
         changeTag={changeTag}
       />
@@ -194,9 +195,10 @@ const TagsSideBar = (props: {
   otherTags: TagOption[];
 }) => {
   const {suspectTags, otherTags, changeTag, tagSelected} = props;
+  const noTagKeys = !suspectTags.length && !otherTags.length;
   return (
     <StyledSide>
-      {suspectTags.length ? (
+      {noTagKeys || suspectTags.length ? (
         <React.Fragment>
           <StyledSectionHeading>
             {t('Suspect Tags')}
@@ -218,6 +220,11 @@ const TagsSideBar = (props: {
               <SidebarTagValue className="truncate">{tag}</SidebarTagValue>
             </RadioLabel>
           ))}
+          {noTagKeys ? (
+            <EmptyStateWarning>
+              <p>{t('No results found for your query')}</p>
+            </EmptyStateWarning>
+          ) : null}
 
           <SidebarSpacer />
         </React.Fragment>
