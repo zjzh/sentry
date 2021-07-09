@@ -127,7 +127,18 @@ class ColumnEditCollection extends React.Component<Props, State> {
 
   handleUpdateColumn = (index: number, column: Column) => {
     const newColumns = [...this.props.columns];
-    if (isEquationColumn(column)) {
+    // Check if the column that is being updated has a duplicate
+    const isDuplicate = newColumns.filter(
+      newColumn => {
+        const oldColumn = newColumns[index];
+        return (oldColumn.kind !== 'equation' && 
+          (oldColumn.kind === 'function' && newColumn.kind === 'function' && oldColumn.function === newColumn.function) ||
+          (oldColumn.kind === 'field' && newColumn.kind === 'field' && oldColumn.field === newColumn.field)
+        )
+      }
+    ).length > 1;
+    // Update any equations that contain the existing column
+    if (!isDuplicate && isEquationColumn(column)) {
       const existingColumn = generateFieldAsString(newColumns[index]);
       const addedColumn = generateFieldAsString(column);
       const isAggregate = isAggregateField(addedColumn);
