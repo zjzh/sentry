@@ -5,7 +5,7 @@ import isEqual from 'lodash/isEqual';
 import {t} from 'app/locale';
 import overflowEllipsis from 'app/styles/overflowEllipsis';
 import space from 'app/styles/space';
-import {Column, generateFieldAsString, getColumnType} from 'app/utils/discover/fields';
+import {Column, generateFieldAsString, isEquationColumn} from 'app/utils/discover/fields';
 import Input from 'app/views/settings/components/forms/controls/input';
 
 const NONE_SELECTED = -1;
@@ -346,16 +346,7 @@ function makeFieldOptions(
 ): DropdownOptionGroup {
   const options = columns
     .filter(({kind}) => kind !== 'equation')
-    .filter(option => {
-      // Any isn't allowed in arithmetic
-      if (option.kind === 'function' && option.function[0] === 'any') {
-        return false;
-      }
-      const columnType = getColumnType(option);
-      return (
-        columnType === 'number' || columnType === 'integer' || columnType === 'duration'
-      );
-    })
+    .filter(option => isEquationColumn(option))
     .map(option => ({
       kind: 'field' as const,
       active: false,

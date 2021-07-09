@@ -11,7 +11,14 @@ import {t} from 'app/locale';
 import space from 'app/styles/space';
 import {LightWeightOrganization} from 'app/types';
 import {trackAnalyticsEvent} from 'app/utils/analytics';
-import {AGGREGATIONS, Column} from 'app/utils/discover/fields';
+import {
+  AGGREGATIONS,
+  Column,
+  generateFieldAsString,
+  isAggregateEquation,
+  isAggregateField,
+  isEquationColumn,
+} from 'app/utils/discover/fields';
 import theme from 'app/utils/theme';
 import {getPointerPosition} from 'app/utils/touch';
 import {setBodyUserSelect, UserSelectValues} from 'app/utils/userselect';
@@ -120,6 +127,24 @@ class ColumnEditCollection extends React.Component<Props, State> {
 
   handleUpdateColumn = (index: number, column: Column) => {
     const newColumns = [...this.props.columns];
+    if (isEquationColumn(column)) {
+      const existingColumn = generateFieldAsString(newColumns[index]);
+      const addedColumn = generateFieldAsString(column);
+      const isAggregate = isAggregateField(addedColumn);
+      for (let i = 0; i < newColumns.length; i++) {
+        const newColumn = newColumns[i];
+        // if the existing equation matches this column type
+        if (
+          newColumn.kind === 'equation' &&
+          isAggregateEquation(newColumn.field, true) === isAggregate
+        ) {
+          newColumns[i] = {
+            kind: 'equation',
+            field: newColumn.field.replaceAll(existingColumn, addedColumn),
+          };
+        }
+      }
+    }
     newColumns.splice(index, 1, column);
     this.props.onChange(newColumns);
   };

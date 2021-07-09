@@ -804,10 +804,19 @@ export function getEquation(field: string): string {
   return field.slice(EQUATION_PREFIX.length);
 }
 
-export function isAggregateEquation(field: string): boolean {
+export function isAggregateEquation(field: string, ignorePrefix = false): boolean {
   const results = field.match(AGGREGATE_BASE);
 
-  return isEquation(field) && results !== null && results.length > 0;
+  return (ignorePrefix || isEquation(field)) && results !== null && results.length > 0;
+}
+
+export function isEquationColumn(column: Column): boolean {
+  // Any isn't allowed in arithmetic
+  if (column.kind === 'function' && column.function[0] === 'any') {
+    return false;
+  }
+  const columnType = getColumnType(column);
+  return columnType === 'number' || columnType === 'integer' || columnType === 'duration';
 }
 
 export function generateAggregateFields(
