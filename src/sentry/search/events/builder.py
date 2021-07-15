@@ -4,13 +4,12 @@ from snuba_sdk.entity import Entity
 from snuba_sdk.expressions import Limit
 from snuba_sdk.query import Query
 
-from sentry.search.events.fields import QueryFields
 from sentry.search.events.filter import QueryFilter
 from sentry.search.events.types import ParamsType, SelectType
 from sentry.utils.snuba import Dataset
 
 
-class QueryBuilder(QueryFilter, QueryFields):
+class QueryBuilder(QueryFilter):
     """Builds a snql query"""
 
     def __init__(
@@ -31,7 +30,7 @@ class QueryBuilder(QueryFilter, QueryFields):
         # params depends on get_filter since there may be projects in the query
         self.where += self.resolve_params()
 
-        self.columns = self.resolve_select(selected_columns)
+        self.columns, self.aggregates = self.resolve_select(selected_columns)
         self.orderby = self.resolve_orderby(orderby)
 
     @property

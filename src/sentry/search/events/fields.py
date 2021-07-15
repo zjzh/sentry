@@ -1,14 +1,16 @@
 import re
 from collections import defaultdict, namedtuple
 from copy import deepcopy
+from dataclasses import dataclass
 from datetime import datetime
-from typing import List, Mapping, Optional, Union
+from typing import Any, Callable, Dict, List, Mapping, Optional, Tuple, Union
 
 import sentry_sdk
 from sentry_relay.consts import SPAN_STATUS_NAME_TO_CODE
 
 # TODO remove import aliases on snql Functions&Columns
 from snuba_sdk.column import Column as SnqlColumn
+from snuba_sdk.function import CurriedFunction
 from snuba_sdk.function import Function as SnqlFunction
 from snuba_sdk.orderby import Direction, OrderBy
 
@@ -27,6 +29,8 @@ from sentry.search.events.constants import (
     DEFAULT_PROJECT_THRESHOLD_METRIC,
     ERROR_UNHANDLED_ALIAS,
     FUNCTION_PATTERN,
+    ISSUE_ALIAS,
+    ISSUE_ID_ALIAS,
     KEY_TRANSACTION_ALIAS,
     PROJECT_ALIAS,
     PROJECT_NAME_ALIAS,
@@ -35,13 +39,17 @@ from sentry.search.events.constants import (
     SEARCH_MAP,
     TAG_KEY_RE,
     TEAM_KEY_TRANSACTION_ALIAS,
+    TIMESTAMP_TO_DAY_ALIAS,
+    TIMESTAMP_TO_HOUR_ALIAS,
+    TRANSACTION_STATUS_ALIAS,
     USER_DISPLAY_ALIAS,
     VALID_FIELD_PATTERN,
 )
-from sentry.search.events.types import SelectType
+from sentry.search.events.types import ParamsType, SelectType
 from sentry.utils.compat import zip
 from sentry.utils.numbers import format_grouped_length
 from sentry.utils.snuba import (
+    Dataset,
     get_json_type,
     is_duration_measurement,
     is_measurement,
@@ -1470,9 +1478,50 @@ class Function:
         return self.name in acl
 
 
+@dataclass
+class DiscoverFunction:
+    public_alias: str
+    required_args: List[FunctionArg]
+    aggregate: Callable[[Dict[str, SnqlColumn], str], CurriedFunction]
+
+    def resolve(
+        self, columns: List[str], alias: Optional[str], resolver: Callable[[str], SnqlColumn]
+    ) -> CurriedFunction:
+        arguments = {}
+        for argument, column in zip(self.required_args, columns):
+            try:
+                normalized = argument.normalize(column, None)
+                arguments[argument.name] = (
+                    resolver(normalized)
+                    if isinstance(argument, (Column, NumericColumn))
+                    else normalized
+                )
+            except InvalidFunctionArgument as e:
+                raise InvalidSearchQuery(
+                    f"{self.public_alias}: {argument.name} argument invalid: {e}"
+                )
+
+        if alias is None:
+            alias = get_function_alias_with_columns(self.public_alias, columns)
+
+        return self.aggregate(arguments, alias)
+
+
 # When updating this list, also check if the following need to be updated:
 # - convert_search_filter_to_snuba_query
 # - static/app/utils/discover/fields.tsx FIELDS (for discover column list and search box autocomplete)
+SNQL_FUNCTIONS = {
+    function.public_alias: function
+    for function in [
+        DiscoverFunction(
+            public_alias="percentile",
+            required_args=[NumericColumnNoLookup("column"), NumberRange("percentile", 0, 1)],
+            aggregate=lambda args, alias: SnqlFunction(
+                f"quantile({args.get('percentile'):g})", [args.get("column")], alias
+            ),
+        ),
+    ]
+}
 FUNCTIONS = {
     function.name: function
     for function in [
@@ -2056,26 +2105,57 @@ FUNCTION_ALIAS_PATTERN = re.compile(r"^({}).*".format("|".join(list(FUNCTIONS.ke
 class QueryFields(QueryBase):
     """Field logic for a snql query"""
 
-    def resolve_select(self, selected_columns: Optional[List[str]]) -> List[SelectType]:
+    def __init__(self, dataset: Dataset, params: ParamsType):
+        super().__init__(dataset, params)
+
+        self.field_alias_converter: Mapping[str, Callable[[str], SelectType]] = {
+            # NOTE: `ISSUE_ALIAS` simply maps to the id, meaning that post processing
+            # is required to insert the true issue short id into the response.
+            ISSUE_ALIAS: self._resolve_issue_id_alias,
+            ISSUE_ID_ALIAS: self._resolve_issue_id_alias,
+            PROJECT_ALIAS: self._resolve_project_slug_alias,
+            PROJECT_NAME_ALIAS: self._resolve_project_slug_alias,
+            TIMESTAMP_TO_HOUR_ALIAS: self._resolve_timestamp_to_hour_alias,
+            TIMESTAMP_TO_DAY_ALIAS: self._resolve_timestamp_to_day_alias,
+            USER_DISPLAY_ALIAS: self._resolve_user_display_alias,
+            TRANSACTION_STATUS_ALIAS: self._resolve_transaction_status,
+            # TODO: implement these
+            ERROR_UNHANDLED_ALIAS: self._resolve_unimplemented_alias,
+            KEY_TRANSACTION_ALIAS: self._resolve_unimplemented_alias,
+            TEAM_KEY_TRANSACTION_ALIAS: self._resolve_unimplemented_alias,
+            PROJECT_THRESHOLD_CONFIG_ALIAS: self._resolve_unimplemented_alias,
+        }
+
+    def resolve_select(
+        self, selected_columns: Optional[List[str]]
+    ) -> Tuple[List[SelectType], List[CurriedFunction]]:
         if selected_columns is None:
-            return []
+            return [], []
 
         columns = []
+        aggregates = []
 
         for field in selected_columns:
             if field.strip() == "":
                 continue
-            resolved_field = self.resolve_field(field)
-            if resolved_field not in self.columns:
-                columns.append(resolved_field)
+            match = is_function(field)
+            if match:
+                aggregates.append(self.resolve_function(field, match))
+            else:
+                resolved_field = self.resolve_field(field)
+                if resolved_field not in self.columns:
+                    columns.append(resolved_field)
 
-        return columns
+        return columns, aggregates
+
+    def resolve_function(self, field: str, match: Any) -> CurriedFunction:
+        function_name, columns, alias = parse_function(field, match)
+        if function_name not in SNQL_FUNCTIONS:
+            raise NotImplementedError(f"{function_name} not implemented in snql field parsing yet")
+
+        return SNQL_FUNCTIONS[function_name].resolve(columns, alias, self.column)
 
     def resolve_field(self, field: str) -> SelectType:
-        match = is_function(field)
-        if match:
-            raise NotImplementedError(f"{field} not implemented in snql field parsing yet")
-
         if self.is_field_alias(field):
             return self.resolve_field_alias(field)
 
@@ -2130,3 +2210,68 @@ class QueryFields(QueryBase):
         # TODO: This is no longer true, can order by fields that aren't selected, keeping
         # for now so we're consistent with the existing functionality
         raise InvalidSearchQuery("Cannot order by a field that is not selected.")
+
+    def is_field_alias(self, alias: str) -> bool:
+        return alias in self.field_alias_converter
+
+    def resolve_field_alias(self, alias: str) -> SelectType:
+        converter = self.field_alias_converter.get(alias)
+        if not converter:
+            raise NotImplementedError(f"{alias} not implemented in snql field parsing yet")
+        return converter(alias)
+
+    def _resolve_issue_id_alias(self, _: str) -> SelectType:
+        """The state of having no issues is represented differently on transactions vs
+        other events. On the transactions table, it is represented by 0 whereas it is
+        represented by NULL everywhere else. We use coalesce here so we can treat this
+        consistently
+        """
+        return SnqlFunction("coalesce", [self.column("issue.id"), 0], ISSUE_ID_ALIAS)
+
+    def _resolve_project_slug_alias(self, alias: str) -> SelectType:
+        project_ids = {
+            project_id
+            for project_id in self.params.get("project_id", [])
+            if isinstance(project_id, int)
+        }
+
+        # Try to reduce the size of the transform by using any existing conditions on projects
+        if len(self.projects_to_filter) > 0:
+            project_ids &= self.projects_to_filter
+
+        projects = Project.objects.filter(id__in=project_ids).values("slug", "id")
+
+        return SnqlFunction(
+            "transform",
+            [
+                self.column("project.id"),
+                [project["id"] for project in projects],
+                [project["slug"] for project in projects],
+                "",
+            ],
+            alias,
+        )
+
+    def _resolve_timestamp_to_hour_alias(self, _: str) -> SelectType:
+        return SnqlFunction("toStartOfHour", [self.column("timestamp")], TIMESTAMP_TO_HOUR_ALIAS)
+
+    def _resolve_timestamp_to_day_alias(self, _: str) -> SelectType:
+        return SnqlFunction("toStartOfDay", [self.column("timestamp")], TIMESTAMP_TO_DAY_ALIAS)
+
+    def _resolve_user_display_alias(self, _: str) -> SelectType:
+        columns = ["user.email", "user.username", "user.ip"]
+        return SnqlFunction(
+            "coalesce", [self.column(column) for column in columns], USER_DISPLAY_ALIAS
+        )
+
+    def _resolve_transaction_status(self, _: str) -> SelectType:
+        # TODO: Remove the `toUInt8` once Column supports aliases
+        return SnqlFunction(
+            "toUInt8", [self.column(TRANSACTION_STATUS_ALIAS)], TRANSACTION_STATUS_ALIAS
+        )
+
+    def _resolve_unimplemented_alias(self, alias: str) -> SelectType:
+        """Used in the interim as a stub for ones that have not be implemented in SnQL yet.
+        Can be deleted once all field aliases have been implemented.
+        """
+        raise NotImplementedError(f"{alias} not implemented in snql field parsing yet")

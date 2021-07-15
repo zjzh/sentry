@@ -244,3 +244,34 @@ class QueryBuilderTest(TestCase):
                 )
             ],
         )
+
+    def test_percentile_function(self):
+        project1 = self.create_project()
+        project2 = self.create_project()
+        self.params["project_id"] = [project1.id, project2.id]
+        query = QueryBuilder(
+            Dataset.Discover,
+            self.params,
+            f"project:{project1.slug}",
+            selected_columns=["percentile(transaction.duration, 0.5)"],
+        )
+
+        self.assertCountEqual(
+            query.where,
+            [
+                Condition(Column("project_id"), Op.EQ, project1.id),
+                Condition(Column("timestamp"), Op.GTE, self.start),
+                Condition(Column("timestamp"), Op.LT, self.end),
+            ],
+        )
+        # Because of the condition on project there should only be 1 project in the transform
+        self.assertCountEqual(
+            query.select,
+            [
+                Function(
+                    "quantile(0.5)",
+                    [Column("duration")],
+                    "percentile_transaction_duration_0_5",
+                ),
+            ],
+        )
