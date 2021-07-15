@@ -69,10 +69,19 @@ class InvalidFunctionArgument(Exception):
 
 
 class PseudoField:
-    def __init__(self, name, alias, expression=None, expression_fn=None, result_type=None):
+    def __init__(
+        self,
+        name,
+        alias,
+        expression=None,
+        snql_expression=None,
+        expression_fn=None,
+        result_type=None,
+    ):
         self.name = name
         self.alias = alias
         self.expression = expression
+        self.snql_expression = snql_expression
         self.expression_fn = expression_fn
         self.result_type = result_type
 
@@ -420,16 +429,31 @@ FIELD_ALIASES = {
         PseudoField("project", "project.id"),
         PseudoField("issue", "issue.id"),
         PseudoField(
-            "timestamp.to_hour", "timestamp.to_hour", expression=["toStartOfHour", ["timestamp"]]
+            "timestamp.to_hour",
+            "timestamp.to_hour",
+            expression=["toStartOfHour", ["timestamp"]],
+            snql_expression=lambda resolver: SnqlFunction(
+                "toStartOfHour", [resolver("timestamp")], TIMESTAMP_TO_HOUR_ALIAS
+            ),
         ),
         PseudoField(
-            "timestamp.to_day", "timestamp.to_day", expression=["toStartOfDay", ["timestamp"]]
+            "timestamp.to_day",
+            "timestamp.to_day",
+            expression=["toStartOfDay", ["timestamp"]],
+            snql_expression=lambda resolver: SnqlFunction(
+                "toStartOfDay", [resolver("timestamp")], TIMESTAMP_TO_DAY_ALIAS
+            ),
         ),
         PseudoField(ERROR_UNHANDLED_ALIAS, ERROR_UNHANDLED_ALIAS, expression=["notHandled", []]),
         PseudoField(
             USER_DISPLAY_ALIAS,
             USER_DISPLAY_ALIAS,
             expression=["coalesce", ["user.email", "user.username", "user.ip"]],
+            snql_expression=lambda resolver: SnqlFunction(
+                "coalesce",
+                [resolver(column) for column in ["user.email", "user.username", "user.ip"]],
+                USER_DISPLAY_ALIAS,
+            ),
         ),
         # the key transaction field is intentially not added to the discover/fields list yet
         # because there needs to be some work on the front end to integrate this into discover
@@ -1279,6 +1303,7 @@ class Function:
         calculated_args=None,
         column=None,
         aggregate=None,
+        snql_aggregate=None,
         transform=None,
         conditional_transform=None,
         result_type_fn=None,
@@ -1322,6 +1347,7 @@ class Function:
         self.calculated_args = [] if calculated_args is None else calculated_args
         self.column = column
         self.aggregate = aggregate
+        self.snql_aggregate = snql_aggregate
         self.transform = transform
         self.conditional_transform = conditional_transform
         self.result_type_fn = result_type_fn
@@ -1478,50 +1504,9 @@ class Function:
         return self.name in acl
 
 
-@dataclass
-class DiscoverFunction:
-    public_alias: str
-    required_args: List[FunctionArg]
-    aggregate: Callable[[Dict[str, SnqlColumn], str], CurriedFunction]
-
-    def resolve(
-        self, columns: List[str], alias: Optional[str], resolver: Callable[[str], SnqlColumn]
-    ) -> CurriedFunction:
-        arguments = {}
-        for argument, column in zip(self.required_args, columns):
-            try:
-                normalized = argument.normalize(column, None)
-                arguments[argument.name] = (
-                    resolver(normalized)
-                    if isinstance(argument, (Column, NumericColumn))
-                    else normalized
-                )
-            except InvalidFunctionArgument as e:
-                raise InvalidSearchQuery(
-                    f"{self.public_alias}: {argument.name} argument invalid: {e}"
-                )
-
-        if alias is None:
-            alias = get_function_alias_with_columns(self.public_alias, columns)
-
-        return self.aggregate(arguments, alias)
-
-
 # When updating this list, also check if the following need to be updated:
 # - convert_search_filter_to_snuba_query
 # - static/app/utils/discover/fields.tsx FIELDS (for discover column list and search box autocomplete)
-SNQL_FUNCTIONS = {
-    function.public_alias: function
-    for function in [
-        DiscoverFunction(
-            public_alias="percentile",
-            required_args=[NumericColumnNoLookup("column"), NumberRange("percentile", 0, 1)],
-            aggregate=lambda args, alias: SnqlFunction(
-                f"quantile({args.get('percentile'):g})", [args.get("column")], alias
-            ),
-        ),
-    ]
-}
 FUNCTIONS = {
     function.name: function
     for function in [
@@ -1529,6 +1514,9 @@ FUNCTIONS = {
             "percentile",
             required_args=[NumericColumnNoLookup("column"), NumberRange("percentile", 0, 1)],
             aggregate=["quantile({percentile:g})", ArgValue("column"), None],
+            snql_aggregate=lambda args, alias: SnqlFunction(
+                f"quantile({args.get('percentile'):g})", [args.get("column")], alias
+            ),
             result_type_fn=reflective_result_type(),
             default_result_type="duration",
             redundant_grouping=True,
@@ -2105,6 +2093,8 @@ FUNCTION_ALIAS_PATTERN = re.compile(r"^({}).*".format("|".join(list(FUNCTIONS.ke
 class QueryFields(QueryBase):
     """Field logic for a snql query"""
 
+    FUNCTIONS = {}
+
     def __init__(self, dataset: Dataset, params: ParamsType):
         super().__init__(dataset, params)
 
@@ -2150,10 +2140,28 @@ class QueryFields(QueryBase):
 
     def resolve_function(self, field: str, match: Any) -> CurriedFunction:
         function_name, columns, alias = parse_function(field, match)
-        if function_name not in SNQL_FUNCTIONS:
+        if function_name not in FUNCTIONS:
             raise NotImplementedError(f"{function_name} not implemented in snql field parsing yet")
+        function_definition = FUNCTIONS[function_name]
 
-        return SNQL_FUNCTIONS[function_name].resolve(columns, alias, self.column)
+        arguments = {}
+        for argument, column in zip(function_definition.required_args, columns):
+            try:
+                normalized = argument.normalize(column, None)
+                arguments[argument.name] = (
+                    self.column(normalized)
+                    if isinstance(argument, (Column, NumericColumn))
+                    else normalized
+                )
+            except InvalidFunctionArgument as e:
+                raise InvalidSearchQuery(
+                    f"{function_definition.name}: {argument.name} argument invalid: {e}"
+                )
+
+        if alias is None:
+            alias = get_function_alias_with_columns(function_definition.name, columns)
+
+        return function_definition.snql_aggregate(arguments, alias)
 
     def resolve_field(self, field: str) -> SelectType:
         if self.is_field_alias(field):
@@ -2215,6 +2223,8 @@ class QueryFields(QueryBase):
         return alias in self.field_alias_converter
 
     def resolve_field_alias(self, alias: str) -> SelectType:
+        if alias in FIELD_ALIASES and FIELD_ALIASES[alias].snql_expression:
+            return FIELD_ALIASES.get(alias).snql_expression(self.column)
         converter = self.field_alias_converter.get(alias)
         if not converter:
             raise NotImplementedError(f"{alias} not implemented in snql field parsing yet")
