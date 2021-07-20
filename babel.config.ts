@@ -53,7 +53,7 @@ const config: TransformOptions = {
       plugins: [
         '@emotion/babel-plugin',
         '@babel/plugin-transform-react-jsx-source',
-        ...(process.env.SENTRY_UI_HOT_RELOAD ? ['react-refresh/babel'] : []),
+        // ...(process.env.SENTRY_UI_HOT_RELOAD ? ['react-refresh/babel'] : []),
       ],
     },
     test: {
