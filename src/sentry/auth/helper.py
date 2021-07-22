@@ -1,6 +1,6 @@
 import logging
 from dataclasses import dataclass
-from typing import Any, Mapping, Optional
+from typing import Any, Dict, Mapping, Optional
 from uuid import uuid4
 
 from django.conf import settings
@@ -76,6 +76,19 @@ class AuthHelperSessionStore(PipelineSessionStore):
 
 
 Identity = Mapping[str, Any]
+
+
+@dataclass
+class NotCompletedOrganizationOnboarding(Exception):
+    onboarding_steps: Dict[str, bool]
+
+    def get_redirect(self, request: HttpRequest) -> HttpResponseRedirect:
+        if self.onboarding_steps["needsEmailVerification"]:
+            # TODO(RyanSkonnord): Make this work
+            # It just bounces the user back to the SSO login page
+            return HttpResponseRedirect(reverse("sentry-account-settings-emails"))
+        else:
+            raise NotImplementedError
 
 
 @dataclass(eq=True, frozen=True)
@@ -176,6 +189,10 @@ class AuthIdentityHandler:
         # organization, do so, otherwise handle new membership
         if invite_helper:
             if invite_helper.invite_approved:
+                onboarding_steps = invite_helper.get_onboarding_steps()
+                if any(onboarding_steps.values()):
+                    raise NotCompletedOrganizationOnboarding(onboarding_steps)
+
                 invite_helper.accept_invite(user)
                 return None
 
@@ -628,8 +645,11 @@ class AuthHelper(Pipeline):
             return self.error(str(error) or ERR_INVALID_IDENTITY)
 
         if self.state.flow == self.FLOW_LOGIN:
-            # create identity and authenticate the user
-            response = self._finish_login_pipeline(identity)
+            try:
+                # create identity and authenticate the user
+                response = self._finish_login_pipeline(identity)
+            except NotCompletedOrganizationOnboarding as exc:
+                return exc.get_redirect(self.request)
         elif self.state.flow == self.FLOW_SETUP_PROVIDER:
             response = self._finish_setup_pipeline(identity)
 
