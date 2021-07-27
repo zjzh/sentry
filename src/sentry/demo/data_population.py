@@ -1385,6 +1385,7 @@ class DataPopulation:
                 user=transaction_user,
                 release=release_sha,
             )
+
             update_context(local_event, platform=project.platform)
             self.fix_error_event(local_event)
             self.safe_send_event(local_event)
