@@ -699,6 +699,20 @@ def update_groups(request, group_ids, projects, organization_id, search_fn):
             except IndexError:
                 release = None
 
+        # XXX (ahmed): hack to get the activities to work properly on issues page. Not sure of
+        # what performance impact this might have & this possibly should be moved else where
+        try:
+            if len(group_ids) == 1:
+                if res_type in (
+                    GroupResolution.Type.in_next_release,
+                    GroupResolution.Type.in_release,
+                ):
+                    result["activity"] = Activity.get_activities_for_group(
+                        group=group_ids[0], num=100
+                    )
+        except UnboundLocalError:
+            ...
+
         for group in group_list:
             with transaction.atomic():
                 resolution = None
