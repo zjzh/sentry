@@ -23,7 +23,7 @@
     "resolveJsonModule": true,
     "sourceMap": true,
     "strict": true,
-    "target": "es5",
+    "target": "es6",
     "strictBindCallApply": false,
     "experimentalDecorators": true,
     // Skip type checking of all declaration files
@@ -39,8 +39,6 @@
       "sentry-locale/*": ["src/sentry/locale/*"],
       "sentry-logos/*": ["src/sentry/static/sentry/images/logos/*"],
       "sentry-fonts/*": ["static/fonts/*"],
-      "@emotion/styled": ["src/sentry/static/sentry/app/styled.tsx"],
-      "@original-emotion/*": ["node_modules/@emotion/*"],
       // Use the stub file for typechecking. Webpack resolver will use the real files
       // based on configuration.
       "integration-docs-platforms": [
