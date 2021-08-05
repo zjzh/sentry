@@ -1,0 +1,23 @@
+version: '3'
+services:
+  app:
+    container_name: gitea-integration
+    restart: always
+    build: .
+    ports:
+      - '80:7500'
+    external_links:
+      - mongo
+  mongo:
+    container_name: mongo
+    environment:
+        MONGO_INITDB_ROOT_USERNAME: root
+        MONGO_INITDB_ROOT_PASSWORD: rootpassword
+    image: mongo
+    ports:
+      - '27017:27017'
+    volumes:
+    - mongo:/data/db
+
+volumes:
+    mongo:
