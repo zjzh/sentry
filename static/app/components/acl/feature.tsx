@@ -9,6 +9,7 @@ import withOrganization from 'app/utils/withOrganization';
 import withProject from 'app/utils/withProject';
 
 import ComingSoon from './comingSoon';
+import FeatureHighlighter from './featureHighlighter';
 
 type Props = {
   /**
@@ -190,10 +191,18 @@ class Feature extends React.Component<Props> {
     }
 
     if (isRenderFunc<ChildrenRenderFn>(children)) {
-      return children({renderDisabled, ...renderProps});
+      return (
+        <FeatureHighlighter availableFeatures={allFeatures} features={features}>
+          {children({renderDisabled, ...renderProps})}
+        </FeatureHighlighter>
+      );
     }
 
-    return hasFeature && children ? children : null;
+    return (
+      <FeatureHighlighter availableFeatures={allFeatures} features={features}>
+        {hasFeature && children ? children : null}
+      </FeatureHighlighter>
+    );
   }
 }
 

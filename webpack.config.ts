@@ -223,6 +223,7 @@ const babelLoaderConfig = {
  */
 let appConfig: Configuration = {
   mode: WEBPACK_MODE,
+  target: ['web'],
   entry: {
     /**
      * Main Sentry SPA
