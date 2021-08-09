@@ -4,8 +4,13 @@ services:
     container_name: gitea-integration
     restart: always
     build: .
+    volumes:
+      - ./:/app
     ports:
-      - '80:7500'
+      - '7500:7500'
+    working_dir: /app
+    expose:
+      - "7500"
     external_links:
       - mongo
   mongo:
