@@ -87,8 +87,8 @@ class AnomalyChart extends React.Component<Props> {
 
     const anomaly = anomalySeries?.anomaly;
     if (anomaly) {
-      const meh = 0.33;
-      const poor = 0.66;
+      const meh = 0.5;
+      const poor = 0.75;
       otherSeries.push(
         BarSeries({
           name: anomaly.seriesName,
@@ -186,6 +186,7 @@ class AnomalyChart extends React.Component<Props> {
         ]}
         xAxes={[{...(xAxis ?? {}), gridIndex: 0}, {gridIndex: 1}]}
         series={[...dataSeries, ...otherSeries]}
+        height={300}
       />
     );
   }

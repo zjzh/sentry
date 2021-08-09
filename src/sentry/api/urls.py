@@ -177,6 +177,7 @@ from .endpoints.organization_events_meta import (
     OrganizationEventsRelatedIssuesEndpoint,
 )
 from .endpoints.organization_events_stats import OrganizationEventsStatsEndpoint
+from .endpoints.organization_events_anomaly import OrganizationEventsAnomalyEndpoint
 from .endpoints.organization_events_trace import (
     OrganizationEventsTraceEndpoint,
     OrganizationEventsTraceLightEndpoint,
@@ -953,6 +954,11 @@ urlpatterns = [
                     r"^(?P<organization_slug>[^\/]+)/events-stats/$",
                     OrganizationEventsStatsEndpoint.as_view(),
                     name="sentry-api-0-organization-events-stats",
+                ),
+                url(
+                    r"^(?P<organization_slug>[^\/]+)/events-anomaly/$",
+                    OrganizationEventsAnomalyEndpoint.as_view(),
+                    name="sentry-api-0-organization-events-anomaly",
                 ),
                 url(
                     r"^(?P<organization_slug>[^\/]+)/events-geo/$",

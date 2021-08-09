@@ -31,6 +31,7 @@ type Options = {
   orderby?: string;
   partial: boolean;
   withoutZerofill?: boolean;
+  anomaly?: boolean;
 };
 
 /**
@@ -67,6 +68,7 @@ export const doEventsRequest = (
     orderby,
     partial,
     withoutZerofill,
+    anomaly,
   }: Options
 ): Promise<EventsStats | MultiSeriesEventsStats> => {
   const shouldDoublePeriod = canIncludePreviousPeriod(includePrevious, period);
@@ -91,7 +93,10 @@ export const doEventsRequest = (
   // the tradeoff for now.
   const periodObj = getPeriod({period, start, end}, {shouldDoublePeriod});
 
-  return api.requestPromise(`/organizations/${organization.slug}/events-stats/`, {
+  const endpoint = anomaly
+    ? `/organizations/${organization.slug}/events-anomaly/`
+    : `/organizations/${organization.slug}/events-stats/`;
+  return api.requestPromise(endpoint, {
     query: {
       ...urlQuery,
       ...periodObj,

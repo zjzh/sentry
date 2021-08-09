@@ -532,39 +532,29 @@ class EventsChart extends React.Component<EventsChartProps> {
             topEvents={topEvents}
             confirmedQuery={confirmedQuery}
             partial
+            anomaly={showAnomaly}
           >
             {eventData => {
-              if (showAnomaly) {
-                const exampleSeries =
-                  eventData.results?.[0]?.data ??
-                  eventData.timeseriesData?.[0]?.data ??
-                  [];
-                const anomalySeries = exampleSeries.map(x => ({
-                  ...x,
-                  value: Math.random(),
-                }));
-                const minNormalSeries = exampleSeries.map(x => ({
-                  ...x,
-                  value: x.value - x.value * (0.05 + 0.5 * Math.random()),
-                }));
-                const maxNormalSeries = exampleSeries.map(x => ({
-                  ...x,
-                  value: x.value + x.value * (0.05 + 0.5 * Math.random()),
-                }));
-                const x = eventData as any;
-                x.anomalySeries = {
-                  anomaly: {
-                    seriesName: 'anomaly',
-                    data: anomalySeries,
-                  },
-                  min: {
-                    seriesName: 'min normal',
-                    data: minNormalSeries,
-                  },
-                  max: {
-                    seriesName: 'max normal',
-                    data: maxNormalSeries,
-                  },
+              if (showAnomaly && eventData.results) {
+                const anomalySeries = eventData.results.find(
+                  ({seriesName}) => seriesName === 'anomaly_score'
+                );
+                const minNormalSeries = eventData.results.find(
+                  ({seriesName}) => seriesName === 'lower_band'
+                );
+                const maxNormalSeries = eventData.results.find(
+                  ({seriesName}) => seriesName === 'upper_band'
+                );
+                eventData.results = eventData.results.filter(
+                  series =>
+                    series !== anomalySeries &&
+                    series !== minNormalSeries &&
+                    series !== maxNormalSeries
+                );
+                (eventData as any).anomalySeries = {
+                  anomaly: anomalySeries,
+                  min: minNormalSeries,
+                  max: maxNormalSeries,
                 };
               }
 

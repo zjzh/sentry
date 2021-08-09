@@ -163,6 +163,10 @@ type EventsRequestPartialProps = {
    * Whether or not to zerofill results
    */
   withoutZerofill?: boolean;
+  /**
+   * Use the anomaly stuff endpoint
+   */
+  anomaly?: boolean;
 };
 
 type TimeAggregationProps =

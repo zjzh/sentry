@@ -682,6 +682,7 @@ def top_events_timeseries(
                     "discover.top-events.timeseries.key-mismatch",
                     extra={"result_key": result_key, "top_event_keys": list(results.keys())},
                 )
+
         for key, item in results.items():
             results[key] = SnubaTSResult(
                 {
