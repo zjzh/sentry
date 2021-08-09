@@ -62,6 +62,7 @@ class ResultsChart extends Component<ResultsChartProps> {
     const isPeriod = display === DisplayModes.DEFAULT || display === DisplayModes.TOP5;
     const isDaily = display === DisplayModes.DAILYTOP5 || display === DisplayModes.DAILY;
     const isPrevious = display === DisplayModes.PREVIOUS;
+    const isAnomaly = display === DisplayModes.ANOMALY;
 
     return (
       <Fragment>
@@ -88,6 +89,7 @@ class ResultsChart extends Component<ResultsChartProps> {
               orderby={isTopEvents ? decodeScalar(apiPayload.sort) : undefined}
               utc={utc === 'true'}
               confirmedQuery={confirmedQuery}
+              showAnomaly={isAnomaly}
             />
           ),
           fixed: <Placeholder height="200px" testId="skeleton-ui" />,

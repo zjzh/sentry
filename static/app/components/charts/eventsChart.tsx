@@ -6,6 +6,7 @@ import {Query} from 'history';
 import isEqual from 'lodash/isEqual';
 
 import {Client} from 'app/api';
+import AnomalyChart, {AnomalySeries} from 'app/components/charts/anomalyChart';
 import AreaChart from 'app/components/charts/areaChart';
 import BarChart from 'app/components/charts/barChart';
 import ChartZoom, {ZoomRenderProps} from 'app/components/charts/chartZoom';
@@ -60,6 +61,8 @@ type ChartProps = {
     | React.ComponentType<AreaChart['props']>
     | React.ComponentType<LineChart['props']>;
   height?: number;
+  showAnomaly?: boolean;
+  anomalySeries?: AnomalySeries;
 };
 
 type State = {
@@ -99,15 +102,19 @@ class Chart extends React.Component<ChartProps, State> {
 
   getChartComponent():
     | React.ComponentType<BarChart['props']>
+    | React.ComponentType<AnomalyChart['props']>
     | React.ComponentType<AreaChart['props']>
     | React.ComponentType<LineChart['props']> {
-    const {showDaily, timeseriesData, yAxis, chartComponent} = this.props;
+    const {showDaily, showAnomaly, timeseriesData, yAxis, chartComponent} = this.props;
     if (defined(chartComponent)) {
       return chartComponent;
     }
 
     if (showDaily) {
       return BarChart;
+    }
+    if (showAnomaly) {
+      return AnomalyChart;
     }
     if (timeseriesData.length > 1) {
       switch (aggregateMultiPlotType(yAxis)) {
@@ -338,6 +345,7 @@ export type EventsChartProps = {
    * Chart zoom will change 'pageStart' instead of 'start'
    */
   usePageZoom?: boolean;
+  showAnomaly?: boolean;
 } & Pick<
   ChartProps,
   | 'currentSeriesName'
@@ -361,6 +369,7 @@ type ChartDataProps = {
   timeseriesData?: Series[];
   previousTimeseriesData?: Series | null;
   releaseSeries?: Series[];
+  anomalySeries?: AnomalySeries;
 };
 
 class EventsChart extends React.Component<EventsChartProps> {
@@ -400,6 +409,7 @@ class EventsChart extends React.Component<EventsChartProps> {
       chartComponent,
       usePageZoom,
       height,
+      showAnomaly,
       ...props
     } = this.props;
     // Include previous only on relative dates (defaults to relative if no start and end)
@@ -424,6 +434,7 @@ class EventsChart extends React.Component<EventsChartProps> {
       results,
       timeseriesData,
       previousTimeseriesData,
+      ...rest
     }: ChartDataProps) => {
       if (errored) {
         return (
@@ -465,6 +476,8 @@ class EventsChart extends React.Component<EventsChartProps> {
             disableableSeries={disableableSeries}
             chartComponent={chartComponent}
             height={height}
+            showAnomaly={showAnomaly}
+            {...rest}
           />
         </TransitionChart>
       );
@@ -520,12 +533,46 @@ class EventsChart extends React.Component<EventsChartProps> {
             confirmedQuery={confirmedQuery}
             partial
           >
-            {eventData =>
-              chartImplementation({
+            {eventData => {
+              if (showAnomaly) {
+                const exampleSeries =
+                  eventData.results?.[0]?.data ??
+                  eventData.timeseriesData?.[0]?.data ??
+                  [];
+                const anomalySeries = exampleSeries.map(x => ({
+                  ...x,
+                  value: Math.random(),
+                }));
+                const minNormalSeries = exampleSeries.map(x => ({
+                  ...x,
+                  value: x.value - x.value * (0.05 + 0.5 * Math.random()),
+                }));
+                const maxNormalSeries = exampleSeries.map(x => ({
+                  ...x,
+                  value: x.value + x.value * (0.05 + 0.5 * Math.random()),
+                }));
+                const x = eventData as any;
+                x.anomalySeries = {
+                  anomaly: {
+                    seriesName: 'anomaly',
+                    data: anomalySeries,
+                  },
+                  min: {
+                    seriesName: 'min normal',
+                    data: minNormalSeries,
+                  },
+                  max: {
+                    seriesName: 'max normal',
+                    data: maxNormalSeries,
+                  },
+                };
+              }
+
+              return chartImplementation({
                 ...eventData,
                 zoomRenderProps,
-              })
-            }
+              });
+            }}
           </EventsRequest>
         )}
       </ChartZoom>
