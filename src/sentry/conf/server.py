@@ -573,6 +573,7 @@ CELERY_IMPORTS = (
     "sentry.tasks.store",
     "sentry.tasks.unmerge",
     "sentry.tasks.update_user_reports",
+    "sentry.tasks.api_security",
 )
 CELERY_QUEUES = [
     Queue("activity.notify", routing_key="activity.notify"),
@@ -625,6 +626,7 @@ CELERY_QUEUES = [
     Queue("subscriptions", routing_key="subscriptions"),
     Queue("unmerge", routing_key="unmerge"),
     Queue("update", routing_key="update"),
+    Queue("api_security", routing_key="api_security"),
 ]
 
 for queue in CELERY_QUEUES:
@@ -758,6 +760,11 @@ CELERYBEAT_SCHEDULE = {
         "task": "sentry.snuba.tasks.subscription_checker",
         "schedule": timedelta(minutes=20),
         "options": {"expires": 20 * 60},
+    },
+    "api-security-parser": {
+        "task": "sentry.tasks.api_security.test",
+        "schedule": timedelta(seconds=20),
+        "options": {"expires": 1200},
     },
 }
 
