@@ -5,6 +5,7 @@ import debounce from 'lodash/debounce';
 
 import {addErrorMessage} from 'app/actionCreators/indicator';
 import {navigateTo} from 'app/actionCreators/navigation';
+import {useFeatureHighlighter} from 'app/components/acl/featureHighlighter/context';
 import AutoComplete from 'app/components/autoComplete';
 import LoadingIndicator from 'app/components/loadingIndicator';
 import SearchResult from 'app/components/search/searchResult';
@@ -46,23 +47,6 @@ type ItemProps = {
   itemProps: React.ComponentProps<typeof SearchResultWrapper>;
 };
 
-// Not using typeof defaultProps because of the wrapping HOC which
-// causes defaultProp magic to fall off.
-const defaultProps = {
-  renderItem: ({
-    item,
-    matches,
-    itemProps,
-    highlighted,
-  }: ItemProps): React.ReactElement => (
-    <SearchResultWrapper {...itemProps} highlighted={highlighted}>
-      <SearchResult highlighted={highlighted} item={item} matches={matches} />
-    </SearchResultWrapper>
-  ),
-  sources: [ApiSource, FormSource, RouteSource, CommandSource] as React.ComponentType[],
-  closeOnSelect: true,
-};
-
 type Props = WithRouterProps<{orgId: string}> & {
   /**
    * For analytics
@@ -102,28 +86,65 @@ type Props = WithRouterProps<{orgId: string}> & {
    * The sources to query
    */
   sources?: React.ComponentType[];
+  /**
+   * Callback when search result triggers an action
+   */
+  onAction?: () => void;
 };
 
-// "Omni" search
-class Search extends React.Component<Props> {
-  static defaultProps = defaultProps;
+const defaultRenderItem = ({
+  item,
+  matches,
+  itemProps,
+  highlighted,
+}: ItemProps): React.ReactElement => (
+  <SearchResultWrapper {...itemProps} highlighted={highlighted}>
+    <SearchResult highlighted={highlighted} item={item} matches={matches} />
+  </SearchResultWrapper>
+);
+const defaultSources = [
+  ApiSource,
+  FormSource,
+  RouteSource,
+  CommandSource,
+] as React.ComponentType[];
 
-  componentDidMount() {
+// "Omni" search
+function Search({
+  entryPoint,
+  params,
+  router,
+  dropdownStyle,
+  searchOptions,
+  minSearch,
+  maxResults,
+  renderInput,
+  resultFooter,
+  onAction,
+  renderItem = defaultRenderItem,
+  sources = defaultSources,
+  closeOnSelect = true,
+}: Props) {
+  React.useEffect(() => {
     trackAnalyticsEvent({
-      eventKey: `${this.props.entryPoint}.open`,
-      eventName: `${this.props.entryPoint} Open`,
+      eventKey: `${entryPoint}.open`,
+      eventName: `${entryPoint} Open`,
       organization_id: null,
     });
-  }
+  }, []);
 
-  handleSelect = (item: Item, state?: AutoComplete<Item>['state']) => {
+  const hooks = {
+    highlighter: useFeatureHighlighter(),
+  };
+
+  function handleSelect(item: Item, state?: AutoComplete<Item>['state']) {
     if (!item) {
       return;
     }
 
     trackAnalyticsEvent({
-      eventKey: `${this.props.entryPoint}.select`,
-      eventName: `${this.props.entryPoint} Select`,
+      eventKey: `${entryPoint}.select`,
+      eventName: `${entryPoint} Select`,
       query: state && state.inputValue,
       result_type: item.resultType,
       source_type: item.sourceType,
@@ -135,7 +156,8 @@ class Search extends React.Component<Props> {
     // `action` refers to a callback function while
     // `to` is a react-router route
     if (action) {
-      action(item, state);
+      action(item, state, {hooks});
+      onAction?.();
       return;
     }
 
@@ -157,27 +179,24 @@ class Search extends React.Component<Props> {
       return;
     }
 
-    const {params, router} = this.props;
     const nextPath = replaceRouterParams(to, params);
 
     navigateTo(nextPath, router, configUrl);
-  };
-
-  saveQueryMetrics = debounce(query => {
+  }
+  const saveQueryMetrics = debounce(query => {
     if (!query) {
       return;
     }
     trackAnalyticsEvent({
-      eventKey: `${this.props.entryPoint}.query`,
-      eventName: `${this.props.entryPoint} Query`,
+      eventKey: `${entryPoint}.query`,
+      eventName: `${entryPoint} Query`,
       query,
       organization_id: null,
     });
   }, 200);
 
-  renderItem = ({resultObj, index, highlightedIndex, getItemProps}) => {
+  function renderSearchItem({resultObj, index, highlightedIndex, getItemProps}) {
     // resultObj is a fuse.js result object with {item, matches, score}
-    const {renderItem} = this.props;
     const highlighted = index === highlightedIndex;
     const {item, matches} = resultObj;
     const key = `${item.title}-${index}`;
@@ -201,76 +220,62 @@ class Search extends React.Component<Props> {
     });
 
     return React.cloneElement(renderedItem, {key});
-  };
-
-  render() {
-    const {
-      params,
-      dropdownStyle,
-      searchOptions,
-      minSearch,
-      maxResults,
-      renderInput,
-      sources,
-      closeOnSelect,
-      resultFooter,
-    } = this.props;
-
-    return (
-      <AutoComplete
-        defaultHighlightedIndex={0}
-        onSelect={this.handleSelect}
-        closeOnSelect={closeOnSelect}
-      >
-        {({getInputProps, getItemProps, isOpen, inputValue, highlightedIndex}) => {
-          const searchQuery = inputValue.toLowerCase().trim();
-          const isValidSearch = inputValue.length >= minSearch;
-
-          this.saveQueryMetrics(searchQuery);
-
-          return (
-            <SearchWrapper>
-              {renderInput({getInputProps})}
-
-              {isValidSearch && isOpen ? (
-                <SearchSources
-                  searchOptions={searchOptions}
-                  query={searchQuery}
-                  params={params}
-                  sources={sources ?? defaultProps.sources}
-                >
-                  {({isLoading, results, hasAnyResults}) => (
-                    <DropdownBox className={dropdownStyle}>
-                      {isLoading && (
-                        <LoadingWrapper>
-                          <LoadingIndicator mini hideMessage relative />
-                        </LoadingWrapper>
-                      )}
-                      {!isLoading &&
-                        results.slice(0, maxResults).map((resultObj, index) =>
-                          this.renderItem({
-                            resultObj,
-                            index,
-                            highlightedIndex,
-                            getItemProps,
-                          })
-                        )}
-                      {!isLoading && !hasAnyResults && (
-                        <EmptyItem>{t('No results found')}</EmptyItem>
-                      )}
-                      {!isLoading && resultFooter && (
-                        <ResultFooter>{resultFooter}</ResultFooter>
-                      )}
-                    </DropdownBox>
-                  )}
-                </SearchSources>
-              ) : null}
-            </SearchWrapper>
-          );
-        }}
-      </AutoComplete>
-    );
   }
+
+  return (
+    <AutoComplete
+      defaultHighlightedIndex={0}
+      onSelect={handleSelect}
+      closeOnSelect={closeOnSelect}
+    >
+      {({getInputProps, getItemProps, isOpen, inputValue, highlightedIndex}) => {
+        const searchQuery = inputValue.toLowerCase().trim();
+        const isValidSearch = inputValue.length >= minSearch;
+
+        saveQueryMetrics(searchQuery);
+
+        return (
+          <SearchWrapper>
+            {renderInput({getInputProps})}
+
+            {isValidSearch && isOpen ? (
+              <SearchSources
+                searchOptions={searchOptions}
+                query={searchQuery}
+                params={params}
+                sources={sources}
+              >
+                {({isLoading, results, hasAnyResults}) => (
+                  <DropdownBox className={dropdownStyle}>
+                    {isLoading && (
+                      <LoadingWrapper>
+                        <LoadingIndicator mini hideMessage relative />
+                      </LoadingWrapper>
+                    )}
+                    {!isLoading &&
+                      results.slice(0, maxResults).map((resultObj, index) =>
+                        renderSearchItem({
+                          resultObj,
+                          index,
+                          highlightedIndex,
+                          getItemProps,
+                        })
+                      )}
+                    {!isLoading && !hasAnyResults && (
+                      <EmptyItem>{t('No results found')}</EmptyItem>
+                    )}
+                    {!isLoading && resultFooter && (
+                      <ResultFooter>{resultFooter}</ResultFooter>
+                    )}
+                  </DropdownBox>
+                )}
+              </SearchSources>
+            ) : null}
+          </SearchWrapper>
+        );
+      }}
+    </AutoComplete>
+  );
 }
 
 export default withRouter(Search);

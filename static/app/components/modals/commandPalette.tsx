@@ -2,7 +2,7 @@ import {Component} from 'react';
 import {ClassNames, css, withTheme} from '@emotion/react';
 import styled from '@emotion/styled';
 
-import {ModalRenderProps} from 'app/actionCreators/modal';
+import {closeModal, ModalRenderProps} from 'app/actionCreators/modal';
 import Search from 'app/components/search';
 import {t} from 'app/locale';
 import space from 'app/styles/space';
@@ -39,6 +39,7 @@ class CommandPalette extends Component<Props> {
                 box-shadow: none;
                 border-top: 1px solid ${theme.border};
               `}
+              onAction={closeModal}
               renderInput={({getInputProps}) => (
                 <InputWrapper>
                   <StyledInput

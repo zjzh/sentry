@@ -7,13 +7,13 @@ import {toggleLocaleDebug} from 'app/locale';
 import ConfigStore from 'app/stores/configStore';
 import {createFuzzySearch} from 'app/utils/createFuzzySearch';
 
-import {ChildProps, Result} from './types';
+import {ActionHooks, ChildProps, Result} from './types';
 
 type Action = {
   title: string;
   description: string;
   requiresSuperuser: boolean;
-  action: () => void;
+  action: (item: any, state: any, {hooks}: {hooks: ActionHooks}) => void;
 };
 
 const ACTIONS: Action[] = [
@@ -63,6 +63,18 @@ const ACTIONS: Action[] = [
       openHelpSearchModal();
     },
   },
+
+  {
+    title: 'Toggle Feature Flag Highlights',
+    description: 'Toggle highlighting all components that are feature-flagged',
+    // TODO(fh): Enable this
+    requiresSuperuser: false,
+    action: (_item, _state, {hooks}) => {
+      if (hooks.highlighter) {
+        hooks.highlighter.setEnabled(!hooks.highlighter.enabled);
+      }
+    },
+  },
 ];
 
 type Props = {
@@ -82,65 +94,57 @@ type Props = {
   searchMap?: PlainRoute[];
 };
 
-type State = {
-  fuzzy: null | Fuse<Action, Fuse.FuseOptions<Action>>;
-};
+type FuzzyState = null | Fuse<Action, Fuse.FuseOptions<Action>>;
 
-/**
- * This source is a hardcoded list of action creators and/or routes maybe
- */
-class CommandSource extends React.Component<Props, State> {
-  static defaultProps = {
-    searchMap: [],
-    searchOptions: {},
+async function createSearch(searchOptions: Props['searchOptions'], searchMap: Action[]) {
+  const options = {
+    ...searchOptions,
+    keys: ['title', 'description'],
   };
-
-  state: State = {
-    fuzzy: null,
-  };
-
-  componentDidMount() {
-    this.createSearch(ACTIONS);
-  }
-
-  async createSearch(searchMap: Action[]) {
-    const options = {
-      ...this.props.searchOptions,
-      keys: ['title', 'description'],
-    };
-    this.setState({
-      fuzzy: await createFuzzySearch<Action>(searchMap || [], options),
-    });
-  }
-
-  render() {
-    const {searchMap, query, isSuperuser, children} = this.props;
-
-    let results: Result[] = [];
-    if (this.state.fuzzy) {
-      const rawResults = this.state.fuzzy.search<Action, true, true>(query);
-      results = rawResults
-        .filter(({item}) => !item.requiresSuperuser || isSuperuser)
-        .map<Result>(value => {
-          const {item, ...rest} = value;
-          return {
-            item: {
-              ...item,
-              sourceType: 'command',
-              resultType: 'command',
-            },
-            ...rest,
-          };
-        });
-    }
-
-    return children({
-      isLoading: searchMap === null,
-      results,
-    });
-  }
+  return await createFuzzySearch<Action>(searchMap || [], options);
 }
 
+function CommandSource({
+  query,
+  isSuperuser,
+  children,
+  searchOptions = {},
+  searchMap = [],
+}: Props) {
+  const [fuzzy, setFuzzy] = React.useState<FuzzyState>(null);
+
+  React.useEffect(() => {
+    async function initializeFuzzy() {
+      const createdSearch = await createSearch(searchOptions, ACTIONS);
+      setFuzzy(createdSearch);
+    }
+    initializeFuzzy();
+  }, []);
+
+  let results: Result[] = [];
+
+  if (fuzzy) {
+    const rawResults = fuzzy.search<Action, true, true>(query);
+    results = rawResults
+      .filter(({item}) => !item.requiresSuperuser || isSuperuser)
+      .map<Result>(value => {
+        const {item, ...rest} = value;
+        return {
+          item: {
+            ...item,
+            sourceType: 'command',
+            resultType: 'command',
+          },
+          ...rest,
+        };
+      });
+  }
+
+  return children({
+    isLoading: searchMap === null,
+    results,
+  });
+}
 const CommandSourceWithFeature = (props: Omit<Props, 'isSuperuser'>) => (
   <Access isSuperuser>
     {({hasSuperuser}) => <CommandSource {...props} isSuperuser={hasSuperuser} />}

@@ -4,6 +4,7 @@ import styled from '@emotion/styled';
 import {Config} from 'app/types';
 import withConfig from 'app/utils/withConfig';
 
+import {useFeatureHighlighter} from './context';
 import Describer from './describer';
 
 type Props = {
@@ -25,6 +26,10 @@ function FeatureHighlighter({
   config,
   features,
 }: Props) {
+  const highlighter = useFeatureHighlighter();
+  if (!highlighter?.enabled) {
+    return <React.Fragment>{children}</React.Fragment>;
+  }
   if (!config.user.isStaff) {
     // TODO: uncomment this
     // return children;

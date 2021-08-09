@@ -1,6 +1,11 @@
+import {FeatureHighlighterContextInterface} from 'app/components/acl/featureHighlighter/context';
 import parseHtmlMarks from 'app/utils/parseHtmlMarks';
 
 type MarkedText = ReturnType<typeof parseHtmlMarks>;
+
+export type ActionHooks = {
+  highlighter: FeatureHighlighterContextInterface;
+};
 
 /**
  * A result item that sources create.
@@ -55,7 +60,7 @@ export type ResultItem = {
    * A handler to call when the result is clicked,
    * and the result doesn't have a URL.
    */
-  action?: (item: ResultItem, autocompleteState: any) => void;
+  action?: (item: ResultItem, autocompleteState: any, {hooks: ActionHooks}) => void;
 
   sectionHeading?: string;
   sectionCount?: number;

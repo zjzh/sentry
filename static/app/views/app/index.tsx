@@ -13,6 +13,7 @@ import {fetchGuides} from 'app/actionCreators/guides';
 import {openCommandPalette} from 'app/actionCreators/modal';
 import AlertActions from 'app/actions/alertActions';
 import {Client, initApiClientErrorHandling} from 'app/api';
+import {FeatureHighlighterProvider} from 'app/components/acl/featureHighlighter/context';
 import ErrorBoundary from 'app/components/errorBoundary';
 import GlobalModal from 'app/components/globalModal';
 import HookOrDefault from 'app/components/hookOrDefault';
@@ -217,7 +218,9 @@ class App extends Component<Props, State> {
   }
 
   render() {
-    if (this.state.loading) {
+    const {loading, user} = this.state;
+
+    if (loading) {
       return (
         <LoadingIndicator triangle>
           {t('Getting a list of all of your organizations.')}
@@ -227,14 +230,16 @@ class App extends Component<Props, State> {
 
     return (
       <MainContainer tabIndex={-1} ref={this.mainContainerRef}>
-        <GlobalModal onClose={this.handleGlobalModalClose} />
-        <SystemAlerts className="messages-container" />
-        <GlobalNotifications
-          className="notifications-container messages-container"
-          organization={this.state.organization}
-        />
-        <Indicators className="indicators-container" />
-        <ErrorBoundary>{this.renderBody()}</ErrorBoundary>
+        <FeatureHighlighterProvider isStaff={!!user?.isStaff || true}>
+          <GlobalModal onClose={this.handleGlobalModalClose} />
+          <SystemAlerts className="messages-container" />
+          <GlobalNotifications
+            className="notifications-container messages-container"
+            organization={this.state.organization}
+          />
+          <Indicators className="indicators-container" />
+          <ErrorBoundary>{this.renderBody()}</ErrorBoundary>
+        </FeatureHighlighterProvider>
       </MainContainer>
     );
   }
