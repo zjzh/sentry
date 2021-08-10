@@ -235,16 +235,16 @@ class EventSerializer(Serializer):
             except TypeError:
                 received = None
 
-        # Fake malicious IP address
-        attrs["user"]["ip_address"] = "198.12.226.30"
-        ip_address = attrs["user"]["ip_address"]
+        if attrs["user"]:
+            # Fake malicious IP address
+            # attrs["user"]["ip_address"] = "198.12.226.30"
 
-        ip_reputation_service = IpReputation()
-        reputation = ip_reputation_service.get(ip_address)
-        if reputation and reputation["risk_level"] > 1:
-            attrs["user"]["ip_address"] += " (risk level {}, threat is {})".format(
-                reputation["risk_level"], reputation["threat"]
-            )
+            ip_address = attrs["user"]["ip_address"]
+
+            ip_reputation_service = IpReputation()
+            reputation = ip_reputation_service.get(ip_address)
+            if reputation and reputation["risk_level"] > 1:
+                attrs["user"]["reputation"] = reputation
 
         d = {
             "id": obj.event_id,

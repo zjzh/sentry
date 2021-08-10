@@ -1,7 +1,8 @@
 import * as React from 'react';
 
 import ExternalLink from 'app/components/links/externalLink';
-import {IconMail} from 'app/icons';
+import Tooltip from 'app/components/tooltip';
+import {IconMail, IconWarning} from 'app/icons';
 import {t} from 'app/locale';
 import {AvatarUser as UserType} from 'app/types';
 
@@ -36,9 +37,27 @@ function getUserKnownDataDetails(
         value: data.id,
       };
     case UserKnownDataType.IP_ADDRESS:
+      const url = 'https://spyse.com/target/ip/' + data.ip_address;
       return {
         subject: t('IP Address'),
         value: data.ip_address,
+        subjectIcon:
+          data.reputation === undefined ? (
+            ''
+          ) : (
+            <Tooltip
+              isHoverable
+              skipWrapper
+              title={
+                <span>
+                  {`Risk level ${data.reputation.risk_level}. Threat is ${data.reputation.threat}. `}
+                  <ExternalLink href={`${url}`}>More details</ExternalLink>
+                </span>
+              }
+            >
+              <IconWarning size="xs" color="red300" />
+            </Tooltip>
+          ),
       };
     case UserKnownDataType.EMAIL:
       return {

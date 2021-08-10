@@ -480,6 +480,10 @@ export type AvatarUser = {
     avatarType: Avatar['avatarType'];
   };
   lastSeen?: string;
+  reputation?: {
+    risk_level?: number;
+    threat?: string;
+  };
 };
 
 /**
