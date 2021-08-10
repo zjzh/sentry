@@ -448,5 +448,5 @@ const BackButtonWrapper = styled('div')`
 
 const LiveTailWrapper = styled(HeaderItemPosition)`
   flex: 0;
-  min-width: 80px;
+  min-width: 150px;
 `;

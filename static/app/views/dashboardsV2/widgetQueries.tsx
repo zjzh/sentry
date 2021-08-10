@@ -133,19 +133,15 @@ class WidgetQueries extends React.Component<Props, State> {
   };
 
   componentDidMount() {
-    const {isEditing, selection} = this.props;
     this.fetchData();
-    // this.setState({
-    //   timer: setInterval(() => {
-    //     if (!isEditing) {
-    //       this.fetchData(true);
-    //     }
-    //   }, 5000),
-    // });
   }
 
   componentDidUpdate(prevProps: Props) {
     const {selection, widget} = this.props;
+    if (prevProps.selection.liveTail !== selection.liveTail) {
+      if (selection.liveTail) this.startLiveTailing();
+      else this.stopLiveTailing();
+    }
 
     // We do not fetch data whenever the query name changes.
     const [prevWidgetQueryNames, prevWidgetQueries] = prevProps.widget.queries.reduce(
@@ -196,6 +192,23 @@ class WidgetQueries extends React.Component<Props, State> {
   }
 
   componentWillUnmount() {
+    if (this.state.timer) clearInterval(this.state.timer);
+  }
+
+  startLiveTailing() {
+    const {isEditing} = this.props;
+    // Clear current interval if somehow exists
+    this.stopLiveTailing();
+    this.setState({
+      timer: setInterval(() => {
+        if (!isEditing) {
+          this.fetchData(true);
+        }
+      }, 5000),
+    });
+  }
+
+  stopLiveTailing() {
     if (this.state.timer) clearInterval(this.state.timer);
   }
 

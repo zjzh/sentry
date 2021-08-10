@@ -80,8 +80,6 @@ const storeConfig: Reflux.StoreDefinition & GlobalSelectionStoreInterface = {
   },
 
   get() {
-    console.log('get');
-    console.log(this.state);
     return {
       selection: this.state,
       isReady: this.isReady(),

@@ -162,8 +162,6 @@ class WidgetCard extends React.Component<Props> {
       router,
       isEditing,
     } = this.props;
-    console.log('rerendering');
-    console.log(selection);
     return (
       <ErrorBoundary
         key={widget.id}

@@ -116,5 +116,8 @@ export function isSelectionEqual(
   ) {
     return false;
   }
+  if (selection.liveTail !== other.liveTail) {
+    return false;
+  }
   return true;
 }
