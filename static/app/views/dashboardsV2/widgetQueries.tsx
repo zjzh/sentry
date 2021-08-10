@@ -45,7 +45,7 @@ function getWidgetInterval(
   if (liveTail) {
     interval = '5s';
   }
-  const desiredPeriod = parsePeriodToHours(interval);
+  const desiredPeriod = parsePeriodToHours(interval) * 60;
   const selectedRange = getDiffInMinutes(datetimeObj);
 
   if (selectedRange / desiredPeriod > MAX_BIN_COUNT) {
@@ -139,8 +139,11 @@ class WidgetQueries extends React.Component<Props, State> {
   componentDidUpdate(prevProps: Props) {
     const {selection, widget} = this.props;
     if (prevProps.selection.liveTail !== selection.liveTail) {
-      if (selection.liveTail) this.startLiveTailing();
-      else this.stopLiveTailing();
+      if (selection.liveTail) {
+        this.startLiveTailing();
+      } else {
+        this.stopLiveTailing();
+      }
     }
 
     // We do not fetch data whenever the query name changes.
@@ -295,15 +298,19 @@ class WidgetQueries extends React.Component<Props, State> {
 
   fetchTimeseriesData(queryFetchID: symbol, liveTail: boolean = false) {
     const {selection, api, organization, widget} = this.props;
-    if (!liveTail) this.setState({timeseriesResults: [], rawResults: []});
+    this.setState({timeseriesResults: [], rawResults: []});
 
     const {environments, projects} = selection;
     const {start, end, period: statsPeriod} = selection.datetime;
-    const interval = getWidgetInterval(widget, {
-      start,
-      end,
-      period: statsPeriod,
-    });
+    const interval = getWidgetInterval(
+      widget,
+      {
+        start,
+        end,
+        period: statsPeriod,
+      },
+      liveTail
+    );
     const promises = widget.queries.map(query => {
       const requestData = {
         organization,
@@ -333,19 +340,14 @@ class WidgetQueries extends React.Component<Props, State> {
             return prevState;
           }
 
-          const timeseriesResults = liveTail
-            ? transformResult(widget.queries[i], rawResults)
-            : (prevState.timeseriesResults ?? []).concat(
-                transformResult(widget.queries[i], rawResults)
-              );
+          const timeseriesResults = (prevState.timeseriesResults ?? []).concat(
+            transformResult(widget.queries[i], rawResults)
+          );
 
           return {
             ...prevState,
             timeseriesResults,
-            rawResults: (prevState.rawResults && !liveTail
-              ? prevState.rawResults
-              : []
-            ).concat(rawResults),
+            rawResults: (prevState.rawResults ?? []).concat(rawResults),
           };
         });
       } catch (err) {
@@ -368,8 +370,9 @@ class WidgetQueries extends React.Component<Props, State> {
     });
   }
 
-  fetchData(liveTail: boolean = false) {
-    const {widget} = this.props;
+  fetchData() {
+    const {widget, selection} = this.props;
+    const liveTail = selection.liveTail;
 
     const queryFetchID = Symbol('queryFetchID');
     this.setState({
