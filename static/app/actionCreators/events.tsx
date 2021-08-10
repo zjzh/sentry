@@ -32,6 +32,7 @@ type Options = {
   partial: boolean;
   withoutZerofill?: boolean;
   anomaly?: boolean;
+  anomalyConfidence?: string;
 };
 
 /**
@@ -69,6 +70,7 @@ export const doEventsRequest = (
     partial,
     withoutZerofill,
     anomaly,
+    anomalyConfidence,
   }: Options
 ): Promise<EventsStats | MultiSeriesEventsStats> => {
   const shouldDoublePeriod = canIncludePreviousPeriod(includePrevious, period);
@@ -103,6 +105,7 @@ export const doEventsRequest = (
         query: {
           ...urlQuery,
           ...periodObj,
+          threshold: anomalyConfidence,
         },
       }
     );

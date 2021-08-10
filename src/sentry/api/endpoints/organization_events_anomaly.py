@@ -11,7 +11,6 @@ from sentry.utils import json
 from sentry.utils.dates import get_rollup_from_request
 from sentry.utils.snuba import SnubaTSResult
 
-
 meh = 0.5
 poor = 0.7
 
@@ -59,6 +58,11 @@ class OrganizationEventsAnomalyEndpoint(OrganizationEventsV2EndpointBase):
         end = params["end"]
         end_ts = int(end.timestamp())
 
+        threshold = request.GET.get("threshold")
+        key = f"threshold_{threshold}"
+        if key not in DATA:
+            return Response("bad threshold", status=400)
+
         rollup = get_rollup_from_request(
             request,
             params,
@@ -70,7 +74,7 @@ class OrganizationEventsAnomalyEndpoint(OrganizationEventsV2EndpointBase):
             top_events=0,
         )
 
-        data = [entry for entry in DATA["threshold_0.9"] if start_ts <= entry["unix_timestamp"] < end_ts]
+        data = [entry for entry in DATA[key] if start_ts <= entry["unix_timestamp"] < end_ts]
 
         results = {
             "count": [],

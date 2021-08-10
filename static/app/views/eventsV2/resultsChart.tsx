@@ -63,6 +63,7 @@ class ResultsChart extends Component<ResultsChartProps> {
     const isDaily = display === DisplayModes.DAILYTOP5 || display === DisplayModes.DAILY;
     const isPrevious = display === DisplayModes.PREVIOUS;
     const isAnomaly = display === DisplayModes.ANOMALY;
+    const threshold = String(location.query.threshold ?? '0.9');
 
     return (
       <Fragment>
@@ -90,6 +91,7 @@ class ResultsChart extends Component<ResultsChartProps> {
               utc={utc === 'true'}
               confirmedQuery={confirmedQuery}
               showAnomaly={isAnomaly}
+              anomalyConfidence={threshold}
             />
           ),
           fixed: <Placeholder height="200px" testId="skeleton-ui" />,
@@ -156,6 +158,22 @@ class ResultsChartContainer extends Component<ContainerProps> {
       return true;
     });
 
+    const selectedThreshold = String(location.query.threshold ?? '0.9');
+    const thresholds = [
+      {label: '90%', value: '0.9'},
+      {label: '95%', value: '0.95'},
+      {label: '99%', value: '0.99'},
+    ];
+    function onThresholdChange(threshold) {
+      ReactRouter.browserHistory.push({
+        ...location,
+        query: {
+          ...location.query,
+          threshold,
+        },
+      });
+    }
+
     return (
       <StyledPanel>
         <ResultsChart
@@ -174,6 +192,9 @@ class ResultsChartContainer extends Component<ContainerProps> {
           displayOptions={displayOptions}
           displayMode={eventView.getDisplayMode()}
           onDisplayChange={onDisplayChange}
+          threshold={selectedThreshold}
+          thresholdOptions={thresholds}
+          onThresholdChange={onThresholdChange}
         />
       </StyledPanel>
     );

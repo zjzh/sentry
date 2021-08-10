@@ -346,6 +346,7 @@ export type EventsChartProps = {
    */
   usePageZoom?: boolean;
   showAnomaly?: boolean;
+  anomalyConfidence?: string;
 } & Pick<
   ChartProps,
   | 'currentSeriesName'
@@ -410,6 +411,7 @@ class EventsChart extends React.Component<EventsChartProps> {
       usePageZoom,
       height,
       showAnomaly,
+      anomalyConfidence,
       ...props
     } = this.props;
     // Include previous only on relative dates (defaults to relative if no start and end)
@@ -533,6 +535,7 @@ class EventsChart extends React.Component<EventsChartProps> {
             confirmedQuery={confirmedQuery}
             partial
             anomaly={showAnomaly}
+            anomalyConfidence={anomalyConfidence}
           >
             {eventData => {
               if (showAnomaly && eventData.results) {

@@ -167,6 +167,7 @@ type EventsRequestPartialProps = {
    * Use the anomaly stuff endpoint
    */
   anomaly?: boolean;
+  anomalyConfidence?: string;
 };
 
 type TimeAggregationProps =
@@ -226,9 +227,10 @@ class EventsRequest extends React.PureComponent<EventsRequestProps, EventsReques
     const {api, confirmedQuery, expired, name, hideError, ...props} = this.props;
     let timeseriesData: EventsStats | MultiSeriesEventsStats | null = null;
 
-    if (confirmedQuery === false) {
-      return;
-    }
+    // HACK: idk what this is but it's not working
+    // if (confirmedQuery === false) {
+    //   return;
+    // }
 
     this.setState(state => ({
       reloading: state.timeseriesData !== null,
