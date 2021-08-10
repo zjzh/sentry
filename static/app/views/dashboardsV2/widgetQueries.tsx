@@ -32,7 +32,8 @@ const MAX_BIN_COUNT = 4000;
 
 function getWidgetInterval(
   widget: Widget,
-  datetimeObj: Partial<GlobalSelection['datetime']>
+  datetimeObj: Partial<GlobalSelection['datetime']>,
+  liveTail?: boolean
 ): string {
   // Bars charts are daily totals to aligned with discover. It also makes them
   // usefully different from line/area charts until we expose the interval control, or remove it.
@@ -40,6 +41,9 @@ function getWidgetInterval(
   if (!interval) {
     // Default to 5 minutes
     interval = '5m';
+  }
+  if (liveTail) {
+    interval = '5s';
   }
   const desiredPeriod = parsePeriodToHours(interval);
   const selectedRange = getDiffInMinutes(datetimeObj);
@@ -99,6 +103,7 @@ type Props = {
   organization: Organization;
   widget: Widget;
   selection: GlobalSelection;
+  isEditing: boolean;
   children: (
     props: Pick<State, 'loading' | 'timeseriesResults' | 'tableResults' | 'errorMessage'>
   ) => React.ReactNode;
@@ -113,6 +118,7 @@ type State = {
   timeseriesResults: undefined | Series[];
   rawResults: undefined | RawResult[];
   tableResults: undefined | TableDataWithTitle[];
+  timer: undefined | NodeJS.Timeout;
 };
 
 class WidgetQueries extends React.Component<Props, State> {
@@ -123,10 +129,19 @@ class WidgetQueries extends React.Component<Props, State> {
     timeseriesResults: undefined,
     rawResults: undefined,
     tableResults: undefined,
+    timer: undefined,
   };
 
   componentDidMount() {
+    const {isEditing, selection} = this.props;
     this.fetchData();
+    // this.setState({
+    //   timer: setInterval(() => {
+    //     if (!isEditing) {
+    //       this.fetchData(true);
+    //     }
+    //   }, 5000),
+    // });
   }
 
   componentDidUpdate(prevProps: Props) {
@@ -180,13 +195,17 @@ class WidgetQueries extends React.Component<Props, State> {
     }
   }
 
-  fetchEventData(queryFetchID: symbol) {
+  componentWillUnmount() {
+    if (this.state.timer) clearInterval(this.state.timer);
+  }
+
+  fetchEventData(queryFetchID: symbol, liveTail: boolean = false) {
     const {selection, api, organization, widget} = this.props;
 
     let tableResults: TableDataWithTitle[] = [];
     // Table, world map, and stat widgets use table results and need
     // to do a discover 'table' query instead of a 'timeseries' query.
-    this.setState({tableResults: []});
+    if (!liveTail) this.setState({tableResults: []});
 
     const promises = widget.queries.map(query => {
       const eventView = eventViewFromWidget(widget.title, query, selection);
@@ -261,9 +280,9 @@ class WidgetQueries extends React.Component<Props, State> {
     });
   }
 
-  fetchTimeseriesData(queryFetchID: symbol) {
+  fetchTimeseriesData(queryFetchID: symbol, liveTail: boolean = false) {
     const {selection, api, organization, widget} = this.props;
-    this.setState({timeseriesResults: [], rawResults: []});
+    if (!liveTail) this.setState({timeseriesResults: [], rawResults: []});
 
     const {environments, projects} = selection;
     const {start, end, period: statsPeriod} = selection.datetime;
@@ -301,14 +320,19 @@ class WidgetQueries extends React.Component<Props, State> {
             return prevState;
           }
 
-          const timeseriesResults = (prevState.timeseriesResults ?? []).concat(
-            transformResult(widget.queries[i], rawResults)
-          );
+          const timeseriesResults = liveTail
+            ? transformResult(widget.queries[i], rawResults)
+            : (prevState.timeseriesResults ?? []).concat(
+                transformResult(widget.queries[i], rawResults)
+              );
 
           return {
             ...prevState,
             timeseriesResults,
-            rawResults: (prevState.rawResults ?? []).concat(rawResults),
+            rawResults: (prevState.rawResults && !liveTail
+              ? prevState.rawResults
+              : []
+            ).concat(rawResults),
           };
         });
       } catch (err) {
@@ -331,16 +355,20 @@ class WidgetQueries extends React.Component<Props, State> {
     });
   }
 
-  fetchData() {
+  fetchData(liveTail: boolean = false) {
     const {widget} = this.props;
 
     const queryFetchID = Symbol('queryFetchID');
-    this.setState({loading: true, errorMessage: undefined, queryFetchID});
+    this.setState({
+      loading: liveTail ? false : true,
+      errorMessage: undefined,
+      queryFetchID,
+    });
 
     if (['table', 'world_map', 'big_number'].includes(widget.displayType)) {
-      this.fetchEventData(queryFetchID);
+      this.fetchEventData(queryFetchID, liveTail);
     } else {
-      this.fetchTimeseriesData(queryFetchID);
+      this.fetchTimeseriesData(queryFetchID, liveTail);
     }
   }
 

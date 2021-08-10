@@ -33,6 +33,7 @@ type GlobalSelectionStoreInterface = {
     environments: null | string[]
   ) => void;
   updateDateTime: (datetime: GlobalSelection['datetime']) => void;
+  updateLiveTail: (liveTail: boolean) => void;
   updateEnvironments: (environments: string[]) => void;
   onSave: (data: UpdateData) => void;
 };
@@ -51,6 +52,7 @@ const storeConfig: Reflux.StoreDefinition & GlobalSelectionStoreInterface = {
     this.listenTo(GlobalSelectionActions.updateProjects, this.updateProjects);
     this.listenTo(GlobalSelectionActions.updateDateTime, this.updateDateTime);
     this.listenTo(GlobalSelectionActions.updateEnvironments, this.updateEnvironments);
+    this.listenTo(GlobalSelectionActions.updateLiveTail, this.updateLiveTail);
   },
 
   reset(state) {
@@ -78,6 +80,8 @@ const storeConfig: Reflux.StoreDefinition & GlobalSelectionStoreInterface = {
   },
 
   get() {
+    console.log('get');
+    console.log(this.state);
     return {
       selection: this.state,
       isReady: this.isReady(),
@@ -111,6 +115,19 @@ const storeConfig: Reflux.StoreDefinition & GlobalSelectionStoreInterface = {
       ...this.state,
       datetime,
     };
+    this.trigger(this.get());
+  },
+
+  updateLiveTail(liveTail) {
+    if (this.state.liveTail === liveTail) {
+      return;
+    }
+
+    this.state = {
+      ...this.state,
+      liveTail,
+    };
+    console.log(this.state);
     this.trigger(this.get());
   },
 

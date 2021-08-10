@@ -645,6 +645,7 @@ export type GlobalSelection = {
     period: RelativePeriod | string;
     utc: boolean | null;
   };
+  liveTail: boolean;
 };
 
 export type AuthenticatorDevice = {

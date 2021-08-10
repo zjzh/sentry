@@ -7,5 +7,6 @@ export default Reflux.createActions([
   'updateProjects',
   'updateDateTime',
   'updateEnvironments',
+  'updateLiveTail',
   'save',
 ]);

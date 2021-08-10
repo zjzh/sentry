@@ -86,6 +86,7 @@ export function getDefaultSelection(): GlobalSelection {
       period: DEFAULT_PARAMS.statsPeriod || '',
       utc: typeof utc !== 'undefined' ? utc === 'true' : null,
     },
+    liveTail: false,
   };
 }
 

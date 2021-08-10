@@ -41,6 +41,8 @@ function withGlobalSelection<P extends InjectedGlobalSelectionProps>(
 
     render() {
       const {isReady, selection} = this.state;
+      console.log('this.state');
+      console.log(selection);
 
       return (
         <WrappedComponent

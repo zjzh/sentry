@@ -152,10 +152,21 @@ class WidgetCard extends React.Component<Props> {
   }
 
   render() {
-    const {widget, api, organization, selection, renderErrorMessage, location, router} =
-      this.props;
+    const {
+      widget,
+      api,
+      organization,
+      selection,
+      renderErrorMessage,
+      location,
+      router,
+      isEditing,
+    } = this.props;
+    console.log('rerendering');
+    console.log(selection);
     return (
       <ErrorBoundary
+        key={widget.id}
         customComponent={<ErrorCard>{t('Error loading widget data')}</ErrorCard>}
       >
         <StyledPanel isDragging={false}>
@@ -168,6 +179,7 @@ class WidgetCard extends React.Component<Props> {
             organization={organization}
             widget={widget}
             selection={selection}
+            isEditing={isEditing}
           >
             {({tableResults, timeseriesResults, errorMessage, loading}) => {
               return (

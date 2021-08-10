@@ -271,6 +271,13 @@ export function updateDateTime(
   updateParams(datetime, router, {...options, save: false});
 }
 
+export function updateLiveTail(liveTail: boolean, router?: Router, options?: Options) {
+  GlobalSelectionActions.updateLiveTail(liveTail);
+  // We only save projects/environments to local storage, do not
+  // save anything when date changes.
+  updateParams({liveTail}, router, {...options, save: false});
+}
+
 /**
  * Updates store and updates global environment selection URL param if `router` is supplied
  *

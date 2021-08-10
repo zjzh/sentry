@@ -6,11 +6,13 @@ import debounce from 'lodash/debounce';
 import {
   updateDateTime,
   updateEnvironments,
+  updateLiveTail,
   updateProjects,
 } from 'app/actionCreators/globalSelection';
 import BackToIssues from 'app/components/organizations/backToIssues';
 import HeaderItemPosition from 'app/components/organizations/headerItemPosition';
 import HeaderSeparator from 'app/components/organizations/headerSeparator';
+import LiveTailButton from 'app/components/organizations/liveTailButton';
 import MultipleEnvironmentSelector from 'app/components/organizations/multipleEnvironmentSelector';
 import MultipleProjectSelector from 'app/components/organizations/multipleProjectSelector';
 import TimeRangeSelector, {
@@ -52,6 +54,11 @@ const defaultProps = {
    * Remove ability to select multiple projects even if organization has feature 'global-views'
    */
   disableMultipleProjectSelection: false,
+
+  /**
+   * Display live tail button?
+   */
+  showLiveTailButton: false,
 };
 
 type Props = {
@@ -129,6 +136,7 @@ type Props = {
   onUpdateEnvironments?: (environments: string[]) => void;
   onChangeTime?: (datetime: any) => void;
   onUpdateTime?: (datetime: any) => void;
+  onToggleLiveTail?: (liveTail: boolean) => void;
 
   /**
    * If true, there will be a back to issues stream icon link
@@ -215,6 +223,11 @@ class GlobalSelectionHeader extends React.Component<Props, State> {
     callIfFunction(this.props.onUpdateTime, newValueObj);
   };
 
+  handleUpdateLiveTail = (liveTail: boolean) => {
+    updateLiveTail(liveTail, this.props.router, this.getUpdateOptions());
+    callIfFunction(this.props.onToggleLiveTail, liveTail);
+  };
+
   handleUpdateEnvironmments = () => {
     const {environments} = this.state;
     updateEnvironments(environments, this.props.router, this.getUpdateOptions());
@@ -284,6 +297,7 @@ class GlobalSelectionHeader extends React.Component<Props, State> {
       showAbsolute,
       showRelative,
       showDateSelector,
+      showLiveTailButton,
       showEnvironmentSelector,
       memberProjects,
       nonMemberProjects,
@@ -400,6 +414,18 @@ class GlobalSelectionHeader extends React.Component<Props, State> {
             </React.Fragment>
           )}
 
+          {showLiveTailButton && (
+            <React.Fragment>
+              <HeaderSeparator />
+              <LiveTailWrapper>
+                <LiveTailButton
+                  value={this.props.selection.liveTail}
+                  onToggle={this.handleUpdateLiveTail}
+                />
+              </LiveTailWrapper>
+            </React.Fragment>
+          )}
+
           {!showEnvironmentSelector && <HeaderItemPosition isSpacer />}
           {!showDateSelector && <HeaderItemPosition isSpacer />}
         </Header>
@@ -418,4 +444,9 @@ const BackButtonWrapper = styled('div')`
   height: 100%;
   position: relative;
   left: ${space(2)};
+`;
+
+const LiveTailWrapper = styled(HeaderItemPosition)`
+  flex: 0;
+  min-width: 80px;
 `;
