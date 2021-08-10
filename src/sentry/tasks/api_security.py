@@ -1,22 +1,39 @@
 import logging
+import uuid
 from datetime import datetime, timedelta
 
+from sentry.event_manager import EventManager
+from sentry.models.ipreputation import IpReputation
 from sentry.snuba.discover import query
 from sentry.tasks.base import instrumented_task, retry
 
 logger = logging.getLogger("sentry.tasks.api_security")
 
 
-class SecurityException(BaseException):
-    pass
-
-
 def _is_malicious_ip(ip_address):
-    return ip_address == "2601:642:4002:ba70:538:a4b:5a27:921e"
+    if ip_address == "127.0.0.1":
+        return True
+    ip_reputation_service = IpReputation()
+    reputation = ip_reputation_service.get(ip_address)
+    return reputation and reputation["risk_level"] > 1
 
 
-def _create_security_issue():
-    logger.error("Received a request from a malicious IP Address")
+def _create_malicious_ip_event(ip_address):
+    manager = EventManager(
+        data={
+            "event_id": uuid.uuid1().hex,
+            "level": logging.ERROR,
+            "logger": ip_address,
+            "tags": [],
+            "message": "Attempted access from malicious IP",
+            "debug_meta": {"value": ip_address},
+            "user": {
+                "ip_address": ip_address,
+            },
+        }
+    )
+    manager.normalize()
+    manager.save(1)
 
 
 @instrumented_task(
@@ -25,7 +42,7 @@ def _create_security_issue():
     default_retry_delay=60 * 5,
     max_retries=2,
 )
-@retry(exclude=SecurityException)
+@retry()
 def test_task():
     """Runs every 5 minutes"""
     now = datetime.now()
@@ -43,4 +60,4 @@ def test_task():
     logger.info(results)
     for query_result in results["data"]:
         if _is_malicious_ip(query_result["user.ip"]):
-            _create_security_issue()
+            _create_malicious_ip_event(query_result["user.ip"])

@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+import os
+
 import click
 import sentry_sdk
 
@@ -10,15 +12,10 @@ Usage:
 ./payloader.py ip ips.txt
 """
 
+SENTRY_DSN = os.getenv("SENTRY_DSN")
 
-SENTRY_DSN = "http://119c01fab71b43ffb2d076dc5e1543b6@dev.getsentry.net:8000/2"
 
-
-sentry_sdk.init(
-    SENTRY_DSN,
-    traces_sample_rate=1.0,
-    send_default_pii=True
-)
+sentry_sdk.init(SENTRY_DSN, traces_sample_rate=1.0, send_default_pii=True)
 
 
 @click.command()
@@ -31,10 +28,10 @@ def main(kind, payloads_file):
             if not line:
                 break
 
-            if kind == 'ip':
+            if kind == "ip":
                 sentry_sdk.set_user({"ip_address": line})
-            elif kind == 'payload':
-                scope.set_extra('payload', line)
+            elif kind == "payload":
+                scope.set_extra("payload", line)
 
             sentry_sdk.capture_message("Message with " + kind)
 

@@ -8,6 +8,8 @@ from sentry.utils.redis import redis_clusters
 class IpReputation:
     def __init__(self):
         self.cache = redis_clusters.get("default")
+        demo_result = {"risk_level": 4, "threat": "demo_threat"}
+        self.set("127.0.0.1", demo_result)
 
     def get(self, ip):
         result = self.get_from_cache(ip)

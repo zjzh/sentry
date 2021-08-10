@@ -1,3 +1,4 @@
+import logging
 import os.path
 import random
 import time
@@ -14,6 +15,8 @@ from sentry.utils.canonical import CanonicalKeyDict
 from sentry.utils.dates import to_timestamp
 
 epoch = datetime.utcfromtimestamp(0)
+
+logger = logging.getLogger("sentry.create_sample")
 
 
 def random_normal(mu, sigma, minimum, maximum=None):
