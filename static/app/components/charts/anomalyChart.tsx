@@ -24,6 +24,10 @@ export type AnomalySeries = {
   max: Series;
 };
 
+export function isSeries(x): x is Series {
+  return Boolean(x);
+}
+
 class AnomalyChart extends React.Component<Props> {
   render() {
     const {series, anomalySeries, grid: _grid, yAxis, xAxis, ...props} = this.props;
@@ -35,6 +39,12 @@ class AnomalyChart extends React.Component<Props> {
         top: '32px',
         bottom: '12px',
       };
+
+    // const dataMax = Math.max(
+    //   ...[...series, anomalySeries?.min, anomalySeries?.max]
+    //     .filter(isSeries)
+    //     .map(({data}) => Math.max(...data.map(({value}) => value)))
+    // );
 
     const dataSeries = series.map(({seriesName, data, dataArray, ...options}) =>
       LineSeries({
@@ -108,6 +118,31 @@ class AnomalyChart extends React.Component<Props> {
           animationDuration: 0,
           xAxisIndex: 1,
           yAxisIndex: 1,
+          stack: 'anomaly-score',
+          barGap: '0%',
+        })
+      );
+      otherSeries.push(
+        BarSeries({
+          name: `inverse_${anomaly.seriesName}`,
+          data: anomaly.data.map(({value, name}) => ({
+            value: [name, -value],
+            itemStyle: {
+              color:
+                value <= meh
+                  ? theme.green300
+                  : value <= poor
+                  ? theme.yellow300
+                  : theme.red300,
+            },
+          })),
+          animation: false,
+          animationThreshold: 1,
+          animationDuration: 0,
+          xAxisIndex: 1,
+          yAxisIndex: 1,
+          stack: 'anomaly-score',
+          barCategoryGap: '0%',
         })
       );
 
@@ -149,8 +184,8 @@ class AnomalyChart extends React.Component<Props> {
               color: color(theme.yellow300).alpha(0.42).rgb().string(),
             },
             data: mehRegions.map(region => [
-              {xAxis: region[0]},
-              {xAxis: region[1]},
+              {xAxis: region[0] - interval},
+              {xAxis: region[1] + interval},
             ]) as any,
           }),
           data: [],
@@ -177,14 +212,24 @@ class AnomalyChart extends React.Component<Props> {
       <BaseChart
         {...props}
         grid={[
-          {...grid, bottom: '32%'},
-          {...grid, top: '70%'},
+          {...grid, left: '72px', containLabel: false, bottom: '32%'},
+          {...grid, left: '72px', containLabel: false, top: '80%'},
         ]}
         yAxes={[
-          {...(yAxis ?? {}), gridIndex: 0},
-          {gridIndex: 1, min: 0, max: 1, minInterval: 1},
+          {...(yAxis ?? {}), gridIndex: 0, type: 'value'},
+          {
+            gridIndex: 1,
+            min: -1,
+            max: 1,
+            minInterval: 1,
+            show: false,
+            type: 'value',
+          },
         ]}
-        xAxes={[{...(xAxis ?? {}), gridIndex: 0}, {gridIndex: 1}]}
+        xAxes={[
+          {...(xAxis ?? {}), gridIndex: 0},
+          {show: false, gridIndex: 1},
+        ]}
         series={[...dataSeries, ...otherSeries]}
         height={300}
       />

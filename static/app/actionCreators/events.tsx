@@ -93,10 +93,22 @@ export const doEventsRequest = (
   // the tradeoff for now.
   const periodObj = getPeriod({period, start, end}, {shouldDoublePeriod});
 
-  const endpoint = anomaly
-    ? `/organizations/${organization.slug}/events-anomaly/`
-    : `/organizations/${organization.slug}/events-stats/`;
-  return api.requestPromise(endpoint, {
+  if (anomaly) {
+    const apiLocal = new Client({
+      baseUrl: 'http://dev.getsentry.net:8000/api/0',
+    });
+    return apiLocal.requestPromise(
+      `/organizations/${organization.slug}/events-anomaly/`,
+      {
+        query: {
+          ...urlQuery,
+          ...periodObj,
+        },
+      }
+    );
+  }
+
+  return api.requestPromise(`/organizations/${organization.slug}/events-stats/`, {
     query: {
       ...urlQuery,
       ...periodObj,

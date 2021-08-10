@@ -95,6 +95,9 @@ function getFormatter({
   nameFormatter = defaultNameFormatter,
 }: FormatterOptions) {
   const getFilter = (seriesParam: EChartOption.Tooltip.Format) => {
+    if (seriesParam.seriesName === 'inverse_anomaly_score') {
+      return false;
+    }
     // Series do not necessarily have `data` defined, e.g. releases don't have `data`, but rather
     // has a series using strictly `markLine`s.
     // However, real series will have `data` as a tuple of (label, value) or be

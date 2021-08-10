@@ -2,6 +2,7 @@ from rest_framework.response import Response
 
 from sentry.api.bases import OrganizationEventsV2EndpointBase
 from sentry.api.serializers.snuba import SnubaTSResultSerializer
+from sentry.api.utils import get_date_range_from_params
 from sentry.exceptions import InvalidSearchQuery
 from sentry.snuba.discover import zerofill
 from sentry.utils import json
@@ -9,15 +10,20 @@ from sentry.utils.dates import get_rollup_from_request
 from sentry.utils.snuba import SnubaTSResult
 
 # HACK: loading up the precomputed data
-with open('prophet_v1_june13_june_20.json') as prophet_file:
+with open("prophet_v1_june13_june_20.json") as prophet_file:
     DATA = json.loads(prophet_file.read())
 
 
 class OrganizationEventsAnomalyEndpoint(OrganizationEventsV2EndpointBase):
+    # HACK: DON'T DO THIS IN PRODUCTION, THIS REMOVES ALL FORMS OF AUTHENTICATION
+    permission_classes = ()
+
     def get(self, request, organization):
-        params = self.get_snuba_params(
-            request, organization, check_global_views=False
-        )
+        start, end = get_date_range_from_params(request.GET, optional=False)
+        params = {"start": start, "end": end}
+        # params = self.get_snuba_params(
+        #     request, organization, check_global_views=False
+        # )
 
         start = params["start"]
         start_ts = int(start.timestamp())
@@ -65,7 +71,7 @@ class OrganizationEventsAnomalyEndpoint(OrganizationEventsV2EndpointBase):
                     series[-1]["count"] = []
 
             for k, v in mapping.items():
-                if v == 'scaled_score':
+                if v == "scaled_score":
                     results[k][-1]["count"].append((entry[v] + 1) / 2.0)
                 else:
                     results[k][-1]["count"].append(entry[v])
@@ -74,7 +80,8 @@ class OrganizationEventsAnomalyEndpoint(OrganizationEventsV2EndpointBase):
             entry["count"] = sum(entry["count"])
 
         for entry in results["anomaly_score"]:
-            entry["count"] = sum(entry["count"]) / len(entry["count"])
+            # entry["count"] = sum(entry["count"]) / len(entry["count"])
+            entry["count"] = max(entry["count"])
 
         for entry in results["lower_band"]:
             entry["count"] = sum(entry["count"])
