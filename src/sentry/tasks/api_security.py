@@ -10,9 +10,10 @@ from sentry.tasks.base import instrumented_task, retry
 logger = logging.getLogger("sentry.tasks.api_security")
 
 
+DOS_TRIGGER = 1
+
+
 def _is_malicious_ip(ip_address):
-    if ip_address == "127.0.0.1":
-        return True
     ip_reputation_service = IpReputation()
     reputation = ip_reputation_service.get(ip_address)
     return reputation and reputation["risk_level"] > 1
@@ -23,13 +24,35 @@ def _create_malicious_ip_event(ip_address):
         data={
             "event_id": uuid.uuid1().hex,
             "level": logging.ERROR,
-            "logger": ip_address,
+            "transaction": ip_address,
             "tags": [],
             "message": "Attempted access from malicious IP",
-            "debug_meta": {"value": ip_address},
             "user": {
                 "ip_address": ip_address,
             },
+            "fingerprint": [ip_address, "malicious_ip"],
+        }
+    )
+    manager.normalize()
+    manager.save(1)
+
+
+def _unusual_volume(count):
+    return int(count) > DOS_TRIGGER
+
+
+def _create_high_volume_event(ip_address, count):
+    manager = EventManager(
+        data={
+            "event_id": uuid.uuid1().hex,
+            "level": logging.ERROR,
+            "transaction": f"{count} calls from {ip_address} in 5 minutes",
+            "tags": {"call_count": count},
+            "message": "Unusually High Call Volume",
+            "user": {
+                "ip_address": ip_address,
+            },
+            "fingerprint": [ip_address, "high_call_volume"],
         }
     )
     manager.normalize()
@@ -61,3 +84,5 @@ def test_task():
     for query_result in results["data"]:
         if _is_malicious_ip(query_result["user.ip"]):
             _create_malicious_ip_event(query_result["user.ip"])
+        if _unusual_volume(query_result["count"]):
+            _create_high_volume_event(query_result["user.ip"], query_result["count"])
