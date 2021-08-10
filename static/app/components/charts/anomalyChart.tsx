@@ -98,7 +98,7 @@ class AnomalyChart extends React.Component<Props> {
     const anomaly = anomalySeries?.anomaly;
     if (anomaly) {
       const meh = 0.5;
-      const poor = 0.75;
+      const poor = 0.7;
       otherSeries.push(
         BarSeries({
           name: anomaly.seriesName,

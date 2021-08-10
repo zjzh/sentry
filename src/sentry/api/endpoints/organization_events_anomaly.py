@@ -1,3 +1,5 @@
+import math
+
 from rest_framework.response import Response
 
 from sentry.api.bases import OrganizationEventsV2EndpointBase
@@ -9,9 +11,38 @@ from sentry.utils import json
 from sentry.utils.dates import get_rollup_from_request
 from sentry.utils.snuba import SnubaTSResult
 
+
+meh = 0.5
+poor = 0.7
+
+
+def scale_anomaly_score(data):
+    x = 0
+
+    for entry in data:
+        y = (entry["scaled_score"] + 1) / 2
+
+        if y > poor:
+            x += 2
+        elif y > meh:
+            x += 1
+        else:
+            x -= 1
+
+        x = max(x, 0)
+        x = min(x, 10)
+
+        sigmoid = 1 / (1 + math.exp(-(x - 4) / 4))
+        y = y * sigmoid
+
+        entry["scaled_score"] = y
+
+
 # HACK: loading up the precomputed data
-with open("prophet_v1_june13_june_20.json") as prophet_file:
+with open("final_output.json") as prophet_file:
     DATA = json.loads(prophet_file.read())
+    for key in DATA:
+        scale_anomaly_score(DATA[key])
 
 
 class OrganizationEventsAnomalyEndpoint(OrganizationEventsV2EndpointBase):
@@ -21,9 +52,6 @@ class OrganizationEventsAnomalyEndpoint(OrganizationEventsV2EndpointBase):
     def get(self, request, organization):
         start, end = get_date_range_from_params(request.GET, optional=False)
         params = {"start": start, "end": end}
-        # params = self.get_snuba_params(
-        #     request, organization, check_global_views=False
-        # )
 
         start = params["start"]
         start_ts = int(start.timestamp())
@@ -42,7 +70,7 @@ class OrganizationEventsAnomalyEndpoint(OrganizationEventsV2EndpointBase):
             top_events=0,
         )
 
-        data = [entry for entry in DATA if start_ts <= entry["unix_timestamp"] < end_ts]
+        data = [entry for entry in DATA["threshold_0.9"] if start_ts <= entry["unix_timestamp"] < end_ts]
 
         results = {
             "count": [],
@@ -71,10 +99,7 @@ class OrganizationEventsAnomalyEndpoint(OrganizationEventsV2EndpointBase):
                     series[-1]["count"] = []
 
             for k, v in mapping.items():
-                if v == "scaled_score":
-                    results[k][-1]["count"].append((entry[v] + 1) / 2.0)
-                else:
-                    results[k][-1]["count"].append(entry[v])
+                results[k][-1]["count"].append(entry[v])
 
         for entry in results["count"]:
             entry["count"] = sum(entry["count"])
