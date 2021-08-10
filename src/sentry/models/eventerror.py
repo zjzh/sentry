@@ -18,6 +18,7 @@ class EventError:
     FETCH_GENERIC_ERROR = "fetch_generic_error"
     FETCH_INVALID_HTTP_CODE = "fetch_invalid_http_code"
     FETCH_INVALID_ENCODING = "fetch_invalid_source_encoding"
+    FETCH_INVALID_URL = "fetch_invalid_url"
     FETCH_TOO_LARGE = "fetch_too_large"
     FETCH_TIMEOUT = "fetch_timeout"
     TOO_LARGE_FOR_CACHE = "too_large_for_cache"
@@ -34,6 +35,7 @@ class EventError:
     JS_INVALID_SOURCEMAP_LOCATION = "js_invalid_sourcemap_location"
     JS_TOO_LARGE = "js_too_large"  # deprecated in favor of FETCH_TOO_LARGE
     JS_FETCH_TIMEOUT = "js_fetch_timeout"  # deprecated in favor of FETCH_TIMEOUT
+    JS_SCRAPING_DISABLED = "js_scraping_disabled"
 
     # Processing: Native
     NATIVE_NO_CRASHED_THREAD = "native_no_crashed_thread"

@@ -566,7 +566,13 @@ def fetch_file(url, project=None, release=None, dist=None, allow_scraping=True):
     # If our url has been truncated, it'd be impossible to fetch
     # so we check for this early and bail
     if url[-3:] == "...":
-        raise http.CannotFetch({"type": EventError.JS_MISSING_SOURCE, "url": http.expose_url(url)})
+        raise http.CannotFetch(
+            {
+                "type": EventError.FETCH_INVALID_URL,
+                "url": http.expose_url(url),
+                "phase": "fetch_file.precheck",
+            }
+        )
 
     # if we've got a release to look on, try that first (incl associated cache)
     if release:
@@ -579,8 +585,21 @@ def fetch_file(url, project=None, release=None, dist=None, allow_scraping=True):
     cache_key = f"source:cache:v4:{md5_text(url).hexdigest()}"
 
     if result is None:
+        # if we can't scrape, the file can't be in the scraping cache, either,
+        # so it's safe to bail if we fail either of these checks
+        if not allow_scraping:
+            error = {
+                "type": EventError.JS_SCRAPING_DISABLED,
+                "url": http.expose_url(url),
+                "phase": "fetch_file.web_scraping",
+            }
+            raise http.CannotFetch(error)
         if not allow_scraping or not url.startswith(("http:", "https:")):
-            error = {"type": EventError.JS_MISSING_SOURCE, "url": http.expose_url(url)}
+            error = {
+                "type": EventError.FETCH_INVALID_URL,
+                "url": http.expose_url(url),
+                "phase": "fetch_file.web_scraping",
+            }
             raise http.CannotFetch(error)
 
         logger.debug("Checking cache for url %r", url)
@@ -598,6 +617,7 @@ def fetch_file(url, project=None, release=None, dist=None, allow_scraping=True):
                 result[0], result[1], zlib.decompress(result[2]), result[3], encoding
             )
 
+    # cache miss - try to scrape the web
     if result is None:
         headers = {}
         verify_ssl = False
@@ -617,7 +637,7 @@ def fetch_file(url, project=None, release=None, dist=None, allow_scraping=True):
                 get_max_age(result.headers),
             )
 
-            # since the cache.set above can fail we can end up in a situation
+            # the `cache.set` above can fail we can end up in a situation
             # where the file is too large for the cache. In that case we abort
             # the fetch and cache a failure and lock the domain for future
             # http fetches.
@@ -625,6 +645,7 @@ def fetch_file(url, project=None, release=None, dist=None, allow_scraping=True):
                 error = {
                     "type": EventError.TOO_LARGE_FOR_CACHE,
                     "url": http.expose_url(url),
+                    "phase": "fetch_file.web_scraping",
                 }
                 http.lock_domain(url, error=error)
                 raise http.CannotFetch(error)
@@ -636,6 +657,7 @@ def fetch_file(url, project=None, release=None, dist=None, allow_scraping=True):
                 "type": EventError.FETCH_INVALID_HTTP_CODE,
                 "value": result.status,
                 "url": http.expose_url(url),
+                "phase": "fetch_file.web_scraping",
             }
         )
 
@@ -657,6 +679,7 @@ def fetch_file(url, project=None, release=None, dist=None, allow_scraping=True):
                 "type": EventError.FETCH_INVALID_ENCODING,
                 "value": "utf8",
                 "url": http.expose_url(url),
+                "phase": "process_file.pre_check",
             }
             raise http.CannotFetch(error)
 
@@ -668,10 +691,15 @@ def fetch_file(url, project=None, release=None, dist=None, allow_scraping=True):
         # This cannot parse as valid JS/JSON.
         # NOTE: not relying on Content-Type header because apps often don't set this correctly
         # Discard leading whitespace (often found before doctype)
-        body_start = result.body[:20].lstrip()
+        body_start = result.body[:50].lstrip()
 
         if body_start[:1] == b"<":
-            error = {"type": EventError.JS_INVALID_CONTENT, "url": url}
+            error = {
+                "type": EventError.JS_INVALID_CONTENT,
+                "url": url,
+                "content_start": body_start,
+                "phase": "process_file.pre_check",
+            }
             raise http.CannotFetch(error)
 
     return result
@@ -877,7 +905,11 @@ class JavaScriptStacktraceProcessor(StacktraceProcessor):
         self.sourcemaps_touched.add(sourcemap_url)
         if sourcemap_view and frame.get("colno") is None:
             all_errors.append(
-                {"type": EventError.JS_NO_COLUMN, "url": http.expose_url(frame["abs_path"])}
+                {
+                    "type": EventError.JS_NO_COLUMN,
+                    "url": http.expose_url(frame["abs_path"]),
+                    "phase": "process_frame.?????",
+                }
             )
         elif sourcemap_view:
             if is_data_uri(sourcemap_url):
