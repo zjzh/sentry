@@ -13,11 +13,14 @@ services:
       - "7500"
     external_links:
       - mongo
+    environment:
+      MONGO_URI: mongodb://mongo:27017/db
+      SENTRY_API_BASE_URL: http://host.docker.internal:8000
+      SENTRY_WEB_BASE_URL: http://localhost:8000
+      GITEA_API_BASE_URL: http:localhost:3000
+
   mongo:
     container_name: mongo
-    environment:
-        MONGO_INITDB_ROOT_USERNAME: root
-        MONGO_INITDB_ROOT_PASSWORD: rootpassword
     image: mongo
     ports:
       - '27017:27017'
