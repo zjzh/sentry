@@ -19,6 +19,18 @@ import withApi from 'app/utils/withApi';
 
 import ChartFooter from './chartFooter';
 
+function getSelectedLevel(location: Location, key: string): 'low' | 'medium' | 'high' {
+  const level = String(location.query[key] ?? 'medium');
+  switch (level) {
+    case 'low':
+    case 'high':
+      return level;
+    case 'medium':
+    default:
+      return 'medium';
+  }
+}
+
 type ResultsChartProps = {
   api: Client;
   router: ReactRouter.InjectedRouter;
@@ -63,7 +75,8 @@ class ResultsChart extends Component<ResultsChartProps> {
     const isDaily = display === DisplayModes.DAILYTOP5 || display === DisplayModes.DAILY;
     const isPrevious = display === DisplayModes.PREVIOUS;
     const isAnomaly = display === DisplayModes.ANOMALY;
-    const threshold = String(location.query.threshold ?? '0.9');
+    const sensitivity = getSelectedLevel(location, 'sensitivity');
+    const smoothing = getSelectedLevel(location, 'smoothing');
 
     return (
       <Fragment>
@@ -91,7 +104,8 @@ class ResultsChart extends Component<ResultsChartProps> {
               utc={utc === 'true'}
               confirmedQuery={confirmedQuery}
               showAnomaly={isAnomaly}
-              anomalyConfidence={threshold}
+              anomalySensitivity={sensitivity}
+              anomalySmoothing={smoothing}
             />
           ),
           fixed: <Placeholder height="200px" testId="skeleton-ui" />,
@@ -158,20 +172,25 @@ class ResultsChartContainer extends Component<ContainerProps> {
       return true;
     });
 
-    const selectedThreshold = String(location.query.threshold ?? '0.9');
-    const thresholds = [
-      {label: '90%', value: '0.9'},
-      {label: '95%', value: '0.95'},
-      {label: '99%', value: '0.99'},
+    const levels = [
+      {label: 'High', value: 'high'},
+      {label: 'Medium', value: 'medium'},
+      {label: 'Low', value: 'low'},
     ];
-    function onThresholdChange(threshold) {
-      ReactRouter.browserHistory.push({
-        ...location,
-        query: {
-          ...location.query,
-          threshold,
-        },
-      });
+
+    const selectedSensitivity = getSelectedLevel(location, 'sensitivity');
+    const selectedSmoothing = getSelectedLevel(location, 'smoothing');
+
+    function handleOnChange(key: string) {
+      return value => {
+        ReactRouter.browserHistory.push({
+          ...location,
+          query: {
+            ...location.query,
+            [key]: value,
+          },
+        });
+      };
     }
 
     return (
@@ -192,9 +211,12 @@ class ResultsChartContainer extends Component<ContainerProps> {
           displayOptions={displayOptions}
           displayMode={eventView.getDisplayMode()}
           onDisplayChange={onDisplayChange}
-          threshold={selectedThreshold}
-          thresholdOptions={thresholds}
-          onThresholdChange={onThresholdChange}
+          sensitivity={selectedSensitivity}
+          sensitivityOptions={levels}
+          onSensitivityChange={handleOnChange('sensitivity')}
+          smoothing={selectedSmoothing}
+          smoothingOptions={levels}
+          onSmoothingChange={handleOnChange('smoothing')}
         />
       </StyledPanel>
     );

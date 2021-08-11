@@ -19,9 +19,12 @@ type Props = {
   displayMode: string;
   displayOptions: SelectValue<string>[];
   onDisplayChange: (value: string) => void;
-  threshold: string;
-  thresholdOptions: SelectValue<string>[];
-  onThresholdChange: (value: string) => void;
+  sensitivity: string;
+  sensitivityOptions: SelectValue<string>[];
+  onSensitivityChange: (value: string) => void;
+  smoothing: string;
+  smoothingOptions: SelectValue<string>[];
+  onSmoothingChange: (value: string) => void;
 };
 
 export default function ChartFooter({
@@ -32,9 +35,12 @@ export default function ChartFooter({
   displayMode,
   displayOptions,
   onDisplayChange,
-  threshold,
-  thresholdOptions,
-  onThresholdChange,
+  sensitivity,
+  sensitivityOptions,
+  onSensitivityChange,
+  smoothing,
+  smoothingOptions,
+  onSmoothingChange,
 }: Props) {
   const elements: React.ReactNode[] = [];
 
@@ -61,13 +67,22 @@ export default function ChartFooter({
           menuWidth="170px"
         />
         {displayMode === DisplayModes.ANOMALY && (
-          <OptionSelector
-            title={t('Confidence')}
-            selected={threshold}
-            options={thresholdOptions}
-            onChange={onThresholdChange}
-            menuWidth="170px"
-          />
+          <React.Fragment>
+            <OptionSelector
+              title={t('Sensitivity')}
+              selected={sensitivity}
+              options={sensitivityOptions}
+              onChange={onSensitivityChange}
+              menuWidth="170px"
+            />
+            <OptionSelector
+              title={t('Smoothing')}
+              selected={smoothing}
+              options={smoothingOptions}
+              onChange={onSmoothingChange}
+              menuWidth="170px"
+            />
+          </React.Fragment>
         )}
         <OptionSelector
           title={t('Y-Axis')}

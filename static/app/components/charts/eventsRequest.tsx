@@ -167,7 +167,8 @@ type EventsRequestPartialProps = {
    * Use the anomaly stuff endpoint
    */
   anomaly?: boolean;
-  anomalyConfidence?: string;
+  anomalySensitivity?: string;
+  anomalySmoothing?: string;
 };
 
 type TimeAggregationProps =

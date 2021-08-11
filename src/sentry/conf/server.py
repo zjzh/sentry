@@ -1562,7 +1562,7 @@ SENTRY_ENCRYPTION_SCHEMES = (
 # same way we would in production.
 #
 # See discussion on https://github.com/getsentry/sentry/pull/20187
-SENTRY_API_RESPONSE_DELAY = 150 if IS_DEV else None
+SENTRY_API_RESPONSE_DELAY = None  # 150 if IS_DEV else None
 
 # Watchers for various application purposes (such as compiling static media)
 # XXX(dcramer): this doesn't work outside of a source distribution as the
