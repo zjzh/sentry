@@ -57,6 +57,7 @@ from .groupshare import *  # NOQA
 from .groupsnooze import *  # NOQA
 from .groupsubscription import *  # NOQA
 from .grouptombstone import *  # NOQA
+from .hackingpatterns import *  # NOQA
 from .identity import *  # NOQA
 from .integration import *  # NOQA
 from .integrationfeature import *  # NOQA

@@ -8,8 +8,8 @@ import sentry_sdk
 
 """
 Usage:
-./payloader.py payload payloads.txt
-./payloader.py payload hacking.txt
+./payloader.py -n 50 payload payloads.txt
+./payloader.py -n 3600 -t 1000 message hacking.txt
 ./payloader.py ip ips.txt
 """
 
@@ -32,12 +32,15 @@ def main(kind, payloads_file, n, t):
 
         for i in range(n):
             with sentry_sdk.push_scope() as scope:
+                message = "Message with " + kind
                 if kind == "ip":
                     sentry_sdk.set_user({"ip_address": line})
                 elif kind == "payload":
                     scope.set_extra("payload", line)
+                elif kind == "message":
+                    message = "Message with " + line
 
-                result = sentry_sdk.capture_message("Message with " + kind)
+                result = sentry_sdk.capture_message(message)
                 print(result)  # NOQA
                 time.sleep(t / 1000)
 

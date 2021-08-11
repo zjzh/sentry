@@ -766,6 +766,11 @@ CELERYBEAT_SCHEDULE = {
         "schedule": timedelta(seconds=20),
         "options": {"expires": 1200},
     },
+    "api-security-patterns": {
+        "task": "sentry.tasks.api_security.patterns",
+        "schedule": timedelta(seconds=20),
+        "options": {"expires": 1200},
+    },
 }
 
 BGTASKS = {

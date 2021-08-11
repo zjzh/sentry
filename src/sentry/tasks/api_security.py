@@ -3,6 +3,7 @@ import uuid
 from datetime import datetime, timedelta
 
 from sentry.event_manager import EventManager
+from sentry.models.hackingpatterns import HackingPatterns
 from sentry.models.ipreputation import IpReputation
 from sentry.snuba.discover import query
 from sentry.tasks.base import instrumented_task, retry
@@ -27,9 +28,7 @@ def _create_malicious_ip_event(ip_address):
             "transaction": ip_address,
             "tags": {"security_finding": "malicious_ip"},
             "message": "Attempted access from malicious IP",
-            "user": {
-                "ip_address": ip_address,
-            },
+            "user": {"ip_address": ip_address},
             "fingerprint": [ip_address, "malicious_ip"],
         }
     )
@@ -49,10 +48,27 @@ def _create_high_volume_event(ip_address, count):
             "transaction": f"{count} calls from {ip_address} in 5 minutes",
             "tags": {"call_count": count, "security_finding": "high_volume"},
             "message": "Unusually High Call Volume",
-            "user": {
-                "ip_address": ip_address,
-            },
+            "user": {"ip_address": ip_address},
             "fingerprint": [ip_address, "high_call_volume"],
+        }
+    )
+    manager.normalize()
+    manager.save(1)
+
+
+def _create_hacking_pattern_event(title, pattern, event_id):
+    manager = EventManager(
+        data={
+            "event_id": uuid.uuid1().hex,
+            "level": logging.ERROR,
+            "transaction": title,
+            "tags": {
+                "hacking_pattern": pattern,
+                "original_event_id": event_id,
+                "security_finding": "hacking_pattern",
+            },
+            "message": "Hacking pattern detected",
+            "fingerprint": [title, "hacking_pattern"],
         }
     )
     manager.normalize()
@@ -86,3 +102,31 @@ def test_task():
             _create_malicious_ip_event(query_result["user.ip"])
         if _unusual_volume(query_result["count"]):
             _create_high_volume_event(query_result["user.ip"], query_result["count"])
+
+
+@instrumented_task(
+    name="sentry.tasks.api_security.patterns",
+    queue="api_security",
+    default_retry_delay=60 * 5,
+    max_retries=2,
+)
+@retry()
+def patterns_task():
+    now = datetime.now()
+    results = query(
+        selected_columns=["id", "title"],
+        query="!has:security_finding",
+        params={
+            "organization_id": 1,
+            "project_id": [1],
+            "start": now - timedelta(seconds=20),
+            "end": now,
+        },
+    )
+    logger.info(results)
+    for query_result in results["data"]:
+        hacking_patterns_service = HackingPatterns()
+        pattern = hacking_patterns_service.get(query_result["title"])
+
+        if pattern is not None:
+            _create_hacking_pattern_event(query_result["title"], pattern, query_result["id"])
