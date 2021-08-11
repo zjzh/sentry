@@ -203,9 +203,12 @@ class WidgetQueries extends React.Component<Props, State> {
     // Clear current interval if somehow exists
     this.stopLiveTailing();
     this.setState({
+      tableResults: undefined,
+      timeseriesResults: undefined,
+      rawResults: undefined,
       timer: setInterval(() => {
         if (!isEditing) {
-          this.fetchData(true);
+          this.fetchData();
         }
       }, 5000),
     });
@@ -221,7 +224,7 @@ class WidgetQueries extends React.Component<Props, State> {
     let tableResults: TableDataWithTitle[] = [];
     // Table, world map, and stat widgets use table results and need
     // to do a discover 'table' query instead of a 'timeseries' query.
-    if (!liveTail) this.setState({tableResults: []});
+    this.setState({tableResults: []});
 
     const promises = widget.queries.map(query => {
       const eventView = eventViewFromWidget(widget.title, query, selection);
@@ -296,9 +299,9 @@ class WidgetQueries extends React.Component<Props, State> {
     });
   }
 
-  fetchTimeseriesData(queryFetchID: symbol, liveTail: boolean = false) {
+  async fetchTimeseriesData(queryFetchID: symbol, liveTail: boolean = false) {
     const {selection, api, organization, widget} = this.props;
-    this.setState({timeseriesResults: [], rawResults: []});
+    if (!liveTail) this.setState({timeseriesResults: [], rawResults: []});
 
     const {environments, projects} = selection;
     const {start, end, period: statsPeriod} = selection.datetime;
@@ -331,43 +334,62 @@ class WidgetQueries extends React.Component<Props, State> {
     });
 
     let completed = 0;
-    promises.forEach(async (promise, i) => {
-      try {
-        const rawResults = await promise;
-        this.setState(prevState => {
-          if (prevState.queryFetchID !== queryFetchID) {
-            // invariant: a different request was initiated after this request
-            return prevState;
-          }
+    if (liveTail) {
+      const timeseriesResultsBuffer: Series[] = [];
+      const rawResultsBuffer: RawResult[] = [];
+      const results = await Promise.all(promises);
+      results.forEach((result, index) => {
+        timeseriesResultsBuffer.push(...transformResult(widget.queries[index], result));
+        rawResultsBuffer.push(result);
+      });
+      this.setState(prevState => {
+        return {
+          ...prevState,
+          timeseriesResults: timeseriesResultsBuffer,
+          rawResults: rawResultsBuffer,
+          loading: false,
+        };
+      });
+    } else {
+      promises.forEach(async (promise, i) => {
+        try {
+          const rawResults = await promise;
+          this.setState(prevState => {
+            if (prevState.queryFetchID !== queryFetchID) {
+              // invariant: a different request was initiated after this request
+              return prevState;
+            }
 
-          const timeseriesResults = (prevState.timeseriesResults ?? []).concat(
-            transformResult(widget.queries[i], rawResults)
-          );
+            const timeseriesResults = (prevState.timeseriesResults ?? []).concat(
+              transformResult(widget.queries[i], rawResults)
+            );
 
-          return {
-            ...prevState,
-            timeseriesResults,
-            rawResults: (prevState.rawResults ?? []).concat(rawResults),
-          };
-        });
-      } catch (err) {
-        const errorMessage = err?.responseJSON?.detail || t('An unknown error occurred.');
-        this.setState({errorMessage});
-      } finally {
-        completed++;
-        this.setState(prevState => {
-          if (prevState.queryFetchID !== queryFetchID) {
-            // invariant: a different request was initiated after this request
-            return prevState;
-          }
+            return {
+              ...prevState,
+              timeseriesResults,
+              rawResults: (prevState.rawResults ?? []).concat(rawResults),
+            };
+          });
+        } catch (err) {
+          const errorMessage =
+            err?.responseJSON?.detail || t('An unknown error occurred.');
+          this.setState({errorMessage});
+        } finally {
+          completed++;
+          this.setState(prevState => {
+            if (prevState.queryFetchID !== queryFetchID) {
+              // invariant: a different request was initiated after this request
+              return prevState;
+            }
 
-          return {
-            ...prevState,
-            loading: completed === promises.length ? false : true,
-          };
-        });
-      }
-    });
+            return {
+              ...prevState,
+              loading: completed === promises.length ? false : true,
+            };
+          });
+        }
+      });
+    }
   }
 
   fetchData() {
