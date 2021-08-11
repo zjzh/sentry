@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import os
+import time
 
 import click
 import sentry_sdk
@@ -21,19 +22,24 @@ sentry_sdk.init(SENTRY_DSN, traces_sample_rate=1.0, send_default_pii=True)
 @click.command()
 @click.argument("kind")
 @click.argument("payloads_file", type=click.File("r"))
-def main(kind, payloads_file):
+@click.option("-n", default=1, help="Number of times to repeat payloads")
+@click.option("-t", default=0, help="Milliseconds to wait between sending payloads")
+def main(kind, payloads_file, n, t):
     while True:
-        with sentry_sdk.push_scope() as scope:
-            line = payloads_file.readline().strip()
-            if not line:
-                break
+        line = payloads_file.readline().strip()
+        if not line:
+            break
 
-            if kind == "ip":
-                sentry_sdk.set_user({"ip_address": line})
-            elif kind == "payload":
-                scope.set_extra("payload", line)
+        for i in range(n):
+            with sentry_sdk.push_scope() as scope:
+                if kind == "ip":
+                    sentry_sdk.set_user({"ip_address": line})
+                elif kind == "payload":
+                    scope.set_extra("payload", line)
 
-            sentry_sdk.capture_message("Message with " + kind)
+                result = sentry_sdk.capture_message("Message with " + kind)
+                print(result)  # NOQA
+                time.sleep(t / 1000)
 
 
 if __name__ == "__main__":
