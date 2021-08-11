@@ -25,7 +25,7 @@ def _create_malicious_ip_event(ip_address):
             "event_id": uuid.uuid1().hex,
             "level": logging.ERROR,
             "transaction": ip_address,
-            "tags": [],
+            "tags": {"security_finding": "malicious_ip"},
             "message": "Attempted access from malicious IP",
             "user": {
                 "ip_address": ip_address,
@@ -47,7 +47,7 @@ def _create_high_volume_event(ip_address, count):
             "event_id": uuid.uuid1().hex,
             "level": logging.ERROR,
             "transaction": f"{count} calls from {ip_address} in 5 minutes",
-            "tags": {"call_count": count},
+            "tags": {"call_count": count, "security_finding": "high_volume"},
             "message": "Unusually High Call Volume",
             "user": {
                 "ip_address": ip_address,
@@ -71,7 +71,7 @@ def test_task():
     now = datetime.now()
     results = query(
         selected_columns=["user.ip", "count()"],
-        query="has:user.ip",
+        query="has:user.ip !has:security_finding",
         params={
             "organization_id": 1,
             "project_id": [1],
