@@ -27,7 +27,7 @@ def _create_malicious_ip_event(ip_address):
             "level": logging.ERROR,
             "transaction": ip_address,
             "tags": {"security_finding": "malicious_ip"},
-            "message": "Attempted access from malicious IP",
+            "message": "[Security finding] Attempted access from malicious IP",
             "user": {"ip_address": ip_address},
             "fingerprint": [ip_address, "malicious_ip"],
         }
@@ -46,8 +46,8 @@ def _create_high_volume_event(ip_address, count):
             "event_id": uuid.uuid1().hex,
             "level": logging.ERROR,
             "transaction": f"{count} calls from {ip_address} in 5 minutes",
-            "tags": {"call_count": count, "security_finding": "high_volume"},
-            "message": "Unusually High Call Volume",
+            "tags": {"call_count": count, "security_finding": "high_call_volume"},
+            "message": "[Security finding] Unusually High Call Volume",
             "user": {"ip_address": ip_address},
             "fingerprint": [ip_address, "high_call_volume"],
         }
@@ -64,10 +64,10 @@ def _create_hacking_pattern_event(title, pattern, event_id):
             "transaction": title,
             "tags": {
                 "hacking_pattern": pattern,
-                "original_event_id": event_id,
+                "id": event_id,
                 "security_finding": "hacking_pattern",
             },
-            "message": "Hacking pattern detected",
+            "message": "[Security finding] Hacking pattern detected",
             "fingerprint": [title, "hacking_pattern"],
         }
     )
