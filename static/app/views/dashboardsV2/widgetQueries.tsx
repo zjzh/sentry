@@ -203,9 +203,6 @@ class WidgetQueries extends React.Component<Props, State> {
     // Clear current interval if somehow exists
     this.stopLiveTailing();
     this.setState({
-      tableResults: undefined,
-      timeseriesResults: undefined,
-      rawResults: undefined,
       timer: setInterval(() => {
         if (!isEditing) {
           this.fetchData();
@@ -216,15 +213,20 @@ class WidgetQueries extends React.Component<Props, State> {
 
   stopLiveTailing() {
     if (this.state.timer) clearInterval(this.state.timer);
+    this.setState({
+      tableResults: undefined,
+      timeseriesResults: undefined,
+      rawResults: undefined,
+    });
   }
 
-  fetchEventData(queryFetchID: symbol, liveTail: boolean = false) {
+  async fetchEventData(queryFetchID: symbol, liveTail: boolean = false) {
     const {selection, api, organization, widget} = this.props;
 
     let tableResults: TableDataWithTitle[] = [];
     // Table, world map, and stat widgets use table results and need
     // to do a discover 'table' query instead of a 'timeseries' query.
-    this.setState({tableResults: []});
+    if (!liveTail) this.setState({tableResults: []});
 
     const promises = widget.queries.map(query => {
       const eventView = eventViewFromWidget(widget.title, query, selection);
@@ -258,45 +260,61 @@ class WidgetQueries extends React.Component<Props, State> {
     });
 
     let completed = 0;
-    promises.forEach(async (promise, i) => {
-      try {
-        const [data] = await promise;
-        // Cast so we can add the title.
-        const tableData = data as TableDataWithTitle;
-        tableData.title = widget.queries[i]?.name ?? '';
+    if (liveTail) {
+      const tableResultsBuffer: TableDataWithTitle[] = [];
+      const results = await Promise.all(promises);
+      results.forEach(([result]) => {
+        tableResultsBuffer.push(result as TableDataWithTitle);
+      });
+      this.setState(prevState => {
+        return {
+          ...prevState,
+          tableResults: tableResultsBuffer,
+          loading: false,
+        };
+      });
+    } else {
+      promises.forEach(async (promise, i) => {
+        try {
+          const [data] = await promise;
+          // Cast so we can add the title.
+          const tableData = data as TableDataWithTitle;
+          tableData.title = widget.queries[i]?.name ?? '';
 
-        // Overwrite the local var to work around state being stale in tests.
-        tableResults = [...tableResults, tableData];
+          // Overwrite the local var to work around state being stale in tests.
+          tableResults = [...tableResults, tableData];
 
-        this.setState(prevState => {
-          if (prevState.queryFetchID !== queryFetchID) {
-            // invariant: a different request was initiated after this request
-            return prevState;
-          }
+          this.setState(prevState => {
+            if (prevState.queryFetchID !== queryFetchID) {
+              // invariant: a different request was initiated after this request
+              return prevState;
+            }
 
-          return {
-            ...prevState,
-            tableResults,
-          };
-        });
-      } catch (err) {
-        const errorMessage = err?.responseJSON?.detail || t('An unknown error occurred.');
-        this.setState({errorMessage});
-      } finally {
-        completed++;
-        this.setState(prevState => {
-          if (prevState.queryFetchID !== queryFetchID) {
-            // invariant: a different request was initiated after this request
-            return prevState;
-          }
+            return {
+              ...prevState,
+              tableResults,
+            };
+          });
+        } catch (err) {
+          const errorMessage =
+            err?.responseJSON?.detail || t('An unknown error occurred.');
+          this.setState({errorMessage});
+        } finally {
+          completed++;
+          this.setState(prevState => {
+            if (prevState.queryFetchID !== queryFetchID) {
+              // invariant: a different request was initiated after this request
+              return prevState;
+            }
 
-          return {
-            ...prevState,
-            loading: completed === promises.length ? false : true,
-          };
-        });
-      }
-    });
+            return {
+              ...prevState,
+              loading: completed === promises.length ? false : true,
+            };
+          });
+        }
+      });
+    }
   }
 
   async fetchTimeseriesData(queryFetchID: symbol, liveTail: boolean = false) {
