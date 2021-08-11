@@ -19,6 +19,7 @@ describe('ReleaseHealthRequest', function () {
       end: null,
       utc: false,
     },
+    liveTail: false,
   };
 
   // @ts-expect-error

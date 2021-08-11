@@ -570,6 +570,7 @@ class EventView {
         // supported and all times are assumed to be UTC
         utc: true,
       },
+      liveTail: false,
     };
   }
 

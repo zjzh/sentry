@@ -17,6 +17,9 @@ export const TWO_WEEKS = 20160;
 export const ONE_WEEK = 10080;
 export const TWENTY_FOUR_HOURS = 1440;
 export const ONE_HOUR = 60;
+export const THIRTY_MINUTES = 30;
+export const FIFTEEN_MINUTES = 15;
+export const FIVE_MINUTES = 5;
 
 /**
  * If there are more releases than this number we hide "Releases" series by default
@@ -24,6 +27,22 @@ export const ONE_HOUR = 60;
 export const RELEASE_LINES_THRESHOLD = 50;
 
 export type DateTimeObject = Partial<GlobalSelection['datetime']>;
+
+export type Interval =
+  | '4h'
+  | '1d'
+  | '2d'
+  | '1h'
+  | '30m'
+  | '12h'
+  | '6h'
+  | '5m'
+  | '15m'
+  | '2m'
+  | '1m'
+  | '10m'
+  | '30s'
+  | '5s';
 
 export function truncationFormatter(
   value: string,
@@ -50,7 +69,10 @@ export function useShortInterval(datetimeObj: DateTimeObject): boolean {
 
 type Fidelity = 'high' | 'medium' | 'low';
 
-export function getInterval(datetimeObj: DateTimeObject, fidelity: Fidelity = 'medium') {
+export function getInterval(
+  datetimeObj: DateTimeObject,
+  fidelity: Fidelity = 'medium'
+): Interval {
   const diffInMinutes = getDiffInMinutes(datetimeObj);
 
   if (diffInMinutes >= SIXTY_DAYS) {
@@ -103,13 +125,46 @@ export function getInterval(datetimeObj: DateTimeObject, fidelity: Fidelity = 'm
     }
   }
 
-  // Less than or equal to 1 hour
+  if (diffInMinutes > THIRTY_MINUTES) {
+    // Between 30 mins and 1 hour
+    if (fidelity === 'high') {
+      return '2m';
+    } else if (fidelity === 'medium') {
+      return '5m';
+    } else {
+      return '30m';
+    }
+  }
+
+  if (diffInMinutes > FIFTEEN_MINUTES) {
+    // Between 15 mins and 30 mins
+    if (fidelity === 'high') {
+      return '1m';
+    } else if (fidelity === 'medium') {
+      return '2m';
+    } else {
+      return '10m';
+    }
+  }
+
+  if (diffInMinutes > FIVE_MINUTES) {
+    // Between 15 mins and 30 mins
+    if (fidelity === 'high') {
+      return '30s';
+    } else if (fidelity === 'medium') {
+      return '1m';
+    } else {
+      return '5m';
+    }
+  }
+
+  // Less than or equal to 15 mins
   if (fidelity === 'high') {
-    return '1m';
+    return '5s';
   } else if (fidelity === 'medium') {
-    return '5m';
+    return '30s';
   } else {
-    return '10m';
+    return '1m';
   }
 }
 
@@ -196,4 +251,22 @@ export const getDimensionValue = (dimension?: number | string | null) => {
   }
 
   return dimension;
+};
+
+export const intervalToNumber = (interval: Interval) => {
+  const [_, value, unit] = /^(\d+)(d|h|m|s)$/g.exec(interval) as RegExpExecArray;
+  let multiplier = 1000;
+  switch (unit) {
+    case 'd':
+      multiplier *= 60 * 60 * 24;
+      break;
+    case 'h':
+      multiplier *= 60 * 60;
+      break;
+    case 'm':
+      multiplier *= 60;
+      break;
+    default:
+  }
+  return parseInt(value, 10) * multiplier;
 };

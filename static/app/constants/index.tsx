@@ -198,6 +198,9 @@ export const DEFAULT_QUERY = 'is:unresolved';
 export const DEFAULT_USE_UTC = true;
 
 export const DEFAULT_RELATIVE_PERIODS = {
+  '5m': t('Last 5 minutes'),
+  '15m': t('Last 15 minutes'),
+  '30m': t('Last 30 minutes'),
   '1h': t('Last hour'),
   '24h': t('Last 24 hours'),
   '7d': t('Last 7 days'),

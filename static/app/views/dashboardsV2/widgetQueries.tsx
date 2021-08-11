@@ -4,8 +4,9 @@ import isEqual from 'lodash/isEqual';
 import {doEventsRequest} from 'app/actionCreators/events';
 import {Client} from 'app/api';
 import {
-  getDiffInMinutes,
   getInterval,
+  Interval,
+  intervalToNumber,
   isMultiSeriesStats,
 } from 'app/components/charts/utils';
 import {isSelectionEqual} from 'app/components/organizations/globalSelectionHeader/utils';
@@ -17,7 +18,6 @@ import {
   Organization,
 } from 'app/types';
 import {Series} from 'app/types/echarts';
-import {parsePeriodToHours} from 'app/utils/dates';
 import {TableData} from 'app/utils/discover/discoverQuery';
 import {
   DiscoverQueryRequestParams,
@@ -27,31 +27,12 @@ import {
 import {Widget, WidgetQuery} from './types';
 import {eventViewFromWidget} from './utils';
 
-// Don't fetch more than 4000 bins as we're plotting on a small area.
-const MAX_BIN_COUNT = 4000;
-
 function getWidgetInterval(
-  widget: Widget,
-  datetimeObj: Partial<GlobalSelection['datetime']>,
-  liveTail?: boolean
-): string {
-  // Bars charts are daily totals to aligned with discover. It also makes them
-  // usefully different from line/area charts until we expose the interval control, or remove it.
-  let interval = widget.displayType === 'bar' ? '1d' : widget.interval;
-  if (!interval) {
-    // Default to 5 minutes
-    interval = '5m';
-  }
-  if (liveTail) {
-    interval = '5s';
-  }
-  const desiredPeriod = parsePeriodToHours(interval) * 60;
-  const selectedRange = getDiffInMinutes(datetimeObj);
-
-  if (selectedRange / desiredPeriod > MAX_BIN_COUNT) {
-    return getInterval(datetimeObj, 'high');
-  }
-  return interval;
+  _: Widget,
+  datetimeObj: Partial<GlobalSelection['datetime']>
+): Interval {
+  // Always calculate interval since 5m is too much for live tail
+  return getInterval(datetimeObj, 'high');
 }
 
 type RawResult = EventsStats | MultiSeriesEventsStats;
@@ -140,7 +121,13 @@ class WidgetQueries extends React.Component<Props, State> {
     const {selection, widget} = this.props;
     if (prevProps.selection.liveTail !== selection.liveTail) {
       if (selection.liveTail) {
-        this.startLiveTailing();
+        const {start, end, period: statsPeriod} = selection.datetime;
+        const interval = getWidgetInterval(widget, {
+          start,
+          end,
+          period: statsPeriod,
+        });
+        this.startLiveTailing(intervalToNumber(interval));
       } else {
         this.stopLiveTailing();
       }
@@ -198,7 +185,7 @@ class WidgetQueries extends React.Component<Props, State> {
     if (this.state.timer) clearInterval(this.state.timer);
   }
 
-  startLiveTailing() {
+  startLiveTailing(interval: number) {
     const {isEditing} = this.props;
     // Clear current interval if somehow exists
     this.stopLiveTailing();
@@ -207,7 +194,7 @@ class WidgetQueries extends React.Component<Props, State> {
         if (!isEditing) {
           this.fetchData();
         }
-      }, 5000),
+      }, interval),
     });
   }
 
@@ -323,15 +310,11 @@ class WidgetQueries extends React.Component<Props, State> {
 
     const {environments, projects} = selection;
     const {start, end, period: statsPeriod} = selection.datetime;
-    const interval = getWidgetInterval(
-      widget,
-      {
-        start,
-        end,
-        period: statsPeriod,
-      },
-      liveTail
-    );
+    const interval = getWidgetInterval(widget, {
+      start,
+      end,
+      period: statsPeriod,
+    });
     const promises = widget.queries.map(query => {
       const requestData = {
         organization,
