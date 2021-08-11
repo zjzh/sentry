@@ -9,6 +9,7 @@ from sentry.constants import SentryAppInstallationStatus
 from sentry.eventstore.models import Event
 from sentry.http import safe_urlopen
 from sentry.models import (
+    Activity,
     Group,
     Organization,
     Project,
@@ -49,7 +50,7 @@ RETRY_OPTIONS = {
 # Hook events to match what we externally call these primitives.
 RESOURCE_RENAMES = {"Group": "issue"}
 
-TYPES = {"Group": Group, "Error": Event}
+TYPES = {"Group": Group, "Error": Event, "Comment": Activity}
 
 
 def _webhook_event_data(event, group_id, project_id):
@@ -138,6 +139,8 @@ def _process_resource_change(action, sender, instance_id, retryer=None, *args, *
             return
 
         name = sender.lower()
+    elif issubclass(model, Activity):
+        name = sender.lower()
     else:
         # Some resources are named differently than their model. eg. Group vs Issue.
         # Looks up the human name for the model. Defaults to the model name.
@@ -150,7 +153,7 @@ def _process_resource_change(action, sender, instance_id, retryer=None, *args, *
     # We may run into a race condition where this task executes before the
     # transaction that creates the Group has committed.
     try:
-        if issubclass(model, Event):
+        if issubclass(model, Event) or issubclass(model, Activity):
             # XXX:(Meredith): Passing through the entire event was an intentional choice
             # to avoid having to query NodeStore again for data we had previously in
             # post_process. While this is not ideal, changing this will most likely involve
@@ -170,7 +173,7 @@ def _process_resource_change(action, sender, instance_id, retryer=None, *args, *
 
     org = None
 
-    if isinstance(instance, Group) or isinstance(instance, Event):
+    if isinstance(instance, Group) or isinstance(instance, Event) or isinstance(instance, Activity):
         org = Organization.objects.get_from_cache(
             id=Project.objects.get_from_cache(id=instance.project_id).organization_id
         )
@@ -186,7 +189,7 @@ def _process_resource_change(action, sender, instance_id, retryer=None, *args, *
             data[name] = _webhook_event_data(instance, instance.group_id, instance.project_id)
         else:
             data[name] = serialize(instance)
-
+        print(data)
         # Trigger a new task for each webhook
         send_resource_change_webhook.delay(installation_id=installation.id, event=event, data=data)
 

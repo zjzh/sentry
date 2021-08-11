@@ -1274,7 +1274,7 @@ export type IntegrationFeature = {
   featureGate: string;
 };
 
-export type WebhookEvent = 'issue' | 'error';
+export type WebhookEvent = 'issue' | 'error' | 'comment';
 
 export type Scope = typeof API_ACCESS_SCOPES[number];
 
