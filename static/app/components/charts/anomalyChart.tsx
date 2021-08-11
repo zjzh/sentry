@@ -212,8 +212,8 @@ class AnomalyChart extends React.Component<Props> {
       <BaseChart
         {...props}
         grid={[
-          {...grid, left: '72px', containLabel: false, bottom: '32%'},
-          {...grid, left: '72px', containLabel: false, top: '80%'},
+          {...grid, left: '72px', containLabel: false, bottom: '80px'},
+          {...grid, left: '72px', containLabel: false, top: '240px'},
         ]}
         yAxes={[
           {...(yAxis ?? {}), gridIndex: 0, type: 'value'},
@@ -231,7 +231,7 @@ class AnomalyChart extends React.Component<Props> {
           {show: false, gridIndex: 1},
         ]}
         series={[...dataSeries, ...otherSeries]}
-        height={300}
+        height={280}
       />
     );
   }

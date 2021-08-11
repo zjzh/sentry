@@ -34,6 +34,7 @@ type Options = {
   anomaly?: boolean;
   anomalySensitivity?: string;
   anomalySmoothing?: string;
+  anomalyDataset?: string;
 };
 
 /**
@@ -73,6 +74,7 @@ export const doEventsRequest = (
     anomaly,
     anomalySensitivity,
     anomalySmoothing,
+    anomalyDataset,
   }: Options
 ): Promise<EventsStats | MultiSeriesEventsStats> => {
   const shouldDoublePeriod = canIncludePreviousPeriod(includePrevious, period);
@@ -109,6 +111,7 @@ export const doEventsRequest = (
           ...periodObj,
           sensitivity: anomalySensitivity,
           smoothing: anomalySmoothing,
+          dataset: anomalyDataset,
         },
       }
     );

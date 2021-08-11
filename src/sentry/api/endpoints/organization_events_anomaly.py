@@ -1,5 +1,3 @@
-import math
-
 import sentry_sdk
 from rest_framework.response import Response
 
@@ -16,33 +14,17 @@ meh = 0.5
 poor = 0.7
 
 
-def scale_anomaly_score(data):
-    x = 0
-
-    for entry in data:
-        y = (entry["scaled_score"] + 1) / 2
-
-        if y > poor:
-            x += 2
-        elif y > meh:
-            x += 1
-        else:
-            x -= 1
-
-        x = max(x, 0)
-        x = min(x, 60)
-
-        sigmoid = 1.1 / (1 + math.exp(-(x - 20) / 10))
-        y = y * sigmoid
-
-        entry["scaled_score"] = y
-
+FILES = {
+    "safari": "safari_june_6_june_20.json",
+    "fastly_cdn": "fastly_cdn_june_22_july_7.json",
+    "fastly_cdn_no_mavg": "fastly_cdn_no_mavg_june_22_july_7.json",
+}
+DATASETS = {}
 
 # HACK: loading up the precomputed data
-with open("final_output.json") as prophet_file:
-    DATA = json.loads(prophet_file.read())
-    for key in DATA:
-        scale_anomaly_score(DATA[key])
+for dataset, file_name in FILES.items():
+    with open(file_name) as dataset_file:
+        DATASETS[dataset] = json.loads(dataset_file.read())
 
 
 class OrganizationEventsAnomalyEndpoint(OrganizationEventsV2EndpointBase):
@@ -60,19 +42,6 @@ class OrganizationEventsAnomalyEndpoint(OrganizationEventsV2EndpointBase):
             end = params["end"]
             end_ts = int(end.timestamp())
 
-        with sentry_sdk.start_span(op="discover.endpoint", description="dataset_selection"):
-            # TODO: dataset selection with this
-            smoothing = request.GET.get("smoothing")
-
-            sensitivity = request.GET.get("sensitivity")
-            threshold = (
-                "0.99" if sensitivity == "low" else "0.95" if sensitivity == "high" else "0.9"
-            )
-            key = f"threshold_{threshold}"
-            if key not in DATA:
-                return Response("bad sensitivity", status=400)
-            dataset = DATA[key]
-
         with sentry_sdk.start_span(op="discover.endpoint", description="rollup_params"):
             rollup = get_rollup_from_request(
                 request,
@@ -85,8 +54,29 @@ class OrganizationEventsAnomalyEndpoint(OrganizationEventsV2EndpointBase):
                 top_events=0,
             )
 
+        with sentry_sdk.start_span(op="discover.endpoint", description="dataset_selection"):
+            data = DATASETS
+
+            # TODO: dataset selection with this
+            dataset = request.GET.get("dataset")
+            if dataset not in data:
+                return Response("bad dataset", status=400)
+            data = data[dataset]
+
+            sensitivity = request.GET.get("sensitivity")
+            key = f"threshold_{sensitivity}"
+            if key not in data:
+                return Response("bad sensitivity", status=400)
+            data = data[key]
+
+            smoothing = request.GET.get("smoothing")
+            key = f"smoothing_{smoothing}"
+            if key not in data:
+                return Response("bad smoothing", status=400)
+            data = data[key]
+
         with sentry_sdk.start_span(op="discover.endpoint", description="timeseries_filtering"):
-            data = [entry for entry in dataset if start_ts <= entry["unix_timestamp"] < end_ts]
+            data = [entry for entry in data if start_ts <= entry["unix_timestamp"] < end_ts]
 
         results = {
             "count": [],

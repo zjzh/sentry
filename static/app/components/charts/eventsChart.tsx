@@ -348,6 +348,7 @@ export type EventsChartProps = {
   showAnomaly?: boolean;
   anomalySensitivity?: string;
   anomalySmoothing?: string;
+  anomalyDataset?: string;
 } & Pick<
   ChartProps,
   | 'currentSeriesName'
@@ -414,6 +415,7 @@ class EventsChart extends React.Component<EventsChartProps> {
       showAnomaly,
       anomalySensitivity,
       anomalySmoothing,
+      anomalyDataset,
       ...props
     } = this.props;
     // Include previous only on relative dates (defaults to relative if no start and end)
@@ -539,6 +541,7 @@ class EventsChart extends React.Component<EventsChartProps> {
             anomaly={showAnomaly}
             anomalySensitivity={anomalySensitivity}
             anomalySmoothing={anomalySmoothing}
+            anomalyDataset={anomalyDataset}
           >
             {eventData => {
               if (showAnomaly && eventData.results) {

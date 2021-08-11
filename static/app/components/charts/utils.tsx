@@ -105,7 +105,9 @@ export function getInterval(datetimeObj: DateTimeObject, fidelity: Fidelity = 'm
 
   // Less than or equal to 1 hour
   if (fidelity === 'high') {
-    return '1m';
+    // let's keep it to at least 5 minute intervals for the demo
+    return '5m';
+    // return '1m';
   } else if (fidelity === 'medium') {
     return '5m';
   } else {

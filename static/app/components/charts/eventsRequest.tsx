@@ -169,6 +169,7 @@ type EventsRequestPartialProps = {
   anomaly?: boolean;
   anomalySensitivity?: string;
   anomalySmoothing?: string;
+  anomalyDataset?: string;
 };
 
 type TimeAggregationProps =

@@ -25,6 +25,9 @@ type Props = {
   smoothing: string;
   smoothingOptions: SelectValue<string>[];
   onSmoothingChange: (value: string) => void;
+  dataset: string;
+  datasetOptions: SelectValue<string>[];
+  onDatasetChange: (value: string) => void;
 };
 
 export default function ChartFooter({
@@ -41,6 +44,9 @@ export default function ChartFooter({
   smoothing,
   smoothingOptions,
   onSmoothingChange,
+  dataset,
+  datasetOptions,
+  onDatasetChange,
 }: Props) {
   const elements: React.ReactNode[] = [];
 
@@ -68,6 +74,13 @@ export default function ChartFooter({
         />
         {displayMode === DisplayModes.ANOMALY && (
           <React.Fragment>
+            <OptionSelector
+              title={t('Dataset')}
+              selected={dataset}
+              options={datasetOptions}
+              onChange={onDatasetChange}
+              menuWidth="170px"
+            />
             <OptionSelector
               title={t('Sensitivity')}
               selected={sensitivity}

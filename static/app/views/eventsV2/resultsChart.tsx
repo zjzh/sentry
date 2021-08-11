@@ -19,6 +19,32 @@ import withApi from 'app/utils/withApi';
 
 import ChartFooter from './chartFooter';
 
+const datasets = [
+  {label: 'Safari Outage', value: 'safari'},
+  {label: 'Fastly CDN', value: 'fastly_cdn'},
+  {label: 'Fastly CDN No Moving Average', value: 'fastly_cdn_no_mavg'},
+];
+
+const levels = [
+  {label: 'High', value: 'high'},
+  {label: 'Medium', value: 'medium'},
+  {label: 'Low', value: 'low'},
+];
+
+function getSelectedDataset(
+  location: Location
+): 'safari' | 'fastly_cdn' | 'fastly_cdn_no_mavg' {
+  const dataset = String(location.query.dataset ?? 'safari');
+  switch (dataset) {
+    case 'fastly_cdn':
+    case 'fastly_cdn_no_mavg':
+      return dataset;
+    case 'safari':
+    default:
+      return 'safari';
+  }
+}
+
 function getSelectedLevel(location: Location, key: string): 'low' | 'medium' | 'high' {
   const level = String(location.query[key] ?? 'medium');
   switch (level) {
@@ -75,6 +101,7 @@ class ResultsChart extends Component<ResultsChartProps> {
     const isDaily = display === DisplayModes.DAILYTOP5 || display === DisplayModes.DAILY;
     const isPrevious = display === DisplayModes.PREVIOUS;
     const isAnomaly = display === DisplayModes.ANOMALY;
+    const dataset = getSelectedDataset(location);
     const sensitivity = getSelectedLevel(location, 'sensitivity');
     const smoothing = getSelectedLevel(location, 'smoothing');
 
@@ -106,6 +133,7 @@ class ResultsChart extends Component<ResultsChartProps> {
               showAnomaly={isAnomaly}
               anomalySensitivity={sensitivity}
               anomalySmoothing={smoothing}
+              anomalyDataset={dataset}
             />
           ),
           fixed: <Placeholder height="200px" testId="skeleton-ui" />,
@@ -172,12 +200,7 @@ class ResultsChartContainer extends Component<ContainerProps> {
       return true;
     });
 
-    const levels = [
-      {label: 'High', value: 'high'},
-      {label: 'Medium', value: 'medium'},
-      {label: 'Low', value: 'low'},
-    ];
-
+    const selectedDataset = getSelectedDataset(location);
     const selectedSensitivity = getSelectedLevel(location, 'sensitivity');
     const selectedSmoothing = getSelectedLevel(location, 'smoothing');
 
@@ -191,6 +214,32 @@ class ResultsChartContainer extends Component<ContainerProps> {
           },
         });
       };
+    }
+
+    function handleDatasetChange(value: string) {
+      const query: any = {
+        query: location.query.query,
+      };
+      if (value === 'safari') {
+        query.query = 'event.type:transaction browser.name:Safari';
+        query.project = 11276; // javascript project id
+        query.start = '2021-06-07T00:00:00';
+        query.end = '2021-06-19T23:59:59';
+      } else if (value === 'fastly_cdn' || value === 'fastly_cdn_no_mavg') {
+        query.query = 'event.type:transaction';
+        query.project = 11276; // javascript project id
+        query.start = '2021-06-23T00:00:00';
+        query.end = '2021-07-06T23:59:59';
+      }
+
+      ReactRouter.browserHistory.push({
+        ...location,
+        query: {
+          ...location.query,
+          ...query,
+          dataset: value,
+        },
+      });
     }
 
     return (
@@ -217,6 +266,9 @@ class ResultsChartContainer extends Component<ContainerProps> {
           smoothing={selectedSmoothing}
           smoothingOptions={levels}
           onSmoothingChange={handleOnChange('smoothing')}
+          dataset={selectedDataset}
+          datasetOptions={datasets}
+          onDatasetChange={handleDatasetChange}
         />
       </StyledPanel>
     );
