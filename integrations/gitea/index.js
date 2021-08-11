@@ -9,8 +9,8 @@ const PORT = process.env.PORT || 7500;
 
 // const mongoURI = 'mongodb://root:password@localhost:27017/db';
 
-const SENTRY_TOKEN = '56a00ab0c4f04d809d7fb1ec42f775b068e2bff274d3463091636dc13b407b80';
-const CLIENT_SECRET = '633c49554d0841fa99481e6cfb86d44051696d5ac85041948da17c7fb4219e01';
+const SENTRY_TOKEN = 'bd99f6294ae34eda89b7ff3c8065edb63fd7b34c4e0f4b1e8ac0a8a370e50491';
+const CLIENT_SECRET = '096a2843571d49009b665f986852847cba1900ad938048a29dfba4b639ea63ac';
 
 axios.defaults.headers.common.Authorization = 'Bearer ' + SENTRY_TOKEN;
 
