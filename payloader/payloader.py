@@ -35,9 +35,11 @@ def main(kind, payloads_file, n, t):
                 message = "Message with " + kind
                 if kind == "ip":
                     sentry_sdk.set_user({"ip_address": line})
-                elif kind == "payload":
+                else:
+                    sentry_sdk.set_user({"ip_address": "10.0.0.1"})
+                if kind == "payload":
                     scope.set_extra("payload", line)
-                elif kind == "message":
+                if kind == "message":
                     message = "Message with " + line
 
                 result = sentry_sdk.capture_message(message)

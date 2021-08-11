@@ -11,7 +11,7 @@ from sentry.tasks.base import instrumented_task, retry
 logger = logging.getLogger("sentry.tasks.api_security")
 
 
-DOS_TRIGGER = 1
+DOS_TRIGGER = 10
 
 
 def _is_malicious_ip(ip_address):
@@ -20,7 +20,7 @@ def _is_malicious_ip(ip_address):
     return reputation and reputation["risk_level"] > 1
 
 
-def _create_malicious_ip_event(ip_address):
+def _create_malicious_ip_event(ip_address, timestamp):
     manager = EventManager(
         data={
             "event_id": uuid.uuid1().hex,
@@ -30,6 +30,7 @@ def _create_malicious_ip_event(ip_address):
             "message": "[Security finding] Attempted access from malicious IP",
             "user": {"ip_address": ip_address},
             "fingerprint": [ip_address, "malicious_ip"],
+            "timestamp": timestamp,
         }
     )
     manager.normalize()
@@ -40,7 +41,7 @@ def _unusual_volume(count):
     return int(count) > DOS_TRIGGER
 
 
-def _create_high_volume_event(ip_address, count):
+def _create_high_volume_event(ip_address, count, timestamp):
     manager = EventManager(
         data={
             "event_id": uuid.uuid1().hex,
@@ -50,13 +51,14 @@ def _create_high_volume_event(ip_address, count):
             "message": "[Security finding] Unusually High Call Volume",
             "user": {"ip_address": ip_address},
             "fingerprint": [ip_address, "high_call_volume"],
+            "timestamp": timestamp,
         }
     )
     manager.normalize()
     manager.save(1)
 
 
-def _create_hacking_pattern_event(title, pattern, event_id):
+def _create_hacking_pattern_event(title, pattern, event_id, ip_address, timestamp):
     manager = EventManager(
         data={
             "event_id": uuid.uuid1().hex,
@@ -68,7 +70,9 @@ def _create_hacking_pattern_event(title, pattern, event_id):
                 "security_finding": "hacking_pattern",
             },
             "message": "[Security finding] Hacking pattern detected",
-            "fingerprint": [title, "hacking_pattern"],
+            "user": {"ip_address": ip_address},
+            "fingerprint": [title, ip_address, "hacking_pattern"],
+            "timestamp": timestamp,
         }
     )
     manager.normalize()
@@ -86,7 +90,7 @@ def test_task():
     """Runs every 5 minutes"""
     now = datetime.now()
     results = query(
-        selected_columns=["user.ip", "count()"],
+        selected_columns=["user.ip", "count()", "max(timestamp)"],
         query="has:user.ip !has:security_finding",
         params={
             "organization_id": 1,
@@ -99,9 +103,11 @@ def test_task():
     logger.info(results)
     for query_result in results["data"]:
         if _is_malicious_ip(query_result["user.ip"]):
-            _create_malicious_ip_event(query_result["user.ip"])
+            _create_malicious_ip_event(query_result["user.ip"], query_result["max_timestamp"])
         if _unusual_volume(query_result["count"]):
-            _create_high_volume_event(query_result["user.ip"], query_result["count"])
+            _create_high_volume_event(
+                query_result["user.ip"], query_result["count"], query_result["max_timestamp"]
+            )
 
 
 @instrumented_task(
@@ -114,7 +120,7 @@ def test_task():
 def patterns_task():
     now = datetime.now()
     results = query(
-        selected_columns=["id", "title"],
+        selected_columns=["id", "title", "user.ip", "timestamp"],
         query="!has:security_finding",
         params={
             "organization_id": 1,
@@ -129,4 +135,10 @@ def patterns_task():
         pattern = hacking_patterns_service.get(query_result["title"])
 
         if pattern is not None:
-            _create_hacking_pattern_event(query_result["title"], pattern, query_result["id"])
+            _create_hacking_pattern_event(
+                query_result["title"],
+                pattern,
+                query_result["id"],
+                query_result["user.ip"],
+                query_result["timestamp"],
+            )
