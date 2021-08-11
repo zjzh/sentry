@@ -119,7 +119,10 @@ class WidgetQueries extends React.Component<Props, State> {
 
   componentDidUpdate(prevProps: Props) {
     const {selection, widget} = this.props;
-    if (prevProps.selection.liveTail !== selection.liveTail) {
+    if (
+      prevProps.selection.liveTail !== selection.liveTail ||
+      prevProps.selection.datetime !== selection.datetime
+    ) {
       if (selection.liveTail) {
         const {start, end, period: statsPeriod} = selection.datetime;
         const interval = getWidgetInterval(widget, {
@@ -127,7 +130,7 @@ class WidgetQueries extends React.Component<Props, State> {
           end,
           period: statsPeriod,
         });
-        this.startLiveTailing(intervalToNumber(interval));
+        this.startLiveTailing(Math.max(5000, intervalToNumber(interval) / 2));
       } else {
         this.stopLiveTailing();
       }
