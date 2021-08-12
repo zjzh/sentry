@@ -3,21 +3,25 @@ import styled from '@emotion/styled';
 
 import {addErrorMessage, addSuccessMessage} from 'app/actionCreators/indicator';
 import {Client} from 'app/api';
-import Alert from 'app/components/alert';
 import Clipboard from 'app/components/clipboard';
 import ExternalLink from 'app/components/links/externalLink';
+import LoadingError from 'app/components/loadingError';
 import LoadingIndicator from 'app/components/loadingIndicator';
 import QuestionTooltip from 'app/components/questionTooltip';
 import TextOverflow from 'app/components/textOverflow';
 import Tooltip from 'app/components/tooltip';
-import {IconCopy, IconRefresh} from 'app/icons';
+import {IconBroadcast, IconCopy, IconRefresh} from 'app/icons';
 import {t, tct} from 'app/locale';
 import space from 'app/styles/space';
+import useInterval from 'app/utils/useInterval';
+import useVisibilityState from 'app/utils/useVisibilityState';
 
 import SidebarSection from '../sidebarSection';
 
 import Activity from './activity';
 import UnlinkedActivity from './unlinked';
+
+const POLLER_DELAY = 2000;
 
 // https://docs.github.com/en/rest/reference/pulls
 export type GitActivity = {
@@ -39,33 +43,44 @@ type Props = {
 function GitManager({api, issueId}: Props) {
   const [linkedActivities, setLinkedActivities] = useState<GitActivity[]>([]);
   const [unlinkedActivities, setUnlinkedActivities] = useState<GitActivity[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<undefined | string>(undefined);
   const [branchName, setBranchName] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+  const [intervalDelay, setIntervalDelay] = useState<null | number>(POLLER_DELAY);
+  const visibilityState = useVisibilityState();
 
   useEffect(() => {
     fetchBranchName();
-    fetchActivities();
   }, []);
 
-  async function fetchBranchName(reload = true) {
-    if (reload) {
-      setIsLoading(true);
+  useEffect(() => {
+    visibilityChange();
+  }, [visibilityState]);
+
+  useInterval(() => {
+    fetchActivities();
+  }, intervalDelay);
+
+  function visibilityChange() {
+    if (visibilityState === 'hidden') {
+      setIntervalDelay(null);
+      return;
     }
 
+    setIntervalDelay(POLLER_DELAY);
+  }
+
+  async function fetchBranchName() {
     try {
       const response = await api.requestPromise(`/issues/${issueId}/branch-name/`);
       setBranchName(response.branchName);
-      setIsLoading(false);
+      setError(undefined);
     } catch {
-      setIsLoading(false);
-      setError(t('An error occurred while fetching the branch name'));
+      setError(t('An error occurred while fetching the branch name suggestion'));
     }
   }
 
   async function fetchActivities() {
-    setIsLoading(true);
-    setError(undefined);
     try {
       const response: GitActivity[] = await api.requestPromise(
         `/issues/${issueId}/github-activity/`
@@ -74,10 +89,11 @@ function GitManager({api, issueId}: Props) {
       setLinkedActivities(activities);
       const unlinked = response.filter(gitActivity => !gitActivity.visible);
       setUnlinkedActivities(unlinked);
+      setError(undefined);
       setIsLoading(false);
     } catch {
-      setIsLoading(false);
       setError(t('An error occurred while fetching Git Manager'));
+      setIntervalDelay(null);
     }
   }
 
@@ -120,7 +136,13 @@ function GitManager({api, issueId}: Props) {
 
   function renderContent() {
     if (error) {
-      return <Alert type="error">{error}</Alert>;
+      return (
+        <LoadingError
+          withIcon={false}
+          message={error}
+          onRetry={() => setIntervalDelay(POLLER_DELAY)}
+        />
+      );
     }
 
     if (isLoading) {
@@ -130,60 +152,70 @@ function GitManager({api, issueId}: Props) {
     // TODO(git-hackers): Update doc link
     return (
       <Fragment>
-        <Header>
-          <Title>
-            {t('Branch Name Suggestion')}
-            <QuestionTooltip
-              isHoverable
-              position="top"
-              size="sm"
-              containerDisplayMode="block"
-              title={tct(
-                'By copying this branch name suggestion and pushing it to Github, this issue will automatically be linked. [link]',
-                {
-                  link: (
-                    <ExternalLink href="https://docs.sentry.io/platforms/javascript/install/">
-                      {t('Read the docs')}
-                    </ExternalLink>
-                  ),
-                }
-              )}
-            />
-          </Title>
-          <BranchNameAndActions>
-            <StyledTooltip title={branchName}>
-              <BranchName>{branchName}</BranchName>
-            </StyledTooltip>
-            <Clipboard value={branchName}>
+        {branchName && (
+          <Header>
+            <Title>
+              {t('Branch Name Suggestion')}
+              <QuestionTooltip
+                isHoverable
+                position="top"
+                size="sm"
+                containerDisplayMode="block"
+                title={tct(
+                  'By copying this branch name suggestion and pushing it to Github, this issue will automatically be linked. [link]',
+                  {
+                    link: (
+                      <ExternalLink href="https://docs.sentry.io/platforms/javascript/install/">
+                        {t('Read the docs')}
+                      </ExternalLink>
+                    ),
+                  }
+                )}
+              />
+            </Title>
+            <BranchNameAndActions>
+              <StyledTooltip title={branchName}>
+                <BranchName>{branchName}</BranchName>
+              </StyledTooltip>
+              <Clipboard value={branchName}>
+                <Tooltip
+                  title={t('Copy branch name suggestion')}
+                  containerDisplayMode="inline-flex"
+                >
+                  <StyledIconCopy />
+                </Tooltip>
+              </Clipboard>
               <Tooltip
-                title={t('Copy branch name suggestion')}
+                title={t('Refresh to get a new branch name suggestion')}
                 containerDisplayMode="inline-flex"
               >
-                <StyledIconCopy />
+                <StyledIconRefresh onClick={() => fetchBranchName()} />
               </Tooltip>
-            </Clipboard>
-            <Tooltip
-              title={t('Refresh to get a new branch name suggestion')}
-              containerDisplayMode="inline-flex"
-            >
-              <StyledIconRefresh onClick={() => fetchBranchName(false)} />
-            </Tooltip>
-          </BranchNameAndActions>
-        </Header>
-        <Activities>
-          {linkedActivities.map(activity => (
-            <Activity
-              key={activity.id}
-              gitActivity={activity}
-              onUnlink={handleUnlinkPullRequest}
-            />
-          ))}
-        </Activities>
-        {unlinkedActivities.length > 0 && (
+            </BranchNameAndActions>
+          </Header>
+        )}
+        {!!linkedActivities.length && (
+          <Activities>
+            {linkedActivities.map(activity => (
+              <Activity
+                key={activity.id}
+                gitActivity={activity}
+                onUnlink={handleUnlinkPullRequest}
+              />
+            ))}
+          </Activities>
+        )}
+        {!!unlinkedActivities.length && (
           <UnlinkedActivity
             unlinkedActivities={unlinkedActivities}
             onRelink={handleRelinkPullRequest}
           />
+        )}
+        {!linkedActivities.length && !unlinkedActivities.length && (
+          <EmptyState>
+            <IconBroadcast />
+            {t('Waiting for git activities\u2026')}
+          </EmptyState>
         )}
       </Fragment>
     );
@@ -254,4 +286,14 @@ const Activities = styled('div')`
       border-bottom: 1px solid ${p => p.theme.innerBorder};
     }
   }
+`;
+
+const EmptyState = styled('div')`
+  display: grid;
+  align-items: center;
+  justify-content: center;
+  grid-template-columns: repeat(2, max-content);
+  grid-gap: ${space(1)};
+  color: ${p => p.theme.gray300};
+  text-align: center;
 `;
