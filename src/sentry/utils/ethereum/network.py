@@ -77,6 +77,9 @@ class EthereumNetwork:
 
     @retry_with_delay(on=(ValueError), ignore=web3.exceptions.SolidityError, attempts=5, delay=0.5)
     def eth_call(self, transaction, block_identifier):
+        transaction = copy.deepcopy(transaction)
+        # Do we really need this?
+        transaction["gasLimit"] = 1
         return self.w3.eth.call(transaction, block_identifier=block_identifier)
 
     def decode_contract_input(self, contract_address, abi_object, input):
@@ -199,10 +202,15 @@ class EthereumNetwork:
             # Get function info
             call_info = None
             if abi_object:
-                # FIXME this might fail e.g. if ABI is incorrect
-                call_info = self.decode_contract_input(
-                    transaction["to"], abi_object, transaction["input"]
-                )
+                # FIXME this might fail in different ways e.g. if ABI is incorrect
+                try:
+                    call_info = self.decode_contract_input(
+                        transaction["to"], abi_object, transaction["input"]
+                    )
+                except ValueError:
+                    logger.warning(
+                        "Cannot decode contract input, skipping. Transaction id: %s", tr_id
+                    )
             if call_info:
                 logger.debug("Function call info: %s", call_info)
 
