@@ -20,13 +20,17 @@ def _is_malicious_ip(ip_address):
     return reputation and reputation["risk_level"] > 1
 
 
-def _create_malicious_ip_event(ip_address, timestamp):
+def _create_malicious_ip_event(ip_address, timestamp, trace_id):
+    tags = {"security_finding": "malicious_ip"}
+
+    if trace_id is not None and trace_id:
+        tags["trace"] = trace_id
     manager = EventManager(
         data={
             "event_id": uuid.uuid1().hex,
             "level": logging.ERROR,
             "transaction": ip_address,
-            "tags": {"security_finding": "malicious_ip"},
+            "tags": tags,
             "message": "[Security finding] Attempted access from malicious IP",
             "user": {"ip_address": ip_address},
             "fingerprint": [ip_address, "malicious_ip"],
@@ -58,17 +62,20 @@ def _create_high_volume_event(ip_address, count, timestamp):
     manager.save(1)
 
 
-def _create_hacking_pattern_event(title, pattern, event_id, ip_address, timestamp):
+def _create_hacking_pattern_event(title, pattern, event_id, ip_address, timestamp, trace_id):
+    tags = {
+        "hacking_pattern": pattern,
+        "id": event_id,
+        "security_finding": "hacking_pattern",
+    }
+    if trace_id is not None and trace_id:
+        tags["trace"] = trace_id
     manager = EventManager(
         data={
             "event_id": uuid.uuid1().hex,
             "level": logging.ERROR,
             "transaction": title,
-            "tags": {
-                "hacking_pattern": pattern,
-                "id": event_id,
-                "security_finding": "hacking_pattern",
-            },
+            "tags": tags,
             "message": "[Security finding] Hacking pattern detected",
             "user": {"ip_address": ip_address},
             "fingerprint": [title, ip_address, "hacking_pattern"],
@@ -77,6 +84,34 @@ def _create_hacking_pattern_event(title, pattern, event_id, ip_address, timestam
     )
     manager.normalize()
     manager.save(1)
+
+
+@instrumented_task(
+    name="sentry.tasks.api_security.malicious_ip",
+    queue="api_security",
+    default_retry_delay=60 * 5,
+    max_retries=2,
+)
+@retry()
+def malicious_ip():
+    """Runs every 5 minutes"""
+    now = datetime.now()
+    results = query(
+        selected_columns=["user.ip", "trace", "timestamp"],
+        query="has:user.ip !has:security_finding",
+        params={
+            "organization_id": 1,
+            "project_id": [1],
+            "start": now - timedelta(seconds=20),
+            "end": now,
+        },
+    )
+    logger.info(results)
+    for query_result in results["data"]:
+        if _is_malicious_ip(query_result["user.ip"]):
+            _create_malicious_ip_event(
+                query_result["user.ip"], query_result["timestamp"], query_result["trace"]
+            )
 
 
 @instrumented_task(
@@ -102,8 +137,6 @@ def test_task():
     )
     logger.info(results)
     for query_result in results["data"]:
-        if _is_malicious_ip(query_result["user.ip"]):
-            _create_malicious_ip_event(query_result["user.ip"], query_result["max_timestamp"])
         if _unusual_volume(query_result["count"]):
             _create_high_volume_event(
                 query_result["user.ip"], query_result["count"], query_result["max_timestamp"]
@@ -120,7 +153,7 @@ def test_task():
 def patterns_task():
     now = datetime.now()
     results = query(
-        selected_columns=["id", "title", "user.ip", "timestamp"],
+        selected_columns=["id", "title", "user.ip", "timestamp", "trace"],
         query="!has:security_finding",
         params={
             "organization_id": 1,
@@ -141,4 +174,5 @@ def patterns_task():
                 query_result["id"],
                 query_result["user.ip"],
                 query_result["timestamp"],
+                query_result["trace"],
             )

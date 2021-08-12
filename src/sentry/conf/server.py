@@ -771,6 +771,11 @@ CELERYBEAT_SCHEDULE = {
         "schedule": timedelta(seconds=20),
         "options": {"expires": 1200},
     },
+    "api-security-malicious-ip": {
+        "task": "sentry.tasks.api_security.malicious_ip",
+        "schedule": timedelta(seconds=20),
+        "options": {"expires": 1200},
+    },
 }
 
 BGTASKS = {
