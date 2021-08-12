@@ -450,7 +450,7 @@ class DashboardDetail extends Component<Props, State> {
             period: DEFAULT_STATS_PERIOD,
           },
         }}
-        showLiveTailButton
+        showLiveTailButton={!this.isEditing}
       >
         <LightWeightNoProjectMessage organization={organization}>
           <Layout.Header>

@@ -125,7 +125,6 @@ const storeConfig: Reflux.StoreDefinition & GlobalSelectionStoreInterface = {
       ...this.state,
       liveTail,
     };
-    console.log(this.state);
     this.trigger(this.get());
   },
 

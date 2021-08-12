@@ -189,12 +189,11 @@ class WidgetQueries extends React.Component<Props, State> {
   }
 
   startLiveTailing(interval: number) {
-    const {isEditing} = this.props;
     // Clear current interval if somehow exists
     this.stopLiveTailing();
     this.setState({
       timer: setInterval(() => {
-        if (!isEditing) {
+        if (!this.props.isEditing) {
           this.fetchData();
         }
       }, interval),
@@ -203,11 +202,6 @@ class WidgetQueries extends React.Component<Props, State> {
 
   stopLiveTailing() {
     if (this.state.timer) clearInterval(this.state.timer);
-    this.setState({
-      tableResults: undefined,
-      timeseriesResults: undefined,
-      rawResults: undefined,
-    });
   }
 
   async fetchEventData(queryFetchID: symbol, liveTail: boolean = false) {
