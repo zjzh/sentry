@@ -20,23 +20,21 @@ def _is_malicious_ip(ip_address):
     return reputation and reputation["risk_level"] > 1
 
 
-def _create_malicious_ip_event(ip_address, timestamp, trace_id):
-    tags = {"security_finding": "malicious_ip"}
+def _create_malicious_ip_event(ip_address, timestamp, trace_id, span_id):
+    data = {
+        "event_id": uuid.uuid1().hex,
+        "level": logging.ERROR,
+        "transaction": ip_address,
+        "tags": {"security_finding": "malicious_ip"},
+        "message": "[Security finding] Attempted access from malicious IP",
+        "user": {"ip_address": ip_address},
+        "fingerprint": [ip_address, "malicious_ip"],
+        "timestamp": timestamp,
+    }
 
     if trace_id is not None and trace_id:
-        tags["trace"] = trace_id
-    manager = EventManager(
-        data={
-            "event_id": uuid.uuid1().hex,
-            "level": logging.ERROR,
-            "transaction": ip_address,
-            "tags": tags,
-            "message": "[Security finding] Attempted access from malicious IP",
-            "user": {"ip_address": ip_address},
-            "fingerprint": [ip_address, "malicious_ip"],
-            "timestamp": timestamp,
-        }
-    )
+        data["contexts"] = {"trace": {"trace_id": trace_id, "span_id": span_id}}
+    manager = EventManager(data)
     manager.normalize()
     manager.save(1)
 
@@ -62,26 +60,26 @@ def _create_high_volume_event(ip_address, count, timestamp):
     manager.save(1)
 
 
-def _create_hacking_pattern_event(title, pattern, event_id, ip_address, timestamp, trace_id):
-    tags = {
-        "hacking_pattern": pattern,
-        "id": event_id,
-        "security_finding": "hacking_pattern",
+def _create_hacking_pattern_event(
+    title, pattern, event_id, ip_address, timestamp, trace_id, span_id
+):
+    data = {
+        "event_id": uuid.uuid1().hex,
+        "level": logging.ERROR,
+        "transaction": title,
+        "tags": {
+            "hacking_pattern": pattern,
+            "id": event_id,
+            "security_finding": "hacking_pattern",
+        },
+        "message": "[Security finding] Hacking pattern detected",
+        "user": {"ip_address": ip_address},
+        "fingerprint": [title, ip_address, "hacking_pattern"],
+        "timestamp": timestamp,
     }
     if trace_id is not None and trace_id:
-        tags["trace"] = trace_id
-    manager = EventManager(
-        data={
-            "event_id": uuid.uuid1().hex,
-            "level": logging.ERROR,
-            "transaction": title,
-            "tags": tags,
-            "message": "[Security finding] Hacking pattern detected",
-            "user": {"ip_address": ip_address},
-            "fingerprint": [title, ip_address, "hacking_pattern"],
-            "timestamp": timestamp,
-        }
-    )
+        data["contexts"] = {"trace": {"trace_id": trace_id, "span_id": span_id}}
+    manager = EventManager(data)
     manager.normalize()
     manager.save(1)
 
@@ -97,7 +95,7 @@ def malicious_ip():
     """Runs every 5 minutes"""
     now = datetime.now()
     results = query(
-        selected_columns=["user.ip", "trace", "timestamp"],
+        selected_columns=["user.ip", "trace", "timestamp", "trace.span"],
         query="has:user.ip !has:security_finding",
         params={
             "organization_id": 1,
@@ -110,7 +108,10 @@ def malicious_ip():
     for query_result in results["data"]:
         if _is_malicious_ip(query_result["user.ip"]):
             _create_malicious_ip_event(
-                query_result["user.ip"], query_result["timestamp"], query_result["trace"]
+                query_result["user.ip"],
+                query_result["timestamp"],
+                query_result["trace"],
+                query_result["trace.span"],
             )
 
 
@@ -153,7 +154,7 @@ def test_task():
 def patterns_task():
     now = datetime.now()
     results = query(
-        selected_columns=["id", "title", "user.ip", "timestamp", "trace"],
+        selected_columns=["id", "title", "user.ip", "timestamp", "trace", "trace.span"],
         query="!has:security_finding",
         params={
             "organization_id": 1,
@@ -175,4 +176,5 @@ def patterns_task():
                 query_result["user.ip"],
                 query_result["timestamp"],
                 query_result["trace"],
+                query_result["trace.span"],
             )
