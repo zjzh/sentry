@@ -22,7 +22,10 @@ import ChartFooter from './chartFooter';
 const datasets = [
   {label: 'Safari Outage', value: 'safari'},
   {label: 'Fastly CDN', value: 'fastly_cdn'},
-  {label: 'Fastly CDN No Moving Average', value: 'fastly_cdn_no_mavg'},
+  {label: 'Fastly CDN w/o MAVG', value: 'fastly_cdn_no_mavg'},
+  {label: 'Javascript Errors', value: 'js'},
+  {label: 'Organizations Endpoint', value: 'org'},
+  {label: 'HTTP 4XX Statuses', value: 'http_4xx'},
 ];
 
 const levels = [
@@ -33,11 +36,14 @@ const levels = [
 
 function getSelectedDataset(
   location: Location
-): 'safari' | 'fastly_cdn' | 'fastly_cdn_no_mavg' {
+): 'safari' | 'fastly_cdn' | 'fastly_cdn_no_mavg' | 'js' | 'org' | 'http_4xx' {
   const dataset = String(location.query.dataset ?? 'safari');
   switch (dataset) {
     case 'fastly_cdn':
     case 'fastly_cdn_no_mavg':
+    case 'js':
+    case 'org':
+    case 'http_4xx':
       return dataset;
     case 'safari':
     default:
@@ -225,11 +231,32 @@ class ResultsChartContainer extends Component<ContainerProps> {
         query.project = 11276; // javascript project id
         query.start = '2021-06-07T00:00:00';
         query.end = '2021-06-19T23:59:59';
+        query.statsPeriod = undefined;
       } else if (value === 'fastly_cdn' || value === 'fastly_cdn_no_mavg') {
         query.query = 'event.type:transaction';
         query.project = 11276; // javascript project id
         query.start = '2021-06-23T00:00:00';
-        query.end = '2021-07-06T23:59:59';
+        query.end = '2021-07-06T02:00:00';
+        query.statsPeriod = undefined;
+      } else if (value === 'js') {
+        query.query = 'event.type:error';
+        query.project = 11276; // javascript project id
+        query.start = '2021-05-16T00:00:00';
+        query.end = '2021-07-31T00:00:00';
+        query.statsPeriod = undefined;
+      } else if (value === 'org') {
+        query.query =
+          'http.method:GET event.type:transaction transaction:/api/0/organizations/{organization_slug}/issues/';
+        query.project = 1; // sentry project id
+        query.start = '2021-05-16T00:00:00';
+        query.end = '2021-06-15T00:00:00';
+        query.statsPeriod = undefined;
+      } else if (value === 'http_4xx') {
+        query.query = 'event.type:transaction http.status_code:[404, 429, 400, 409]';
+        query.project = 1; // sentry project id
+        query.start = '2021-07-16T00:00:00';
+        query.end = '2021-08-01T00:00:00';
+        query.statsPeriod = undefined;
       }
 
       ReactRouter.browserHistory.push({

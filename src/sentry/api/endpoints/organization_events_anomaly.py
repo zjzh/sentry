@@ -18,12 +18,15 @@ FILES = {
     "safari": "safari_june_6_june_20.json",
     "fastly_cdn": "fastly_cdn_june_22_july_7.json",
     "fastly_cdn_no_mavg": "fastly_cdn_no_mavg_june_22_july_7.json",
+    "js": "javascript_errors_june_1_july_31.json",
+    "org": "api_0_organizations_{organization_slug}_may_1_june_15.json",
+    "http_4xx": "http_4XX_codes_06_01_08_01.json",
 }
 DATASETS = {}
 
 # HACK: loading up the precomputed data
 for dataset, file_name in FILES.items():
-    with open(file_name) as dataset_file:
+    with open(f"datasets/{file_name}") as dataset_file:
         DATASETS[dataset] = json.loads(dataset_file.read())
 
 
