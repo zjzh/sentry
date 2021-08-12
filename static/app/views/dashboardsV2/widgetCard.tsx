@@ -53,6 +53,7 @@ class WidgetCard extends React.Component<Props> {
     if (
       !isEqual(nextProps.widget, this.props.widget) ||
       !isSelectionEqual(nextProps.selection, this.props.selection) ||
+      !isSelectionEqual(nextProps.selectionOverride, this.props.selectionOverride) ||
       this.props.isEditing !== nextProps.isEditing ||
       this.props.isSorting !== nextProps.isSorting ||
       this.props.hideToolbar !== nextProps.hideToolbar
@@ -152,8 +153,9 @@ class WidgetCard extends React.Component<Props> {
   }
 
   render() {
-    const {widget, api, organization, selection, renderErrorMessage, location, router} =
+    const {widget, api, organization, selection, selectionOverride, renderErrorMessage, location, router} =
       this.props;
+
     return (
       <ErrorBoundary
         customComponent={<ErrorCard>{t('Error loading widget data')}</ErrorCard>}
@@ -167,7 +169,7 @@ class WidgetCard extends React.Component<Props> {
             api={api}
             organization={organization}
             widget={widget}
-            selection={selection}
+            selection={selectionOverride || selection}
           >
             {({tableResults, timeseriesResults, errorMessage, loading}) => {
               return (
@@ -222,6 +224,8 @@ const StyledPanel = styled(Panel, {
   /* If a panel overflows due to a long title stretch its grid sibling */
   height: 100%;
   min-height: 96px;
+  border: solid 1px ${p => p.theme.gray100};
+  box-shadow: none;
 `;
 
 const ToolbarPanel = styled('div')`

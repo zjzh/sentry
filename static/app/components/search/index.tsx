@@ -13,11 +13,13 @@ import SearchSources from 'app/components/search/sources';
 import ApiSource from 'app/components/search/sources/apiSource';
 import CommandSource from 'app/components/search/sources/commandSource';
 import FormSource from 'app/components/search/sources/formSource';
+import GraphSource from 'app/components/search/sources/graphSource';
 import RouteSource from 'app/components/search/sources/routeSource';
 import {t} from 'app/locale';
 import space from 'app/styles/space';
 import {trackAnalyticsEvent} from 'app/utils/analytics';
 import replaceRouterParams from 'app/utils/replaceRouterParams';
+import withOrganization from 'app/utils/withOrganization';
 
 import {Result} from './sources/types';
 
@@ -246,6 +248,9 @@ class Search extends React.Component<Props> {
                           <LoadingIndicator mini hideMessage relative />
                         </LoadingWrapper>
                       )}
+                      {!isLoading && (
+                        <GraphSource query={searchQuery} />
+                      )}
                       {!isLoading &&
                         results.slice(0, maxResults).map((resultObj, index) =>
                           this.renderItem({
@@ -255,9 +260,9 @@ class Search extends React.Component<Props> {
                             getItemProps,
                           })
                         )}
-                      {!isLoading && !hasAnyResults && (
+                      {/*{!isLoading && !hasAnyResults && (
                         <EmptyItem>{t('No results found')}</EmptyItem>
-                      )}
+                      )}*/}
                       {!isLoading && resultFooter && (
                         <ResultFooter>{resultFooter}</ResultFooter>
                       )}
