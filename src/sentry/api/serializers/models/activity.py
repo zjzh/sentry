@@ -79,6 +79,9 @@ class ActivitySerializer(Serializer):
             data = {"fingerprints": obj.data["fingerprints"], "source": attrs["source"]}
         elif obj.type == Activity.UNMERGE_SOURCE:
             data = {"fingerprints": obj.data["fingerprints"], "destination": attrs["destination"]}
+        elif obj.type == Activity.NOTE:
+            data = obj.data
+            data["groupId"] = obj.group_id
         else:
             data = obj.data
             # XXX: We had a problem where Users were embedded into the mentions

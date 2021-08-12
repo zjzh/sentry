@@ -1,0 +1,61 @@
+{
+  "elements": [
+    {
+      "type": "issue-link",
+      "link": {
+        "uri": "/sentry/issues/link",
+        "required_fields": [
+          {
+            "type": "text",
+            "label": "Title",
+            "name": "title"
+          }
+        ]
+      },
+      "create": {
+        "uri": "/sentry/issues/create",
+        "required_fields": [
+          {
+            "type": "select",
+            "uri": "/sentry/issues/gitea/repos",
+            "name": "repo",
+            "label": "Repository",
+            "async": true
+          },
+          {
+            "type": "text",
+            "label": "Title",
+            "name": "title",
+            "default": "issue.title"
+          },
+          {
+            "type": "textarea",
+            "label": "Description",
+            "name": "description",
+            "default": "issue.description"
+          },
+          {
+            "type": "select",
+            "uri": "/sentry/issues/gitea/assignees",
+            "name": "assignee",
+            "label": "Assignee",
+            "async": true
+          }
+        ]
+      }
+    },
+    {
+      "type": "configuration-settings",
+      "title": "Settings",
+      "uri": "/sentry/configuration/settings",
+      "elements": [
+        {
+          "type": "toggle",
+          "label": "Sync Comments between Sentry and Gitea",
+          "name": "comments-sync",
+          "default": true
+        }
+      ]
+    }
+  ]
+}

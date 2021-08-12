@@ -3,12 +3,14 @@ const Schema = mongoose.Schema;
 
 const InstallationSchema = new Schema(
   {
-    installationId: {
+    sentryInstallationId: {
       type: String,
-      required: true,
     },
-    authToken: {type: String, required: true},
-    refreshToken: {type: String, required: true},
+    sentryAuthToken: {type: String},
+    sentryRefreshToken: {type: String},
+    status: {type: String, enum: ['pending', 'installed'], default: 'pending'},
+    giteaAuthToken: {type: String},
+    giteaRefreshToken: {type: String},
   },
   {timestamps: true}
 );

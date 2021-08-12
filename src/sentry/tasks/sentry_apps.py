@@ -189,7 +189,6 @@ def _process_resource_change(action, sender, instance_id, retryer=None, *args, *
             data[name] = _webhook_event_data(instance, instance.group_id, instance.project_id)
         else:
             data[name] = serialize(instance)
-        print(data)
         # Trigger a new task for each webhook
         send_resource_change_webhook.delay(installation_id=installation.id, event=event, data=data)
 

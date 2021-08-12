@@ -17,7 +17,8 @@ services:
       MONGO_URI: mongodb://mongo:27017/db
       SENTRY_API_BASE_URL: http://host.docker.internal:8000
       SENTRY_WEB_BASE_URL: http://localhost:8000
-      GITEA_API_BASE_URL: http:localhost:3000
+      GITEA_API_BASE_URL: http://host.docker.internal:3000
+      GITEA_WEB_BASE_URL: http://localhost:3000
 
   mongo:
     container_name: mongo

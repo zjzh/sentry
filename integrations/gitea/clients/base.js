@@ -1,3 +1,5 @@
+const axios = require('axios');
+
 class BaseApiClient {
   async get(url) {
     try {
@@ -35,5 +37,3 @@ class BaseApiClient {
     }
   }
 }
-
-class GiteaApiClient extends BaseApiClient {}
