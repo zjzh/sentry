@@ -38,6 +38,7 @@ type Props = ReactRouter.WithRouterProps & {
   isEditing: boolean;
   widget: Widget;
   selection: GlobalSelection;
+  selectionOverride: GlobalSelection;
   onDelete: () => void;
   onEdit: () => void;
   isSorting: boolean;
