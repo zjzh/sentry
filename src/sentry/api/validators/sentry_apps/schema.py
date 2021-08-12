@@ -31,6 +31,7 @@ SCHEMA = {
                     {"$ref": "#/definitions/select"},
                     {"$ref": "#/definitions/text"},
                     {"$ref": "#/definitions/textarea"},
+                    {"$ref": "#/definitions/toggle"},
                 ]
             },
         },
@@ -67,6 +68,16 @@ SCHEMA = {
                 "label": {"type": "string"},
                 "name": {"type": "string"},
                 "default": {"type": "string", "enum": ["issue.title", "issue.description"]},
+            },
+            "required": ["type", "label", "name"],
+        },
+        "toggle": {
+            "type": "object",
+            "properties": {
+                "type": {"type": "string", "enum": ["toggle"]},
+                "label": {"type": "string"},
+                "name": {"type": "string"},
+                "default": {"type": "boolean"},
             },
             "required": ["type", "label", "name"],
         },
@@ -167,6 +178,24 @@ SCHEMA = {
             },
             "required": ["type", "uri"],
         },
+        "configuration-settings": {
+            "type": "object",
+            "properties": {
+                "type": {"type": "string", "enum": ["configuration-settings"]},
+                "title": {"type": "string"},
+                "uri": {"$ref": "#/definitions/uri"},
+                "elements": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "anyOf": [
+                            {"$ref": "#/definitions/toggle"},
+                        ]
+                    },
+                },
+            },
+            "required": ["type", "title", "elements", "uri"],
+        },
     },
     "properties": {
         "elements": {
@@ -178,6 +207,7 @@ SCHEMA = {
                     {"$ref": "#/definitions/alert-rule-action"},
                     {"$ref": "#/definitions/issue-media"},
                     {"$ref": "#/definitions/stacktrace-link"},
+                    {"$ref": "#/definitions/configuration-settings"},
                 ]
             },
         }
@@ -185,7 +215,13 @@ SCHEMA = {
     "required": ["elements"],
 }
 
-element_types = ["issue-link", "alert-rule-action", "issue-media", "stacktrace-link"]
+element_types = [
+    "issue-link",
+    "alert-rule-action",
+    "issue-media",
+    "stacktrace-link",
+    "configuration-settings",
+]
 
 
 def validate_component(schema):

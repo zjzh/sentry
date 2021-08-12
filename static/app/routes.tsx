@@ -676,7 +676,16 @@ function routes() {
           component={errorHandler(LazyLoad)}
         />
       </Route>
-
+      <Route name="Sentry Apps" path="sentry-apps/">
+        <Route
+          name="Configure Sentry App"
+          path=":sentryAppSlug/:installationId/"
+          componentPromise={() =>
+            import('app/views/settings/organizationIntegrations/configureSentryApp')
+          }
+          component={errorHandler(LazyLoad)}
+        />
+      </Route>
       <Route name="Developer Settings" path="developer-settings/">
         <IndexRoute
           componentPromise={() =>

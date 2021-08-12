@@ -1,4 +1,7 @@
+import * as React from 'react';
 import styled from '@emotion/styled';
+import {withTheme} from '@emotion/react';
+import {Theme} from 'app/utils/theme';
 
 import {addErrorMessage, addSuccessMessage} from 'app/actionCreators/indicator';
 import {openModal} from 'app/actionCreators/modal';
@@ -9,7 +12,7 @@ import {
 import Button from 'app/components/button';
 import CircleIndicator from 'app/components/circleIndicator';
 import Confirm from 'app/components/confirm';
-import {IconSubtract} from 'app/icons';
+import {IconSubtract, IconDelete, IconSettings} from 'app/icons';
 import {t, tct} from 'app/locale';
 import space from 'app/styles/space';
 import {IntegrationFeature, SentryApp, SentryAppInstallation} from 'app/types';
@@ -18,9 +21,9 @@ import {getSentryAppInstallStatus} from 'app/utils/integrationUtil';
 import {addQueryParamsToExistingUrl} from 'app/utils/queryString';
 import {recordInteraction} from 'app/utils/recordSentryAppInteraction';
 import withOrganization from 'app/utils/withOrganization';
-
 import AbstractIntegrationDetailedView from './abstractIntegrationDetailedView';
 import SplitInstallationIdModal from './SplitInstallationIdModal';
+import Tooltip from 'app/components/tooltip';
 
 type State = {
   sentryApp: SentryApp;
@@ -34,7 +37,7 @@ class SentryAppDetailedView extends AbstractIntegrationDetailedView<
   AbstractIntegrationDetailedView['props'],
   State & AbstractIntegrationDetailedView['state']
 > {
-  tabs: Tab[] = ['overview'];
+  tabs: Tab[] = ['overview', 'configurations'];
   getEndpoints(): ([string, string, any] | [string, string])[] {
     const {
       organization,
@@ -274,8 +277,42 @@ class SentryAppDetailedView extends AbstractIntegrationDetailedView<
     return this.renderRequestIntegrationButton();
   }
 
-  // no configurations for sentry apps
   renderConfigurations() {
+    const {appInstalls, sentryApp} = this.state;
+    const {organization} = this.props;
+    if (appInstalls.length) {
+      return appInstalls.map(installation => {
+        return (
+          <InstallWrapper key={installation.uuid}>
+            <IntegrationFlex key={installation.uuid}>
+              <IntegrationItemBox>{sentryApp.name}</IntegrationItemBox>
+              <div>
+                <StyledButton
+                  borderless
+                  icon={<IconSettings />}
+                  to={`/settings/${organization.slug}/sentry-apps/${sentryApp.slug}/${installation.uuid}/`}
+                  data-test-id="integration-configure-button"
+                >
+                  {t('Configure')}
+                </StyledButton>
+              </div>
+              <div>
+                <StyledButton
+                  borderless
+                  icon={<IconDelete />}
+                  data-test-id="integration-remove-button"
+                >
+                  {t('Uninstall')}
+                </StyledButton>
+              </div>
+
+              <IntegrationStatus status={installation.status} />
+            </IntegrationFlex>
+          </InstallWrapper>
+        );
+      });
+    }
+
     return null;
   }
 }
@@ -314,6 +351,74 @@ const StyledUninstallButton = styled(Button)`
   box-sizing: border-box;
   box-shadow: 0px 2px 1px rgba(0, 0, 0, 0.08);
   border-radius: 4px;
+`;
+
+const InstallWrapper = styled('div')`
+  padding: ${space(2)};
+  border: 1px solid ${p => p.theme.border};
+  border-bottom: none;
+  background-color: ${p => p.theme.background};
+
+  &:last-child {
+    border-bottom: 1px solid ${p => p.theme.border};
+  }
+`;
+
+const StyledButton = styled(Button)`
+  color: ${p => p.theme.gray300};
+`;
+
+const IntegrationFlex = styled('div')`
+  display: flex;
+  align-items: center;
+`;
+
+const IntegrationItemBox = styled('div')`
+  flex: 1;
+`;
+
+const IntegrationStatus = withTheme(
+  (
+    props: React.HTMLAttributes<HTMLDivElement> & {
+      theme: Theme;
+      status: 'installed' | 'pending';
+    }
+  ) => {
+    const {theme, status} = props;
+    const color = status === 'installed' ? theme.success : theme.gray300;
+    const titleText =
+      status === 'installed'
+        ? t('This Integration can be disabled by clicking the Uninstall button')
+        : t('This Integration has been disconnected from the external provider');
+    return (
+      <Tooltip title={titleText}>
+        <IntegrationStatusContainer>
+          <CircleIndicator size={6} color={color} />
+          <IntegrationStatusText>{`${
+            status === 'installed' ? t('Enabled') : t('Disabled')
+          }`}</IntegrationStatusText>
+        </IntegrationStatusContainer>
+      </Tooltip>
+    );
+  }
+);
+
+const IntegrationStatusContainer = styled('div')`
+  display: flex;
+  align-items: center;
+  color: ${p => p.theme.gray300};
+  font-weight: light;
+  text-transform: capitalize;
+  &:before {
+    content: '|';
+    color: ${p => p.theme.gray200};
+    margin-right: ${space(1)};
+    font-weight: normal;
+  }
+`;
+
+const IntegrationStatusText = styled('div')`
+  margin: 0 ${space(0.75)} 0 ${space(0.5)};
 `;
 
 export default withOrganization(SentryAppDetailedView);

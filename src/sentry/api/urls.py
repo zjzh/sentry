@@ -363,6 +363,9 @@ from .endpoints.sentry_app_components import (
 )
 from .endpoints.sentry_app_details import SentryAppDetailsEndpoint
 from .endpoints.sentry_app_features import SentryAppFeaturesEndpoint
+from .endpoints.sentry_app_installation_configuration_settings import (
+    SentryAppInstallationConfigurationSettingsEndpoint,
+)
 from .endpoints.sentry_app_installation_details import SentryAppInstallationDetailsEndpoint
 from .endpoints.sentry_app_installation_external_issue_actions import (
     SentryAppInstallationExternalIssueActionsEndpoint,
@@ -1415,6 +1418,11 @@ urlpatterns = [
         r"^sentry-app-installations/(?P<uuid>[^\/]+)/external-issues/(?P<external_issue_id>[^\/]+)/$",
         SentryAppInstallationExternalIssueDetailsEndpoint.as_view(),
         name="sentry-api-0-sentry-app-installation-external-issue-details",
+    ),
+    url(
+        r"^sentry-app-installations/(?P<uuid>[^\/]+)/configuration-settings/$",
+        SentryAppInstallationConfigurationSettingsEndpoint.as_view(),
+        name="sentry-api-0-sentry-app-installation-configuration-settingss",
     ),
     # Teams
     url(

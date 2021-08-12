@@ -56,6 +56,7 @@ export default class FieldFromConfig extends Component<Props> {
         return <BlankField {...props} />;
       case 'bool':
       case 'boolean':
+      case 'toggle':
         return <BooleanField {...props} />;
       case 'email':
         return <EmailField {...props} />;

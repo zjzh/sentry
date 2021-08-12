@@ -27,11 +27,16 @@ class OrganizationSentryAppComponentsEndpoint(OrganizationEndpoint):
     @add_integration_platform_metric_tag
     def get(self, request, organization):
         project_id = request.GET.get("projectId")
-        if not project_id:
+        component_types = request.GET.get("filter", [])
+        if not project_id and "configuration-settings" not in component_types:
             raise ValidationError("Required parameter 'projectId' is missing")
 
         try:
-            project = Project.objects.get(id=project_id, organization_id=organization.id)
+            if "configuration-settings" in component_types:
+                # TODO(nisanthan): Get any random project for proof of concept
+                project = Project.objects.get(organization_id=organization.id)
+            else:
+                project = Project.objects.get(id=project_id, organization_id=organization.id)
         except Project.DoesNotExist:
             return Response([], status=404)
 
@@ -40,8 +45,8 @@ class OrganizationSentryAppComponentsEndpoint(OrganizationEndpoint):
         for install in SentryAppInstallation.get_installed_for_org(organization.id):
             _components = SentryAppComponent.objects.filter(sentry_app_id=install.sentry_app_id)
 
-            if "filter" in request.GET:
-                _components = _components.filter(type=request.GET["filter"])
+            if len(component_types):
+                _components = _components.filter(type=component_types)
 
             for component in _components:
                 try:

@@ -12,6 +12,7 @@ export const FieldType = [
   'blank',
   'bool',
   'boolean',
+  'toggle',
   'choice_mapper',
   'email',
   'hidden',

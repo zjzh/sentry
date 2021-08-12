@@ -3,7 +3,7 @@ from urllib.parse import urlencode, urlparse, urlunparse
 from django.utils.encoding import force_str
 
 from sentry.mediators import Mediator, Param
-from sentry.mediators.external_requests import SelectRequester
+from sentry.mediators.external_requests import ConfigurationSettingsRequester, SelectRequester
 
 
 class Preparer(Mediator):
@@ -16,6 +16,8 @@ class Preparer(Mediator):
             return self._prepare_issue_link()
         if self.component.type == "stacktrace-link":
             return self._prepare_stacktrace_link()
+        if self.component.type == "configuration-settings":
+            return self._prepare_configuration_settings()
 
     def _prepare_stacktrace_link(self):
         schema = self.component.schema
@@ -49,6 +51,16 @@ class Preparer(Mediator):
 
         for field in create.get("optional_fields", []):
             self._prepare_field(field)
+
+    def _prepare_configuration_settings(self):
+        schema = self.component.schema.copy()
+        uri = schema.get("uri")
+        values = ConfigurationSettingsRequester.run(install=self.install, uri=uri)
+        for field in schema.get("elements"):
+            if values.get(field["name"]):
+                field.update({"value": values.get(field["name"])})
+
+        return schema
 
     def _prepare_field(self, field):
         if "options" in field:
