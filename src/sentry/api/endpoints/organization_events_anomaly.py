@@ -125,6 +125,14 @@ class OrganizationEventsAnomalyEndpoint(OrganizationEventsV2EndpointBase):
             for entry in results["upper_band"]:
                 entry["count"] = sum(entry["count"])
 
+            if dataset == "js":
+                zipped = zip(results["count"], results["lower_band"], results["upper_band"])
+                for count_entry, lower_band_entry, upper_band_entry in zipped:
+                    x = (count_entry["count"] - lower_band_entry["count"]) / 2
+                    lower_band_entry["count"] = count_entry["count"] - x
+                    x = (upper_band_entry["count"] - count_entry["count"]) / 2
+                    upper_band_entry["count"] = count_entry["count"] + x
+
         with sentry_sdk.start_span(op="discover.endpoint", description="timeseries_serializing"):
             serializer = SnubaTSResultSerializer(organization, None, request.user)
 
