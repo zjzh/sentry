@@ -1,7 +1,5 @@
 // Require express
 const express = require('express');
-const crypto = require('crypto');
-const axios = require('axios');
 const mongoose = require('mongoose');
 const morgan = require('morgan');
 const handleSentryWebhookResources = require('./webhooks/sentry');
@@ -46,7 +44,7 @@ app.get('/setup', async (req, res) => {
     const install = new Installation({
       sentryInstallationId: installationId,
       sentryAuthToken: token,
-      sentryRefreshToken: token,
+      sentryRefreshToken: refreshToken,
     });
     await install.save();
     const giteaClient = new GiteaApiClient();
@@ -63,9 +61,9 @@ app.get('/gitea/setup', async (req, res) => {
     let {code, state} = req.query;
     console.log('state: ', state);
     let giteaClient = new GiteaApiClient();
-    let resp = giteaClient.authorizeOauth(code);
+    let resp = await giteaClient.authorizeOauth(code);
     let data = resp.data;
-    console.log(data);
+    console.log(resp);
 
     let {installationId, orgSlug} = JSON.parse(state);
     console.log({installationId, orgSlug});
@@ -168,7 +166,7 @@ app.post('/sentry/issues/create', async (req, res) => {
       sentryProjectId: project.id,
       sentryProjectSlug: project.slug,
       sentryWebUrl: webUrl,
-      giteaIssueId: issue.data.id,
+      giteaIssueId: issue.data.number,
       giteaRepoId: repo,
     });
     await linkedIssue.save();

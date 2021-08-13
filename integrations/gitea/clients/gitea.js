@@ -51,13 +51,16 @@ class GiteaApiClient {
   }
 
   authorizeOauth(code) {
-    return this.instance.post('/login/oauth/access_token', {
-      client_id: GITEA_CLIENT_ID,
-      client_secret: GITEA_CLIENT_SECRET,
-      code,
-      grant_type: 'authorization_code',
-      redirect_uri: GITEA_REDIRECT_URI,
-    });
+    return this.instance.post(
+      `${process.env.GITEA_API_BASE_URL}/login/oauth/access_token`,
+      {
+        client_id: GITEA_CLIENT_ID,
+        client_secret: GITEA_CLIENT_SECRET,
+        code,
+        grant_type: 'authorization_code',
+        redirect_uri: GITEA_REDIRECT_URI,
+      }
+    );
   }
 
   generateRedirectUri(state) {

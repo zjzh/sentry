@@ -190,6 +190,7 @@ SCHEMA = {
                     "items": {
                         "anyOf": [
                             {"$ref": "#/definitions/toggle"},
+                            {"$ref": "#/definitions/text"},
                         ]
                     },
                 },
