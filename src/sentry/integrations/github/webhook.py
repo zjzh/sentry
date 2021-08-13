@@ -517,7 +517,7 @@ class PullRequestEventWebhook(Webhook):
             action = event["action"]
             if action in PullRequestAction.get_all():
                 try:
-                    pull_request = PullRequest.objects.get(
+                    pull_request_obj = PullRequest.objects.get(
                         organization_id=organization.id,
                         repository_id=repo.id,
                         key=number,
@@ -528,7 +528,7 @@ class PullRequestEventWebhook(Webhook):
                     self.record_group_activity(
                         action=action,
                         group=group,
-                        pull_request=pull_request,
+                        pull_request=pull_request_obj,
                         merged=merged,
                     )
 
