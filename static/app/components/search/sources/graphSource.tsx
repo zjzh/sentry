@@ -24,9 +24,15 @@ type Props = {
 
 const quantities = [
 	{
-		query: 'errors', 
+		query: 'error', 
 		name: 'Errors',
 		conditions: 'event.type:error', 
+		defaultFields: ["count()"]
+	},
+	{
+		query: 'webhook transactions', 
+		name: 'Webhook transactions',
+		conditions: 'transaction:/extensions/vercel/webhook/ ', 
 		defaultFields: ["count()"]
 	},
 	{
@@ -37,20 +43,32 @@ const quantities = [
 	},
 	{
 		query: '400', 
-		name: '400 Errors',
-		conditions: 'http.status_code:400', 
+		name: '400',
+		conditions: 'transaction:/extensions/vercel/webhook/ http.status_code:400', 
 		defaultFields: ["count()"]
 	},
 	{
 		query: '401', 
-		name: '401 Errors',
-		conditions: 'http.status_code:401', 
+		name: '401',
+		conditions: [
+			'transaction:/extensions/vercel/webhook/', 
+			'http.status_code:401'
+		], 
 		defaultFields: ["count()"]
 	},
 	{
 		query: '404', 
-		name: '404 Errors',
-		conditions: 'http.status_code:404', 
+		name: '404',
+		conditions: [
+			'transaction:/extensions/vercel/webhook/', 
+			'http.status_code:404'
+		], 
+		defaultFields: ["count()"]
+	},
+	{
+		query: '200', 
+		name: '200',
+		conditions: 'http.status_code:200', 
 		defaultFields: ["count()"]
 	}
 ]
@@ -114,15 +132,17 @@ class GraphSource extends React.Component<Props> {
 			let dateWordLength = 1;
 			let dateString = succeedingWords.slice(0, dateWordLength).join(' ');
 			let dateObject = SugarDate.create(dateString);
-			while (dateWordLength < succeedingWords.length && isValidDate(dateObject)) {
+			while (dateWordLength <= succeedingWords.length && isValidDate(dateObject)) {
 				dateWordLength += 1;
 				dateString = succeedingWords.slice(0, dateWordLength).join(' ');
-				if (isValidDate(SugarDate.create(dateString))) {
-					dateObject = SugarDate.create(dateString);
-					highlight.push(subStringIndex, subStringIndex + dateString.length + 1)
-				}
+				dateObject = SugarDate.create(dateString);
 			}
-			return {dateObject, highlight};
+			const finalDateString = succeedingWords.slice(0, dateWordLength - 1).join(' ');
+			const finalDateObject = SugarDate.create(finalDateString);
+			if (isValidDate(finalDateObject)) {
+				highlight.push(subStringIndex, subStringIndex + finalDateString.length + 1);
+			}
+			return {dateObject: finalDateObject, highlight};
 		}
 
 		const fromIndex = query.search('from');
@@ -132,7 +152,10 @@ class GraphSource extends React.Component<Props> {
 			const {dateObject, highlight} = parseDateFromQueryString(succeedingString, fromIndex + 5);
 			if (isValidDate(dateObject)) {
 				datetime.start = dateObject;
-				datetime.end = new Date((new Date(dateObject)).setDate(dateObject.getDate() + 14));
+				datetime.end = Math.min(
+					Date.now(),
+					new Date((new Date(dateObject)).setDate(dateObject.getDate() + 14))
+				);
 				if (highlight.length > 0) {
 					highlights.push(highlight);
 				}
@@ -207,8 +230,8 @@ class GraphSource extends React.Component<Props> {
 
     	const mentionedFields = fields.filter(field => query.includes(field.query))
     	mentionedFields.forEach(field => {
-    		const highlightStart = query.search(quantityObject)
-    		const highlightEnd = highlightStart + quantityObject.query.length
+    		const highlightStart = query.search(field.query)
+    		const highlightEnd = highlightStart + field.query.length
     		highlights.push([highlightStart, highlightEnd])
 
     		widget.queries.forEach(query => {
@@ -264,6 +287,8 @@ class GraphSource extends React.Component<Props> {
 				period: null
 			}
 		}
+
+		console.log(highlights)
 
 		return (
 			<GraphSourceWrapper>
