@@ -109,6 +109,10 @@ class StacktraceInterface extends React.Component<Props, State> {
               stackView={stackView}
               platform={event.platform}
               stacktrace={data}
+              // TODO fix this
+              rawStacktrace={event.entries.find(
+                value => 'frames' in value && !('module' in value.frames)
+              )}
               hasHierarchicalGrouping={hasHierarchicalGrouping}
               onChange={this.handleChangeStackView}
             />

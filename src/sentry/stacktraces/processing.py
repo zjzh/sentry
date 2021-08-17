@@ -195,7 +195,7 @@ def find_stacktraces_in_data(data, include_raw=False, with_exceptions=False):
     for exc in get_path(data, "exception", "values", filter=True, default=()):
         _report_stack(exc.get("stacktrace"), exc, is_exception=with_exceptions)
 
-    _report_stack(data.get("stacktrace"), None)
+    _report_stack(data.get("stacktrace"), data)
 
     for thread in get_path(data, "threads", "values", filter=True, default=()):
         _report_stack(thread.get("stacktrace"), thread)

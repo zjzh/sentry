@@ -19,6 +19,7 @@ type Props = {
   stackType?: STACK_TYPE;
   platform?: string;
   stacktrace?: ExceptionValue['stacktrace'];
+  rawStacktrace?: ExceptionValue['stacktrace'];
   thread?: Thread;
   exception?: ExceptionType;
   onChange?: (notifyOptions: NotifyOptions) => void;
@@ -29,6 +30,7 @@ const CrashActions = ({
   stackView,
   stackType,
   stacktrace,
+  rawStacktrace,
   thread,
   exception,
   platform,
@@ -41,6 +43,7 @@ const CrashActions = ({
   const hasMinified = !stackType
     ? false
     : !!exception?.values?.find(value => value.rawStacktrace) || !!thread?.rawStacktrace;
+  // TODO add condition here ^^ and then figure out where the data is coming from for the minified stacktrace
 
   const notify = (options: NotifyOptions) => {
     if (onChange) {

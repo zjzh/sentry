@@ -20,6 +20,7 @@ export enum EntryType {
   MESSAGE = 'message',
   REQUEST = 'request',
   STACKTRACE = 'stacktrace',
+  RAW_STACKTRACE = 'raw_stacktrace',
   TEMPLATE = 'template',
   CSP = 'csp',
   EXPECTCT = 'expectct',
@@ -59,6 +60,11 @@ export type EntryException = {
 
 type EntryStacktrace = {
   type: EntryType.STACKTRACE;
+  data: StacktraceType;
+};
+
+type EntryRawStacktrace = {
+  type: EntryType.RAW_STACKTRACE;
   data: StacktraceType;
 };
 
@@ -115,6 +121,7 @@ export type Entry =
   | EntryThreads
   | EntryException
   | EntryStacktrace
+  | EntryRawStacktrace
   | EntrySpans
   | EntryMessage
   | EntryRequest
@@ -227,7 +234,7 @@ export type EventTransaction = Omit<EventBase, 'entries' | 'type'> & {
 };
 
 export type EventError = Omit<EventBase, 'entries' | 'type'> & {
-  entries: (EntryException | EntryStacktrace | EntryRequest)[];
+  entries: (EntryException | EntryStacktrace | EntryRawStacktrace | EntryRequest)[];
   type: EventOrGroupType.ERROR;
 };
 
