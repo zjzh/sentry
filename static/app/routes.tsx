@@ -1,6 +1,5 @@
 import * as React from 'react';
 import {
-  EnterHook,
   IndexRedirect,
   IndexRoute as BaseIndexRoute,
   IndexRouteProps,
@@ -23,20 +22,13 @@ import OrganizationContext from 'app/views/organizationContext';
 import OrganizationDetails, {
   LightWeightOrganizationDetails,
 } from 'app/views/organizationDetails';
-import {TAB} from 'app/views/organizationGroupDetails/header';
+import {Tab} from 'app/views/organizationGroupDetails/types';
 import OrganizationRoot from 'app/views/organizationRoot';
 import ProjectEventRedirect from 'app/views/projectEventRedirect';
 import redirectDeprecatedProjectRoute from 'app/views/projects/redirectDeprecatedProjectRoute';
 import RouteNotFound from 'app/views/routeNotFound';
 import SettingsProjectProvider from 'app/views/settings/components/settingsProjectProvider';
 import SettingsWrapper from 'app/views/settings/components/settingsWrapper';
-
-const appendTrailingSlash: EnterHook = (nextState, replace) => {
-  const lastChar = nextState.location.pathname.slice(-1);
-  if (lastChar !== '/') {
-    replace(nextState.location.pathname + '/');
-  }
-};
 
 type CustomProps = {
   name?: string;
@@ -53,13 +45,18 @@ const IndexRoute = BaseIndexRoute as React.ComponentClass<IndexRouteProps & Cust
 type ComponentCallback = Parameters<NonNullable<RouteProps['getComponent']>>[1];
 
 /**
- * Use react-router to lazy load a route. Use this for codesplitting containers (e.g. SettingsLayout)
+ * Use react-router to lazy load a route. Use this for codesplitting containers
+ * (e.g. SettingsLayout)
  *
- * The method for lazy loading a route leaf node is using the <LazyLoad> component + `componentPromise`.
- * The reason for this is because react-router handles the route tree better and if we use <LazyLoad> it will end
- * up having to re-render more components than necessary.
+ * The typical method for lazy loading a route leaf node is using the
+ * <LazyLoad> component + `componentPromise`
+ *
+ * For wrapper / layout views react-router handles the route tree better by
+ * using getComponent with this lazyLoad helper. If we just use <LazyLoad> it
+ * will end up having to re-render more components than necessary.
  */
-const lazyLoad = (cb: ComponentCallback) => (m: {default: any}) => cb(null, m.default);
+const lazyLoad = (cb: ComponentCallback) => (m: {default: any}) =>
+  cb(null, errorHandler(m.default));
 
 const hook = (name: HookName) => HookStore.get(name).map(cb => cb());
 
@@ -932,7 +929,7 @@ function routes() {
               }
               component={errorHandler(LazyLoad)}
               props={{
-                currentTab: TAB.DETAILS,
+                currentTab: Tab.DETAILS,
                 isEventRoute: false,
               }}
             />
@@ -943,7 +940,7 @@ function routes() {
               }
               component={errorHandler(LazyLoad)}
               props={{
-                currentTab: TAB.ACTIVITY,
+                currentTab: Tab.ACTIVITY,
                 isEventRoute: false,
               }}
             />
@@ -954,7 +951,7 @@ function routes() {
               }
               component={errorHandler(LazyLoad)}
               props={{
-                currentTab: TAB.EVENTS,
+                currentTab: Tab.EVENTS,
                 isEventRoute: false,
               }}
             />
@@ -965,7 +962,7 @@ function routes() {
               }
               component={errorHandler(LazyLoad)}
               props={{
-                currentTab: TAB.TAGS,
+                currentTab: Tab.TAGS,
                 isEventRoute: false,
               }}
             />
@@ -976,7 +973,7 @@ function routes() {
               }
               component={errorHandler(LazyLoad)}
               props={{
-                currentTab: TAB.TAGS,
+                currentTab: Tab.TAGS,
                 isEventRoute: false,
               }}
             />
@@ -987,7 +984,7 @@ function routes() {
               }
               component={errorHandler(LazyLoad)}
               props={{
-                currentTab: TAB.USER_FEEDBACK,
+                currentTab: Tab.USER_FEEDBACK,
                 isEventRoute: false,
               }}
             />
@@ -998,7 +995,7 @@ function routes() {
               }
               component={errorHandler(LazyLoad)}
               props={{
-                currentTab: TAB.ATTACHMENTS,
+                currentTab: Tab.ATTACHMENTS,
                 isEventRoute: false,
               }}
             />
@@ -1009,7 +1006,7 @@ function routes() {
               }
               component={errorHandler(LazyLoad)}
               props={{
-                currentTab: TAB.SIMILAR_ISSUES,
+                currentTab: Tab.SIMILAR_ISSUES,
                 isEventRoute: false,
               }}
             />
@@ -1020,7 +1017,7 @@ function routes() {
               }
               component={errorHandler(LazyLoad)}
               props={{
-                currentTab: TAB.MERGED,
+                currentTab: Tab.MERGED,
                 isEventRoute: false,
               }}
             />
@@ -1031,7 +1028,7 @@ function routes() {
               }
               component={errorHandler(LazyLoad)}
               props={{
-                currentTab: TAB.GROUPING,
+                currentTab: Tab.GROUPING,
                 isEventRoute: false,
               }}
             />
@@ -1042,7 +1039,7 @@ function routes() {
                 }
                 component={errorHandler(LazyLoad)}
                 props={{
-                  currentTab: TAB.DETAILS,
+                  currentTab: Tab.DETAILS,
                   isEventRoute: true,
                 }}
               />
@@ -1053,7 +1050,7 @@ function routes() {
                 }
                 component={errorHandler(LazyLoad)}
                 props={{
-                  currentTab: TAB.ACTIVITY,
+                  currentTab: Tab.ACTIVITY,
                   isEventRoute: true,
                 }}
               />
@@ -1064,7 +1061,7 @@ function routes() {
                 }
                 component={errorHandler(LazyLoad)}
                 props={{
-                  currentTab: TAB.EVENTS,
+                  currentTab: Tab.EVENTS,
                   isEventRoute: true,
                 }}
               />
@@ -1075,7 +1072,7 @@ function routes() {
                 }
                 component={errorHandler(LazyLoad)}
                 props={{
-                  currentTab: TAB.SIMILAR_ISSUES,
+                  currentTab: Tab.SIMILAR_ISSUES,
                   isEventRoute: true,
                 }}
               />
@@ -1086,7 +1083,7 @@ function routes() {
                 }
                 component={errorHandler(LazyLoad)}
                 props={{
-                  currentTab: TAB.TAGS,
+                  currentTab: Tab.TAGS,
                   isEventRoute: true,
                 }}
               />
@@ -1097,7 +1094,7 @@ function routes() {
                 }
                 component={errorHandler(LazyLoad)}
                 props={{
-                  currentTab: TAB.TAGS,
+                  currentTab: Tab.TAGS,
                   isEventRoute: true,
                 }}
               />
@@ -1108,7 +1105,7 @@ function routes() {
                 }
                 component={errorHandler(LazyLoad)}
                 props={{
-                  currentTab: TAB.USER_FEEDBACK,
+                  currentTab: Tab.USER_FEEDBACK,
                   isEventRoute: true,
                 }}
               />
@@ -1119,7 +1116,7 @@ function routes() {
                 }
                 component={errorHandler(LazyLoad)}
                 props={{
-                  currentTab: TAB.ATTACHMENTS,
+                  currentTab: Tab.ATTACHMENTS,
                   isEventRoute: true,
                 }}
               />
@@ -1130,7 +1127,7 @@ function routes() {
                 }
                 component={errorHandler(LazyLoad)}
                 props={{
-                  currentTab: TAB.MERGED,
+                  currentTab: Tab.MERGED,
                   isEventRoute: true,
                 }}
               />
@@ -1141,7 +1138,7 @@ function routes() {
                 }
                 component={errorHandler(LazyLoad)}
                 props={{
-                  currentTab: TAB.GROUPING,
+                  currentTab: Tab.GROUPING,
                   isEventRoute: true,
                 }}
               />
@@ -1311,11 +1308,7 @@ function routes() {
 
           <Route
             path="/organizations/:orgId/stats/"
-            componentPromise={() =>
-              import(
-                /* webpackChunkName: "OrganizationStats" */ 'app/views/organizationStats'
-              )
-            }
+            componentPromise={() => import('app/views/organizationStats')}
             component={errorHandler(LazyLoad)}
           />
 
@@ -1924,11 +1917,8 @@ function routes() {
         </Route>
 
         {hook('routes')}
-        <Route
-          path="*"
-          component={errorHandler(RouteNotFound)}
-          onEnter={appendTrailingSlash}
-        />
+
+        <Route path="*" component={errorHandler(RouteNotFound)} />
       </Route>
     </Route>
   );

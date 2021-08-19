@@ -24,7 +24,7 @@ import VitalsDetailsTableQuery, {
   TableData,
   TableDataRow,
 } from 'app/utils/performance/vitals/vitalsDetailsTableQuery';
-import {tokenizeSearch} from 'app/utils/tokenizeSearch';
+import {MutableSearch} from 'app/utils/tokenizeSearch';
 import CellAction, {Actions, updateQuery} from 'app/views/eventsV2/table/cellAction';
 import {TableColumn} from 'app/views/eventsV2/table/types';
 
@@ -106,10 +106,10 @@ class Table extends React.Component<Props, State> {
         action,
       });
 
-      const searchConditions = tokenizeSearch(eventView.query);
+      const searchConditions = new MutableSearch(eventView.query);
 
       // remove any event.type queries since it is implied to apply to only transactions
-      searchConditions.removeTag('event.type');
+      searchConditions.removeFilter('event.type');
 
       updateQuery(searchConditions, action, column, value);
 
@@ -176,8 +176,8 @@ class Table extends React.Component<Props, State> {
     if (field === 'transaction') {
       const projectID = getProjectID(dataRow, projects);
       const summaryView = eventView.clone();
-      const conditions = tokenizeSearch(summaryConditions);
-      conditions.addTagValues('has', [`${vitalName}`]);
+      const conditions = new MutableSearch(summaryConditions);
+      conditions.addFilterValues('has', [`${vitalName}`]);
       summaryView.query = conditions.formatString();
 
       const target = transactionSummaryRouteWithQuery({

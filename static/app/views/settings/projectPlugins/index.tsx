@@ -1,5 +1,5 @@
 import * as React from 'react';
-import {WithRouterProps} from 'react-router/lib/withRouter';
+import {WithRouterProps} from 'react-router';
 
 import {disablePlugin, enablePlugin, fetchPlugins} from 'app/actionCreators/plugins';
 import SentryDocumentTitle from 'app/components/sentryDocumentTitle';
@@ -37,8 +37,8 @@ class ProjectPluginsContainer extends React.Component<Props> {
       {
         integrations_installed: installCount,
         view: 'legacy_integrations',
+        organization: this.props.organization,
       },
-      this.props.organization,
       {startSession: true}
     );
   };

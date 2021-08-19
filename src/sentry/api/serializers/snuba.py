@@ -6,7 +6,7 @@ from django.db.models import Q
 
 from sentry.models import EventUser, Project, ProjectStatus, Release
 from sentry.utils.dates import to_timestamp
-from sentry.utils.geo import geo_by_addr as _geo_by_addr
+from sentry.utils.geo import geo_by_addr
 
 HEALTH_ID_KEY = "_health_id"
 
@@ -27,25 +27,6 @@ def serialize_releases(organization, item_list, user, lookup):
             organization=organization, version__in={i[0] for i in item_list}
         )
     }
-
-
-def geo_by_addr(ip):
-    try:
-        geo = _geo_by_addr(ip)
-    except Exception:
-        geo = None
-
-    if not geo:
-        return
-
-    rv = {}
-    for k in "country_code", "city", "region":
-        d = geo.get(k)
-        if isinstance(d, bytes):
-            d = d.decode("ISO-8859-1")
-        rv[k] = d
-
-    return rv
 
 
 def serialize_eventusers(organization, item_list, user, lookup):
@@ -154,6 +135,14 @@ def zerofill(data, start, end, rollup, allow_partial_buckets=False):
         rv.extend(row for row in data[i:] if row[0] < end_timestamp)
 
     return rv
+
+
+def calculateTimeframe(start, end, rollup):
+    rollup_start = (int(to_timestamp(start)) // rollup) * rollup
+    rollup_end = (int(to_timestamp(end)) // rollup) * rollup
+    if rollup_end - rollup_start == rollup:
+        rollup_end += 1
+    return {"start": rollup_start, "end": rollup_end}
 
 
 class SnubaLookup:
@@ -347,7 +336,8 @@ class SnubaTSResultSerializer(BaseSnubaSerializer):
             res["order"] = result.data["order"]
 
         if hasattr(result, "start") and hasattr(result, "end"):
-            res["start"] = result.start.timestamp()
-            res["end"] = result.end.timestamp()
+            timeframe = calculateTimeframe(result.start, result.end, result.rollup)
+            res["start"] = timeframe["start"]
+            res["end"] = timeframe["end"]
 
         return res

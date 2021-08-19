@@ -20,7 +20,7 @@ import DiscoverQuery, {TableData, TableDataRow} from 'app/utils/discover/discove
 import EventView, {EventData, isFieldSortable} from 'app/utils/discover/eventView';
 import {getFieldRenderer} from 'app/utils/discover/fieldRenderers';
 import {fieldAlignment, getAggregateAlias} from 'app/utils/discover/fields';
-import {tokenizeSearch} from 'app/utils/tokenizeSearch';
+import {MutableSearch} from 'app/utils/tokenizeSearch';
 import CellAction, {Actions, updateQuery} from 'app/views/eventsV2/table/cellAction';
 import {TableColumn} from 'app/views/eventsV2/table/types';
 
@@ -141,10 +141,10 @@ class Table extends React.Component<Props, State> {
         return;
       }
 
-      const searchConditions = tokenizeSearch(eventView.query);
+      const searchConditions = new MutableSearch(eventView.query);
 
       // remove any event.type queries since it is implied to apply to only transactions
-      searchConditions.removeTag('event.type');
+      searchConditions.removeFilter('event.type');
 
       updateQuery(searchConditions, action, column, value);
 
@@ -190,7 +190,7 @@ class Table extends React.Component<Props, State> {
       const projectID = getProjectID(dataRow, projects);
       const summaryView = eventView.clone();
       if (dataRow['http.method']) {
-        summaryView.additionalConditions.setTagValues('http.method', [
+        summaryView.additionalConditions.setFilterValues('http.method', [
           dataRow['http.method'] as string,
         ]);
       }

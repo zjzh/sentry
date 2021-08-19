@@ -1,5 +1,5 @@
 import {useContext, useEffect} from 'react';
-import {InjectedRouter} from 'react-router/lib/Router';
+import {InjectedRouter} from 'react-router';
 import styled from '@emotion/styled';
 import {Location} from 'history';
 
@@ -188,6 +188,7 @@ function CustomRepositories({
       <PanelHeader hasButtons>
         {t('Custom Repositories')}
         <DropdownAutoComplete
+          alignMenu="right"
           items={dropDownItems.map(dropDownItem => ({
             ...dropDownItem,
             label: (

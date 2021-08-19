@@ -28,7 +28,7 @@ import SegmentExplorerQuery, {
   TableDataRow,
 } from 'app/utils/performance/segmentExplorer/segmentExplorerQuery';
 import {decodeScalar} from 'app/utils/queryString';
-import {tokenizeSearch} from 'app/utils/tokenizeSearch';
+import {MutableSearch} from 'app/utils/tokenizeSearch';
 import CellAction, {Actions, updateQuery} from 'app/views/eventsV2/table/cellAction';
 import {TableColumn} from 'app/views/eventsV2/table/types';
 
@@ -283,9 +283,9 @@ class _TagExplorer extends React.Component<Props> {
     });
 
     const queryString = decodeScalar(location.query.query);
-    const conditions = tokenizeSearch(queryString || '');
+    const conditions = new MutableSearch(queryString ?? '');
 
-    conditions.addTagValues(tagKey, [tagValue]);
+    conditions.addFilterValues(tagKey, [tagValue]);
 
     const query = conditions.formatString();
     browserHistory.push({
@@ -310,10 +310,10 @@ class _TagExplorer extends React.Component<Props> {
         organization_id: parseInt(organization.id, 10),
       });
 
-      const searchConditions = tokenizeSearch(eventView.query);
+      const searchConditions = new MutableSearch(eventView.query);
 
       // remove any event.type queries since it is implied to apply to only transactions
-      searchConditions.removeTag('event.type');
+      searchConditions.removeFilter('event.type');
 
       updateQuery(searchConditions, action, {...column, name: actionRow.id}, tagValue);
 

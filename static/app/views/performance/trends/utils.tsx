@@ -19,7 +19,7 @@ import {
 } from 'app/utils/discover/fields';
 import {decodeScalar} from 'app/utils/queryString';
 import theme from 'app/utils/theme';
-import {tokenizeSearch} from 'app/utils/tokenizeSearch';
+import {MutableSearch} from 'app/utils/tokenizeSearch';
 
 import {
   NormalizedTrendsTransaction,
@@ -317,15 +317,15 @@ export function movingAverage(data, index, size) {
  * This function applies defaults for trend and count percentage, and adds the confidence limit to the query
  */
 function getLimitTransactionItems(query: string) {
-  const limitQuery = tokenizeSearch(query);
-  if (!limitQuery.hasTag('count_percentage()')) {
-    limitQuery.addTagValues('count_percentage()', ['>0.25', '<4']);
+  const limitQuery = new MutableSearch(query);
+  if (!limitQuery.hasFilter('count_percentage()')) {
+    limitQuery.addFilterValues('count_percentage()', ['>0.25', '<4']);
   }
-  if (!limitQuery.hasTag('trend_percentage()')) {
-    limitQuery.addTagValues('trend_percentage()', ['>0%']);
+  if (!limitQuery.hasFilter('trend_percentage()')) {
+    limitQuery.addFilterValues('trend_percentage()', ['>0%']);
   }
-  if (!limitQuery.hasTag('confidence()')) {
-    limitQuery.addTagValues('confidence()', ['>6']);
+  if (!limitQuery.hasFilter('confidence()')) {
+    limitQuery.addFilterValues('confidence()', ['>6']);
   }
   return limitQuery.formatString();
 }
