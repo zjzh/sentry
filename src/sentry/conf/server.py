@@ -1937,6 +1937,19 @@ SDK_URLS = {
     "sentry-swift": "https://docs.sentry.io/clients/cocoa/",
 }
 
+# Some of the links below are not ideal, but that is all migration documentation we currently have and can provide at this point
+SDK_MIGRATION_URLS = {
+    "raven-js": "https://github.com/getsentry/sentry-javascript/blob/master/MIGRATION.md#migrating-from-raven-js-to-sentrybrowser",
+    "raven-node": "https://github.com/getsentry/sentry-javascript/blob/master/MIGRATION.md#migrating-from-raven-js-to-sentrybrowser",
+    "raven-python": "https://docs.sentry.io/platforms/python/migration/",
+    "raven-swift": "https://docs.sentry.io/platforms/apple/migration/",
+    "raven-ruby": "https://docs.sentry.io/platforms/ruby/migration/",
+    "raven-go": "https://docs.sentry.io/platforms/go/migration/",
+    "raven-php": "https://github.com/getsentry/sentry-php/blob/master/UPGRADE-2.0.md",
+    "raven-csharp": "https://docs.sentry.io/platforms/dotnet/migration/#migrating-from-sharpraven-to-sentry-sdk",
+}
+
+
 DEPRECATED_SDKS = {
     # sdk name => new sdk name
     "raven-java": "sentry-java",

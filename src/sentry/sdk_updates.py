@@ -86,11 +86,17 @@ class UpdateSDKSuggestion(Suggestion):
         self.ignore_patch_version = ignore_patch_version
 
     def to_json(self):
+        sdkUrls = (
+            settings.SDK_MIGRATION_URLS
+            if dict(settings.SDK_MIGRATION_URLS).get(self.sdk_name)
+            else settings.SDK_URLS
+        )
+
         return {
             "type": "updateSdk",
             "sdkName": self.sdk_name,
             "newSdkVersion": self.new_sdk_version,
-            "sdkUrl": get_sdk_urls().get(self.sdk_name),
+            "sdkUrl": get_sdk_urls(sdkUrls).get(self.sdk_name),
         }
 
     def get_new_state(self, old_state):
@@ -129,7 +135,7 @@ class ChangeSDKSuggestion(Suggestion):
         return {
             "type": "changeSdk",
             "newSdkName": self.new_sdk_name,
-            "sdkUrl": get_sdk_urls().get(self.new_sdk_name),
+            "sdkUrl": get_sdk_urls(settings.SDK_URLS).get(self.new_sdk_name),
         }
 
     def get_new_state(self, old_state):
@@ -350,9 +356,9 @@ def get_sdk_versions():
         return {}
 
 
-def get_sdk_urls():
+def get_sdk_urls(sdkUrls):
     try:
-        rv = dict(settings.SDK_URLS)
+        rv = dict(sdkUrls)
         rv.update((key, info["main_docs_url"]) for (key, info) in get_sdk_index().items())
         return rv
     except Exception:
