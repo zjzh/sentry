@@ -14,6 +14,7 @@ const handleSentryWebhookResources = async (resource, action, data, installation
       }
       return;
     default:
+      console.log(resource, action, data);
       return;
   }
 };
