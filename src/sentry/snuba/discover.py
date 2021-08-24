@@ -9,7 +9,11 @@ from sentry.discover.arithmetic import is_equation, resolve_equation_list, strip
 from sentry.models import Group
 from sentry.models.transaction_threshold import ProjectTransactionThreshold
 from sentry.search.events.builder import QueryBuilder
-from sentry.search.events.constants import CONFIGURABLE_AGGREGATES, DEFAULT_PROJECT_THRESHOLD
+from sentry.search.events.constants import (
+    CONFIGURABLE_AGGREGATES,
+    DEFAULT_PROJECT_THRESHOLD,
+    FUNCTION_PATTERN,
+)
 from sentry.search.events.fields import (
     FIELD_ALIASES,
     InvalidSearchQuery,
@@ -526,6 +530,41 @@ def create_result_key(result_row, fields, issues):
     return ",".join(values)
 
 
+def _create_top_event_conditions(event, fields, alias):
+    conditions = []
+    for field, value in event.items():
+        if field not in fields:
+            continue
+        if field in FIELD_ALIASES:
+            field = FIELD_ALIASES[field].alias
+        # Note that because orderby shouldn't be an array field its not included in the values
+        if isinstance(event.get(field), list):
+            continue
+
+        if field == "timestamp" or field.startswith("timestamp.to_") or field in FIELD_ALIASES:
+            condition = ["equals", [field, f"'{value}'"]]
+        elif value is None:
+            condition = ["isNull", [resolve_discover_column(field)]]
+        else:
+            condition = ["equals", [resolve_discover_column(field), f"'{value}'"]]
+
+        if len(conditions) < 2:
+            conditions.append(condition)
+
+        if len(conditions) == 2:
+            if conditions[0] != SNUBA_AND:
+                conditions = [SNUBA_AND, [conditions[0], conditions[1]]]
+            else:
+                conditions = [SNUBA_AND, [conditions[:], condition]]
+
+    if len(conditions) > 1:
+        conditions.append(alias)
+        return conditions
+    else:
+        conditions[0].append(alias)
+        return conditions[0]
+
+
 def top_events_timeseries(
     timeseries_columns,
     selected_columns,
@@ -565,71 +604,106 @@ def top_events_timeseries(
     """
     if top_events is None:
         with sentry_sdk.start_span(op="discover.discover", description="top_events.fetch_events"):
-            top_events = query(
+            top_events_query = prepare_discover_query(
                 selected_columns,
                 query=user_query,
                 params=params,
                 equations=equations,
                 orderby=orderby,
-                limit=limit,
-                referrer=referrer,
                 auto_aggregations=True,
                 use_aggregate_conditions=True,
+            )
+            top_events = raw_query(
+                start=top_events_query.filter.start,
+                end=top_events_query.filter.end,
+                groupby=top_events_query.filter.groupby,
+                conditions=top_events_query.filter.conditions,
+                aggregations=top_events_query.filter.aggregations,
+                selected_columns=top_events_query.filter.selected_columns,
+                filter_keys=top_events_query.filter.filter_keys,
+                having=top_events_query.filter.having,
+                orderby=top_events_query.filter.orderby,
+                dataset=Dataset.Discover,
+                limit=limit,
+                referrer=referrer,
+                offset=0,
             )
 
     with sentry_sdk.start_span(
         op="discover.discover", description="top_events.filter_transform"
     ) as span:
         span.set_data("query", user_query)
-        snuba_filter, translated_columns = get_timeseries_snuba_filter(
-            list(sorted(set(timeseries_columns + selected_columns))),
+        snuba_filter, _ = get_timeseries_snuba_filter(
+            list(sorted(timeseries_columns)),
             user_query,
             params,
         )
 
-        for field in selected_columns:
-            # If we have a project field, we need to limit results by project so we don't hit the result limit
-            if field in ["project", "project.id"] and top_events["data"]:
-                snuba_filter.project_ids = [event["project.id"] for event in top_events["data"]]
-                continue
-            if field in FIELD_ALIASES:
-                field = FIELD_ALIASES[field].alias
-            # Note that because orderby shouldn't be an array field its not included in the values
-            values = list(
+        if not allow_empty and not len(top_events.get("data", [])):
+            return SnubaTSResult(
                 {
-                    event.get(field)
-                    for event in top_events["data"]
-                    if field in event and not isinstance(event.get(field), list)
-                }
+                    "data": zerofill([], snuba_filter.start, snuba_filter.end, rollup, "time")
+                    if zerofill_results
+                    else [],
+                },
+                snuba_filter.start,
+                snuba_filter.end,
+                rollup,
             )
-            if values:
-                # timestamp fields needs special handling, creating a big OR instead
-                if field == "timestamp" or field.startswith("timestamp.to_"):
-                    snuba_filter.conditions.append(
-                        [[field, "=", value] for value in sorted(values)]
-                    )
-                elif None in values:
-                    non_none_values = [value for value in values if value is not None]
-                    condition = [[["isNull", [resolve_discover_column(field)]], "=", 1]]
-                    if non_none_values:
-                        condition.append([resolve_discover_column(field), "IN", non_none_values])
-                    snuba_filter.conditions.append(condition)
-                elif field in FIELD_ALIASES:
-                    snuba_filter.conditions.append([field, "IN", values])
-                else:
-                    snuba_filter.conditions.append([resolve_discover_column(field), "IN", values])
+        top_aggregates = []
+        original_aggregates = snuba_filter.aggregations[:]
+        for aggregate in snuba_filter.aggregations:
+            function_match = FUNCTION_PATTERN.match(aggregate[0])
+            if function_match:
+                aggregateIf = (
+                    f"{function_match.group('function')}If({function_match.group('columns')})"
+                )
+            else:
+                aggregateIf = aggregate[0] + "If"
+
+            if aggregate[1] is None:
+                aggregate[1] = []
+            elif not isinstance(aggregate[1], list):
+                aggregate[1] = [aggregate[1]]
+
+            snuba_filter.aggregations = []
+
+            for field in selected_columns:
+                # If we have a project field, we need to limit results by project so we don't hit the result limit
+                if field in ["project.id"] and top_events["data"]:
+                    snuba_filter.project_ids = [event["project_id"] for event in top_events["data"]]
+                    break
+
+            conditions = []
+            for index, event in enumerate(top_events["data"]):
+                condition_alias = f"condition_{index}"
+                condition = _create_top_event_conditions(event, selected_columns, condition_alias)
+                if len(conditions) < 2:
+                    conditions.append(condition_alias)
+
+                if len(conditions) == 2:
+                    if conditions[0] != SNUBA_OR:
+                        conditions = [SNUBA_OR, [conditions[0], condition_alias]]
+                    else:
+                        conditions = [SNUBA_OR, [conditions[:], condition_alias]]
+                top_aggregates.append(
+                    [aggregateIf, aggregate[1] + [condition], f"{aggregate[2]}_{index}"]
+                )
+            top_aggregates.append(
+                [aggregateIf, aggregate[1] + [["not", [conditions]]], f"{aggregate[2]}_other"]
+            )
+        snuba_filter.aggregations = top_aggregates
 
     with sentry_sdk.start_span(op="discover.discover", description="top_events.snuba_query"):
         result = raw_query(
             aggregations=snuba_filter.aggregations,
             conditions=snuba_filter.conditions,
             filter_keys=snuba_filter.filter_keys,
-            selected_columns=snuba_filter.selected_columns,
             start=snuba_filter.start,
             end=snuba_filter.end,
             rollup=rollup,
-            orderby=["time"] + snuba_filter.groupby,
-            groupby=["time"] + snuba_filter.groupby,
+            orderby=["time"],
+            groupby=["time"],
             dataset=Dataset.Discover,
             limit=10000,
             referrer=referrer,
@@ -651,12 +725,12 @@ def top_events_timeseries(
         op="discover.discover", description="top_events.transform_results"
     ) as span:
         span.set_data("result_count", len(result.get("data", [])))
-        result = transform_data(result, translated_columns, snuba_filter)
 
         if "project" in selected_columns:
-            translated_columns["project_id"] = "project"
+            top_events_query.columns["project_id"] = "project"
         translated_groupby = [
-            translated_columns.get(groupby, groupby) for groupby in snuba_filter.groupby
+            top_events_query.columns.get(groupby, groupby)
+            for groupby in top_events_query.filter.groupby
         ]
 
         issues = {}
@@ -669,19 +743,21 @@ def top_events_timeseries(
         # so the result key is consistent
         translated_groupby.sort()
 
-        results = {}
+        results = {"other": {"order": len(top_events["data"]), "data": []}}
         # Using the top events add the order to the results
         for index, item in enumerate(top_events["data"]):
             result_key = create_result_key(item, translated_groupby, issues)
             results[result_key] = {"order": index, "data": []}
         for row in result["data"]:
-            result_key = create_result_key(row, translated_groupby, issues)
-            if result_key in results:
-                results[result_key]["data"].append(row)
-            else:
-                logger.warning(
-                    "discover.top-events.timeseries.key-mismatch",
-                    extra={"result_key": result_key, "top_event_keys": list(results.keys())},
+            for aggregate in original_aggregates:
+                for result_key, value in results.items():
+                    if result_key != "other":
+                        count = row[f"{aggregate[2]}_{value['order']}"]
+                        results[result_key]["data"].append(
+                            {"time": row["time"], aggregate[2]: count}
+                        )
+                results["other"]["data"].append(
+                    {"time": row["time"], aggregate[2]: row[f"{aggregate[2]}_other"]}
                 )
         for key, item in results.items():
             results[key] = SnubaTSResult(
