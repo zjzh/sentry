@@ -1,4 +1,4 @@
-from typing import Any, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 from parsimonious.exceptions import ParseError
 from parsimonious.grammar import Grammar, NodeVisitor
@@ -59,13 +59,30 @@ class Operation:
         if self.operator == "divide" and self.rhs == 0:
             raise ArithmeticValidationError("division by 0 is not allowed")
 
-    def to_snuba_json(self, alias: Optional[str] = None) -> JsonQueryType:
+    def to_snuba_json(
+        self,
+        alias: Optional[str] = None,
+        function_aliases: Optional[Dict[str, str]] = None,
+    ) -> JsonQueryType:
         """Convert this tree of Operations to the equivalent snuba json"""
-        lhs = self.lhs.to_snuba_json() if isinstance(self.lhs, Operation) else self.lhs
-        # TODO(snql): This is a hack so the json syntax doesn't turn lhs into a function
+        if function_aliases is None:
+            function_aliases = {}
+        lhs = (
+            self.lhs.to_snuba_json(function_aliases)
+            if isinstance(self.lhs, Operation)
+            else self.lhs
+        )
         if isinstance(lhs, str):
+            lhs = function_aliases.get(lhs, lhs)
+            # TODO(snql): This is a hack so the json syntax doesn't turn lhs into a function
             lhs = ["toFloat64", [lhs]]
-        rhs = self.rhs.to_snuba_json() if isinstance(self.rhs, Operation) else self.rhs
+        rhs = (
+            self.rhs.to_snuba_json(function_aliases)
+            if isinstance(self.rhs, Operation)
+            else self.rhs
+        )
+        if isinstance(rhs, str):
+            rhs = function_aliases.get(rhs, rhs)
         result = [self.operator, [lhs, rhs]]
         if alias:
             result.append(alias)
@@ -305,6 +322,8 @@ def resolve_equation_list(
     :param: auto_add: Optional parameter that will take any fields in the equation that's missing in the
         selected_columns and return a new list with them added
     :param plain_math: Allow equations that don't include any fields or functions, disabled by default
+    :param function_aliases: A Dict of aliases to map anything parsed in the equations, used in top events timeseries
+    when equations are included so we can use the correct alias in each equation
     """
     resolved_equations = []
     resolved_columns = selected_columns[:]

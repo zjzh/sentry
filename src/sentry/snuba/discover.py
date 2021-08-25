@@ -5,7 +5,12 @@ from collections import namedtuple
 import sentry_sdk
 
 from sentry import options
-from sentry.discover.arithmetic import is_equation, resolve_equation_list, strip_equation
+from sentry.discover.arithmetic import (
+    is_equation,
+    parse_arithmetic,
+    resolve_equation_list,
+    strip_equation,
+)
 from sentry.models import Group
 from sentry.models.transaction_threshold import ProjectTransactionThreshold
 from sentry.search.events.builder import QueryBuilder
@@ -21,6 +26,7 @@ from sentry.search.events.fields import (
     get_json_meta_type,
     is_function,
     resolve_field_list,
+    resolve_function,
 )
 from sentry.search.events.filter import get_filter
 from sentry.tagstore.base import TOP_VALUES_DEFAULT_LIMIT
@@ -40,6 +46,7 @@ from sentry.utils.snuba import (
     naiveify_datetime,
     raw_query,
     raw_snql_query,
+    resolve_aggregation,
     resolve_column,
     resolve_snuba_aliases,
     to_naive_timestamp,
@@ -565,6 +572,44 @@ def _create_top_event_conditions(event, fields, alias):
         return conditions[0]
 
 
+def create_top_aggregate(column, top_events, limit, selected_columns):
+    result = []
+    function = resolve_function(column)
+    aggregate = resolve_aggregation(function.aggregate, resolve_discover_column, [], set())
+    function_match = FUNCTION_PATTERN.match(aggregate[0])
+    if function_match:
+        aggregateIf = f"{function_match.group('function')}If({function_match.group('columns')})"
+    else:
+        aggregateIf = aggregate[0] + "If"
+
+    if aggregate[1] is None:
+        aggregate[1] = []
+    elif not isinstance(aggregate[1], list):
+        aggregate[1] = [aggregate[1]]
+
+    conditions = []
+    for index, event in enumerate(top_events["data"][:limit]):
+        condition_alias = f"condition_{index}"
+        condition = _create_top_event_conditions(event, selected_columns, condition_alias)
+        if len(conditions) < 2:
+            conditions.append(condition_alias)
+
+        if len(conditions) == 2:
+            if conditions[0] != SNUBA_OR:
+                conditions = [SNUBA_OR, [conditions[0], condition_alias]]
+            else:
+                conditions = [SNUBA_OR, [conditions[:], condition_alias]]
+        result.append([aggregateIf, aggregate[1] + [condition], f"{aggregate[2]}_{index}"])
+
+    # Only get other if there were more events than the limit
+    if len(top_events["data"]) > limit:
+        result.append(
+            [aggregateIf, aggregate[1] + [["not", [conditions]]], f"{aggregate[2]}_other"]
+        )
+
+    return result
+
+
 def top_events_timeseries(
     timeseries_columns,
     selected_columns,
@@ -624,7 +669,8 @@ def top_events_timeseries(
                 having=top_events_query.filter.having,
                 orderby=top_events_query.filter.orderby,
                 dataset=Dataset.Discover,
-                limit=limit,
+                # Get one more to know if there is an `other` we want to retrieve as well
+                limit=limit + 1,
                 referrer=referrer,
                 offset=0,
             )
@@ -634,7 +680,7 @@ def top_events_timeseries(
     ) as span:
         span.set_data("query", user_query)
         snuba_filter, _ = get_timeseries_snuba_filter(
-            list(sorted(timeseries_columns)),
+            timeseries_columns,
             user_query,
             params,
         )
@@ -651,51 +697,46 @@ def top_events_timeseries(
                 rollup,
             )
         top_aggregates = []
+        # only used for equations
+        top_columns = []
         original_aggregates = snuba_filter.aggregations[:]
-        for aggregate in snuba_filter.aggregations:
-            function_match = FUNCTION_PATTERN.match(aggregate[0])
-            if function_match:
-                aggregateIf = (
-                    f"{function_match.group('function')}If({function_match.group('columns')})"
+        snuba_filter.aggregations = []
+        for column in timeseries_columns:
+            if is_equation(column):
+                parsed_equation, equation_fields, equation_functions = parse_arithmetic(
+                    strip_equation(column)
                 )
+                if len(equation_fields) > 0:
+                    raise InvalidSearchQuery("fields not supported in chart equations")
+                if len(equation_functions) == 0:
+                    raise InvalidSearchQuery("Only equations on aggregate functions are supported")
+                for function in equation_functions:
+                    top_aggregates.extend(
+                        create_top_aggregate(function, top_events, limit, selected_columns)
+                    )
+                for index, event in enumerate(top_events["data"][:limit]):
+                    top_columns.append(
+                        parsed_equation.to_snuba_json(
+                            f"equation[0]_{index}",
+                            {
+                                get_function_alias(
+                                    function
+                                ): f"{get_function_alias(function)}_{index}"
+                                for function in equation_functions
+                            },
+                        )
+                    )
+                pass
             else:
-                aggregateIf = aggregate[0] + "If"
-
-            if aggregate[1] is None:
-                aggregate[1] = []
-            elif not isinstance(aggregate[1], list):
-                aggregate[1] = [aggregate[1]]
-
-            snuba_filter.aggregations = []
-
-            for field in selected_columns:
-                # If we have a project field, we need to limit results by project so we don't hit the result limit
-                if field in ["project.id"] and top_events["data"]:
-                    snuba_filter.project_ids = [event["project_id"] for event in top_events["data"]]
-                    break
-
-            conditions = []
-            for index, event in enumerate(top_events["data"]):
-                condition_alias = f"condition_{index}"
-                condition = _create_top_event_conditions(event, selected_columns, condition_alias)
-                if len(conditions) < 2:
-                    conditions.append(condition_alias)
-
-                if len(conditions) == 2:
-                    if conditions[0] != SNUBA_OR:
-                        conditions = [SNUBA_OR, [conditions[0], condition_alias]]
-                    else:
-                        conditions = [SNUBA_OR, [conditions[:], condition_alias]]
-                top_aggregates.append(
-                    [aggregateIf, aggregate[1] + [condition], f"{aggregate[2]}_{index}"]
+                top_aggregates.extend(
+                    create_top_aggregate(column, top_events, limit, selected_columns)
                 )
-            top_aggregates.append(
-                [aggregateIf, aggregate[1] + [["not", [conditions]]], f"{aggregate[2]}_other"]
-            )
         snuba_filter.aggregations = top_aggregates
+        snuba_filter.selected_columns = top_columns
 
     with sentry_sdk.start_span(op="discover.discover", description="top_events.snuba_query"):
         result = raw_query(
+            selected_columns=snuba_filter.selected_columns,
             aggregations=snuba_filter.aggregations,
             conditions=snuba_filter.conditions,
             filter_keys=snuba_filter.filter_keys,
@@ -736,16 +777,16 @@ def top_events_timeseries(
         issues = {}
         if "issue" in selected_columns:
             issues = Group.issues_mapping(
-                {event["issue.id"] for event in top_events["data"]},
+                {event["issue.id"] for event in top_events["data"][:limit]},
                 params["project_id"],
                 organization,
             )
         # so the result key is consistent
         translated_groupby.sort()
 
-        results = {"other": {"order": len(top_events["data"]), "data": []}}
+        results = {"other": {"order": len(top_events["data"][:limit]), "data": []}}
         # Using the top events add the order to the results
-        for index, item in enumerate(top_events["data"]):
+        for index, item in enumerate(top_events["data"][:limit]):
             result_key = create_result_key(item, translated_groupby, issues)
             results[result_key] = {"order": index, "data": []}
         for row in result["data"]:
@@ -753,12 +794,19 @@ def top_events_timeseries(
                 for result_key, value in results.items():
                     if result_key != "other":
                         count = row[f"{aggregate[2]}_{value['order']}"]
-                        results[result_key]["data"].append(
-                            {"time": row["time"], aggregate[2]: count}
-                        )
-                results["other"]["data"].append(
-                    {"time": row["time"], aggregate[2]: row[f"{aggregate[2]}_other"]}
-                )
+                        result = {"time": row["time"], aggregate[2]: count}
+                        row_alias = f"equation[0]_{value['order']}"
+                        if row_alias in row:
+                            equation_count = row[row_alias]
+                            result["equation[0]"] = equation_count
+                        results[result_key]["data"].append(result)
+                if len(top_events["data"]) > limit:
+                    other_result = {"time": row["time"], aggregate[2]: row[f"{aggregate[2]}_other"]}
+                    row_alias = f"equation[0]_{value['order']}"
+                    if row_alias in row:
+                        equation_count = row[row_alias]
+                        other_result["equation[0]"] = equation_count
+                    results["other"]["data"].append(other_result)
         for key, item in results.items():
             results[key] = SnubaTSResult(
                 {
