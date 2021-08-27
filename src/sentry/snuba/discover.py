@@ -524,10 +524,15 @@ def timeseries_query(selected_columns, query, params, rollup, referrer=None, zer
 def create_result_key(result_row, fields, issues):
     values = []
     for field in fields:
+        # Special case project so we get the slug instead
+        if field == "project.id":
+            field = "project"
         if field == "issue.id":
             values.append(issues.get(result_row["issue.id"], "unknown"))
         else:
             value = result_row.get(field)
+            if value is None:
+                value = result_row.get(resolve_discover_column(field))
             if isinstance(value, list):
                 if len(value) > 0:
                     value = value[-1]
@@ -540,18 +545,25 @@ def create_result_key(result_row, fields, issues):
 def _create_top_event_conditions(event, fields, alias):
     conditions = []
     for field, value in event.items():
-        if field not in fields:
+        if field == "event_id":
+            field = "id"
+        if field not in fields and field != "project_id":
             continue
+
         if field in FIELD_ALIASES:
             field = FIELD_ALIASES[field].alias
         # Note that because orderby shouldn't be an array field its not included in the values
         if isinstance(event.get(field), list):
             continue
 
-        if field == "timestamp" or field.startswith("timestamp.to_") or field in FIELD_ALIASES:
+        if field == "timestamp" or field.startswith("timestamp.to_"):
+            condition = ["equals", [field, f"'{value[:-6]}'"]]
+        elif field in FIELD_ALIASES:
             condition = ["equals", [field, f"'{value}'"]]
         elif value is None:
             condition = ["isNull", [resolve_discover_column(field)]]
+        elif field == "project_id":
+            condition = ["equals", [field, value]]
         else:
             condition = ["equals", [resolve_discover_column(field), f"'{value}'"]]
 
@@ -726,7 +738,18 @@ def top_events_timeseries(
                             },
                         )
                     )
-                pass
+                if len(top_events["data"]) > limit:
+                    top_columns.append(
+                        parsed_equation.to_snuba_json(
+                            "equation[0]_other",
+                            {
+                                get_function_alias(
+                                    function
+                                ): f"{get_function_alias(function)}_other"
+                                for function in equation_functions
+                            },
+                        )
+                    )
             else:
                 top_aggregates.extend(
                     create_top_aggregate(column, top_events, limit, selected_columns)
@@ -802,7 +825,7 @@ def top_events_timeseries(
                         results[result_key]["data"].append(result)
                 if len(top_events["data"]) > limit:
                     other_result = {"time": row["time"], aggregate[2]: row[f"{aggregate[2]}_other"]}
-                    row_alias = f"equation[0]_{value['order']}"
+                    row_alias = "equation[0]_other"
                     if row_alias in row:
                         equation_count = row[row_alias]
                         other_result["equation[0]"] = equation_count
