@@ -94,6 +94,14 @@ OPERATOR_NEGATION_MAP = {
     ">=": "<",
     "IN": "NOT IN",
 }
+OPERATOR_TO_FUNCTION = {
+    "=": "equals",
+    "!=": "notEquals",
+    "<": "less",
+    "<=": "lessOrEquals",
+    ">": "greater",
+    ">=": "greaterOrEquals",
+}
 OPERATOR_TO_DJANGO = {">=": "gte", "<=": "lte", ">": "gt", "<": "lt", "=": "exact"}
 
 MAX_SEARCH_RELEASES = 1000

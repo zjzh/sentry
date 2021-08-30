@@ -18,6 +18,7 @@ from sentry.search.events.constants import (
     CONFIGURABLE_AGGREGATES,
     DEFAULT_PROJECT_THRESHOLD,
     FUNCTION_PATTERN,
+    OPERATOR_TO_FUNCTION,
 )
 from sentry.search.events.fields import (
     FIELD_ALIASES,
@@ -544,37 +545,37 @@ def create_result_key(result_row, fields, issues):
 
 def _create_top_event_conditions(event, fields, alias):
     conditions = []
-    for field, value in event.items():
-        if field == "event_id":
-            field = "id"
-        if field not in fields and field != "project_id":
+    for field in fields:
+        if is_function(field):
             continue
+        if field not in event:
+            field = resolve_discover_column(field)
+        value = event.get(field)
+        # Need to special case these fields so their values are treated as strings
+        query = f"{field}:{value}" if value != "" and value is not None else f"!has:{field}"
+        resolved_conditions = get_filter(query).conditions
+        for old_condition in resolved_conditions:
+            if len(old_condition) == 1:
+                old_condition = old_condition[0]
+            if len(old_condition) != 3:
+                continue
 
-        if field in FIELD_ALIASES:
-            field = FIELD_ALIASES[field].alias
-        # Note that because orderby shouldn't be an array field its not included in the values
-        if isinstance(event.get(field), list):
-            continue
+            rhs = old_condition[2]
+            if isinstance(rhs, str) and rhs != "":
+                rhs = f"'{old_condition[2]}'"
 
-        if field == "timestamp" or field.startswith("timestamp.to_"):
-            condition = ["equals", [field, f"'{value[:-6]}'"]]
-        elif field in FIELD_ALIASES:
-            condition = ["equals", [field, f"'{value}'"]]
-        elif value is None:
-            condition = ["isNull", [resolve_discover_column(field)]]
-        elif field == "project_id":
-            condition = ["equals", [field, value]]
-        else:
-            condition = ["equals", [resolve_discover_column(field), f"'{value}'"]]
+            lhs = old_condition[0]
+            if field == "user.display":
+                lhs[-1] = [resolve_discover_column(c) for c in lhs[-1]]
+            condition = [OPERATOR_TO_FUNCTION[old_condition[1]], [lhs, rhs]]
+            if len(conditions) < 2:
+                conditions.append(condition)
 
-        if len(conditions) < 2:
-            conditions.append(condition)
-
-        if len(conditions) == 2:
-            if conditions[0] != SNUBA_AND:
-                conditions = [SNUBA_AND, [conditions[0], conditions[1]]]
-            else:
-                conditions = [SNUBA_AND, [conditions[:], condition]]
+            if len(conditions) == 2:
+                if conditions[0] != SNUBA_AND:
+                    conditions = [SNUBA_AND, [conditions[0], conditions[1]]]
+                else:
+                    conditions = [SNUBA_AND, [conditions[:], condition]]
 
     if len(conditions) > 1:
         conditions.append(alias)
@@ -807,7 +808,11 @@ def top_events_timeseries(
         # so the result key is consistent
         translated_groupby.sort()
 
-        results = {"other": {"order": len(top_events["data"][:limit]), "data": []}}
+        if len(top_events["data"]) > limit:
+            results = {"other": {"order": len(top_events["data"][:limit]), "data": []}}
+        else:
+            results = {}
+
         # Using the top events add the order to the results
         for index, item in enumerate(top_events["data"][:limit]):
             result_key = create_result_key(item, translated_groupby, issues)
