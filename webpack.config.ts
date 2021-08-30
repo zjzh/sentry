@@ -330,7 +330,7 @@ let appConfig: Configuration = {
      */
     new webpack.DefinePlugin({
       'process.env': {
-        NODE_ENV: JSON.stringify(env.NODE_ENV),
+        // NODE_ENV: JSON.stringify(env.NODE_ENV),
         IS_ACCEPTANCE_TEST: JSON.stringify(IS_ACCEPTANCE_TEST),
         DEPLOY_PREVIEW_CONFIG: JSON.stringify(DEPLOY_PREVIEW_CONFIG),
         EXPERIMENTAL_SPA: JSON.stringify(SENTRY_EXPERIMENTAL_SPA),
@@ -476,24 +476,29 @@ if (
   }
 
   appConfig.devServer = {
-    devMiddleware: {},
+    devMiddleware: {
+      stats: 'errors-only',
+    },
     headers: {
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Credentials': 'true',
     },
     // Required for getsentry
     // allowedHosts: true,
-    static: ['./src/sentry/static/sentry'],
+    static: [
+      {
+        directory: path.resolve(__dirname, 'src/sentry/static/sentry'),
+        watch: false,
+      },
+    ],
+
+    // './src/sentry/static/sentry', '!./src/sentry/static/sentry/dist'],
     host: SENTRY_WEBPACK_PROXY_HOST,
-    // @ts-expect-error
-    hot: 'only',
-    // If below is false, will reload on errors
-    //hotOnly: true, //the hotOnly option was removed, if you need hot only mode, use hot: 'only' value
     port: Number(SENTRY_WEBPACK_PROXY_PORT),
-    // stats: 'errors-only',
+    hot: true,
     // overlay: false,
-    // watchOptions: {
-      // ignored: ['node_modules'],
+    // watch: {
+    // ignored: 'node_modules',
     // },
   };
 
@@ -504,12 +509,10 @@ if (
 
     appConfig.devServer = {
       ...appConfig.devServer,
-    // @ts-expect-error
       devMiddleware: {
-    // @ts-expect-error
-        ...appConfig.devServer.dev,
+        ...appConfig.devServer.devMiddleware,
         publicPath: '/_static/dist/sentry',
-        },
+      },
       // syntax for matching is using https://www.npmjs.com/package/micromatch
       proxy: {
         '/api/store/**': relayAddress,
@@ -542,14 +545,11 @@ if (IS_UI_DEV_ONLY) {
 
   appConfig.devServer = {
     ...appConfig.devServer,
-    compress: true,
     https,
-    // @ts-expect-error
     devMiddleware: {
-    // @ts-expect-error
-        ...appConfig.devServer.dev,
-    publicPath: '/_assets/',
-      },
+      ...appConfig.devServer.devMiddleware,
+      publicPath: '/_assets/',
+    },
     proxy: [
       {
         context: ['/api/', '/avatar/', '/organization-avatar/'],
@@ -585,7 +585,7 @@ if (IS_UI_DEV_ONLY || IS_DEPLOY_PREVIEW) {
       favicon: path.resolve(sentryDjangoAppPath, 'images', 'favicon_dev.png'),
       template: path.resolve(staticPrefix, 'index.ejs'),
       mobile: true,
-      excludeChunks: ['pipeline'],
+      excludeChunks: ['pipeline', 'sentry'],
       title: 'Sentry',
     })
   );
