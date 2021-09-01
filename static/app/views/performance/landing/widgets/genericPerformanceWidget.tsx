@@ -58,7 +58,7 @@ function DataStateSwitch(props: {
 
   loadingComponent?: JSX.Element;
   errorComponent: JSX.Element;
-  chartComponent: JSX.Element;
+  dataComponent: JSX.Element;
   emptyComponent: JSX.Element;
 }): JSX.Element {
   if (props.loading && props.loadingComponent) {
@@ -70,7 +70,7 @@ function DataStateSwitch(props: {
   if (!props.hasData) {
     return props.emptyComponent;
   }
-  return props.chartComponent;
+  return props.dataComponent;
 }
 
 // TODO(k-fish): Remove hardcoding the grid once all the charts are in
@@ -159,7 +159,7 @@ function _AreaWidget(props: AreaWidgetProps & {router: InjectedRouter}) {
               {...childData}
               hasData={!!(data && data.length)}
               errorComponent={<DefaultErrorComponent chartHeight={chartHeight} />}
-              chartComponent={<Chart {...childData} grid={grid} height={chartHeight} />}
+              dataComponent={<Chart {...childData} grid={grid} height={chartHeight} />}
               emptyComponent={<Placeholder height={`${chartHeight}px`} />}
             />
           </Container>
@@ -202,7 +202,7 @@ function HistogramWidget(props: HistogramWidgetProps) {
               {...childData}
               hasData={!!(chartData && chartData.length)}
               errorComponent={<DefaultErrorComponent chartHeight={chartHeight} />}
-              chartComponent={
+              dataComponent={
                 <Chart {...childData} grid={grid} chartHeight={chartHeight} />
               }
               emptyComponent={<Placeholder height={`${chartHeight}px`} />}
