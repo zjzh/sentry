@@ -51,12 +51,14 @@ interface ChartSetting {
   dataType: GenericPerformanceWidgetDataType;
 }
 
-const getContainerLocalStorageKey = (index: number) => `mini-chart-container#${index}`;
+const getContainerLocalStorageKey = (index: number, height: number) =>
+  `landing-chart-container#${height}#${index}`;
 const getChartSetting = (
   index: number,
+  height: number,
   defaultType: ChartSettingType
 ): ChartSettingType => {
-  const key = getContainerLocalStorageKey(index);
+  const key = getContainerLocalStorageKey(index, height);
   const value = localStorage.getItem(key);
   if (value && Object.values(ChartSettingType).includes(value as ChartSettingType)) {
     const _value: ChartSettingType = value as ChartSettingType;
@@ -64,8 +66,8 @@ const getChartSetting = (
   }
   return defaultType;
 };
-const _setChartSetting = (index: number, setting: ChartSettingType) => {
-  const key = getContainerLocalStorageKey(index);
+const _setChartSetting = (index: number, height: number, setting: ChartSettingType) => {
+  const key = getContainerLocalStorageKey(index, height);
   localStorage.setItem(key, setting);
 };
 
@@ -102,12 +104,12 @@ const CHART_SETTING_OPTIONS: ({
   },
 });
 
-const _MiniChartContainer = ({organization, index, chartHeight, ...rest}: Props) => {
-  const _chartSetting = getChartSetting(index, rest.defaultChartSetting);
+const _WidgetChartContainer = ({organization, index, chartHeight, ...rest}: Props) => {
+  const _chartSetting = getChartSetting(index, chartHeight, rest.defaultChartSetting);
   const [chartSetting, setChartSettingState] = useState(_chartSetting);
 
   const setChartSetting = (setting: ChartSettingType) => {
-    _setChartSetting(index, setting);
+    _setChartSetting(index, chartHeight, setting);
     setChartSettingState(setting);
   };
   const onFilterChange = () => {};
@@ -230,6 +232,6 @@ const HistogramChart = styled(_HistogramChart)`
   }
 `;
 
-const MiniChartContainer = withOrganization(_MiniChartContainer);
+const WidgetChartContainer = withOrganization(_WidgetChartContainer);
 
-export default MiniChartContainer;
+export default WidgetChartContainer;

@@ -6,18 +6,18 @@ import EventView from 'app/utils/discover/eventView';
 
 import {PerformanceLayoutBodyRow} from '../../layouts';
 
-import MiniChartContainer, {ChartSettingType} from './miniChartContainer';
+import WidgetChartContainer, {ChartSettingType} from './chartContainer';
 
 export type ChartRowProps = {
   eventView: EventView;
   location: Location;
 };
 
-const MiniChartRow = (props: ChartRowProps) => {
+export const MiniChartRow = (props: ChartRowProps) => {
   return (
     <StyledRow minSize={200}>
       {new Array(3).fill(0).map((_, index) => (
-        <MiniChartContainer
+        <WidgetChartContainer
           {...props}
           key={index}
           index={index}
@@ -29,8 +29,22 @@ const MiniChartRow = (props: ChartRowProps) => {
   );
 };
 
+export const DoubleChartRow = (props: ChartRowProps) => {
+  return (
+    <StyledRow minSize={200}>
+      {new Array(2).fill(0).map((_, index) => (
+        <WidgetChartContainer
+          {...props}
+          key={index}
+          index={index}
+          chartHeight={300}
+          defaultChartSetting={ChartSettingType.LCP_HISTOGRAM}
+        />
+      ))}
+    </StyledRow>
+  );
+};
+
 const StyledRow = styled(PerformanceLayoutBodyRow)`
   margin-bottom: ${space(2)};
 `;
-
-export default MiniChartRow;
