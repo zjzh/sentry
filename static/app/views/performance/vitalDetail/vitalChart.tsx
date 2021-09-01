@@ -1,6 +1,7 @@
 import {Component} from 'react';
 import {browserHistory, withRouter, WithRouterProps} from 'react-router';
 import {withTheme} from '@emotion/react';
+import styled from '@emotion/styled';
 import {Location} from 'history';
 
 import {Client} from 'app/api';
@@ -18,7 +19,9 @@ import {Panel} from 'app/components/panels';
 import QuestionTooltip from 'app/components/questionTooltip';
 import {IconWarning} from 'app/icons';
 import {t} from 'app/locale';
+import space from 'app/styles/space';
 import {OrganizationSummary} from 'app/types';
+import {Series} from 'app/types/echarts';
 import {getUtcToLocalDateObject} from 'app/utils/dates';
 import {axisLabelFormatter, tooltipFormatter} from 'app/utils/discover/charts';
 import EventView from 'app/utils/discover/eventView';
@@ -286,5 +289,157 @@ class VitalChart extends Component<Props> {
     );
   }
 }
+
+export type _VitalChartProps = Props & {
+  results: Series[];
+  loading: boolean;
+  reloading: boolean;
+};
+
+function __VitalChart(props: _VitalChartProps) {
+  const {location, theme, results, loading, reloading} = props;
+  // const start = props.start ? getUtcToLocalDateObject(props.start) : null;
+  // const end = props.end ? getUtcToLocalDateObject(props.end) : null;
+  // const utc = decodeScalar(router.location.query.utc) !== 'false';
+
+  const vitalName = vitalNameFromLocation(location);
+
+  const yAxis = `p75(${vitalName})`;
+
+  const legend = {
+    right: 10,
+    top: 0,
+    selected: getSeriesSelection(location),
+  };
+
+  // const datetimeSelection = {
+  //   start,
+  //   end,
+  //   period: '14d',
+  // };
+  const colors = (results && theme.charts.getColorPalette(results.length - 2)) || [];
+
+  const vitalPoor = webVitalPoor[vitalName];
+  const vitalMeh = webVitalMeh[vitalName];
+
+  const markLines = [
+    {
+      seriesName: 'Thresholds',
+      type: 'line',
+      data: [],
+      markLine: MarkLine({
+        silent: true,
+        lineStyle: {
+          color: theme.red300,
+          type: 'dashed',
+          width: 1.5,
+        },
+        label: {
+          show: true,
+          position: 'insideEndTop',
+          formatter: t('Poor'),
+        },
+        data: [
+          {
+            yAxis: vitalPoor,
+          } as any, // TODO(ts): date on this type is likely incomplete (needs @types/echarts@4.6.2)
+        ],
+      }),
+    },
+    {
+      seriesName: 'Thresholds',
+      type: 'line',
+      data: [],
+      markLine: MarkLine({
+        silent: true,
+        lineStyle: {
+          color: theme.yellow300,
+          type: 'dashed',
+          width: 1.5,
+        },
+        label: {
+          show: true,
+          position: 'insideEndTop',
+          formatter: t('Meh'),
+        },
+        data: [
+          {
+            yAxis: vitalMeh,
+          } as any, // TODO(ts): date on this type is likely incomplete (needs @types/echarts@4.6.2)
+        ],
+      }),
+    },
+  ];
+
+  const chartOptions = {
+    grid: {
+      left: '5px',
+      right: '10px',
+      top: '35px',
+      bottom: '0px',
+    },
+    seriesOptions: {
+      showSymbol: false,
+    },
+    tooltip: {
+      trigger: 'axis' as const,
+      valueFormatter: (value: number, seriesName?: string) =>
+        tooltipFormatter(value, vitalName === WebVital.CLS ? seriesName : yAxis),
+    },
+    yAxis: {
+      min: 0,
+      max: vitalPoor,
+      axisLabel: {
+        color: theme.chartLabel,
+        showMaxLabel: false,
+        // coerces the axis to be time based
+        formatter: (value: number) => axisLabelFormatter(value, yAxis),
+      },
+    },
+  };
+  const {smoothedResults} = transformEventStatsSmoothed(results);
+
+  const smoothedSeries = smoothedResults
+    ? smoothedResults.map(({seriesName, ...rest}, i: number) => {
+        return {
+          seriesName: replaceSeriesName(seriesName) || 'p75',
+          ...rest,
+          color: colors[i],
+          lineStyle: {
+            opacity: 1,
+            width: 2,
+          },
+        };
+      })
+    : [];
+
+  const seriesMax = getMaxOfSeries(smoothedSeries);
+  const yAxisMax = Math.max(seriesMax, vitalPoor);
+  chartOptions.yAxis.max = yAxisMax * 1.1;
+  return (
+    <VitalChartContainer>
+      <TransitionChart loading={loading} reloading={reloading}>
+        <TransparentLoadingMask visible={reloading} />
+        {getDynamicText({
+          value: (
+            <LineChart
+              {...chartOptions}
+              legend={legend}
+              onLegendSelectChanged={() => {}}
+              series={[...markLines, ...smoothedSeries]}
+            />
+          ),
+          fixed: 'Web Vitals Chart',
+        })}
+      </TransitionChart>
+    </VitalChartContainer>
+  );
+}
+
+const VitalChartContainer = styled('div')`
+  padding-top: ${space(2)};
+`;
+
+export const _VitalChart = withTheme(withRouter(__VitalChart));
 
 export default withApi(withTheme(withRouter(VitalChart)));

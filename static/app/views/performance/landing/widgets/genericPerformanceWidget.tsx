@@ -22,6 +22,7 @@ import {ChartDataProps} from '../chart/histogramChart';
 export enum GenericPerformanceWidgetDataType {
   histogram = 'histogram',
   area = 'area',
+  vitals = 'vitals',
 }
 
 type HeaderProps = {
@@ -47,6 +48,12 @@ type HistogramWidgetProps = BaseProps & {
 
 type AreaWidgetProps = BaseProps & {
   dataType: GenericPerformanceWidgetDataType.area;
+  Query: FunctionComponent<Pick<EventsRequestProps, 'children' | 'yAxis'>>;
+  Chart: FunctionComponent<React.ComponentProps<typeof DurationChart>>;
+};
+
+type VitalsWidgetProps = BaseProps & {
+  dataType: GenericPerformanceWidgetDataType.vitals;
   Query: FunctionComponent<Pick<EventsRequestProps, 'children' | 'yAxis'>>;
   Chart: FunctionComponent<React.ComponentProps<typeof DurationChart>>;
 };
@@ -102,7 +109,7 @@ function WidgetHeader(props: HeaderProps & {renderedActions: ReactNode}) {
 const WidgetHeaderContainer = styled('div')``;
 const HeaderActionsContainer = styled('div')``;
 
-type WidgetPropUnion = HistogramWidgetProps | AreaWidgetProps;
+type WidgetPropUnion = HistogramWidgetProps | AreaWidgetProps | VitalsWidgetProps;
 
 export function GenericPerformanceWidget(props: WidgetPropUnion) {
   switch (props.dataType) {
@@ -110,6 +117,8 @@ export function GenericPerformanceWidget(props: WidgetPropUnion) {
       return <AreaWidget {...props} />;
     case GenericPerformanceWidgetDataType.histogram:
       return <HistogramWidget {...props} />;
+    case GenericPerformanceWidgetDataType.vitals:
+      return <VitalsWidget {...props} />;
     default:
       throw new Error('Missing support for data type');
   }
@@ -169,6 +178,74 @@ function _AreaWidget(props: AreaWidgetProps & {router: InjectedRouter}) {
   );
 }
 const AreaWidget = withRouter(_AreaWidget);
+
+function _VitalsWidget(
+  props: VitalsWidgetProps & {router: InjectedRouter; location: Location}
+) {
+  const {
+    chartField,
+    Query,
+    location,
+    Chart,
+    HeaderActions,
+    chartHeight,
+    router,
+    containerType,
+  } = props;
+  return (
+    <Query yAxis={[chartField]}>
+      {results => {
+        const loading = results.loading;
+        const errored = results.errored;
+        const data: Series[] = results.timeseriesData as Series[];
+
+        const start = null;
+
+        const end = null;
+        const utc = false;
+        const statsPeriod = '14d';
+
+        const Container = getPerformanceWidgetContainer({
+          containerType,
+        });
+
+        const childData = {
+          results: results.timeseriesData,
+          loading,
+          errored,
+          data,
+          start,
+          end,
+          utc,
+          statsPeriod,
+          router,
+          location,
+          field: chartField,
+        };
+
+        return (
+          <Container>
+            <WidgetHeader
+              {...props}
+              renderedActions={
+                HeaderActions && <HeaderActions grid={grid} {...childData} />
+              }
+            />
+            <DataStateSwitch
+              {...childData}
+              hasData={!!(data && data.length)}
+              errorComponent={<DefaultErrorComponent chartHeight={chartHeight} />}
+              dataComponent={<Chart {...childData} grid={grid} height={chartHeight} />}
+              emptyComponent={<Placeholder height={`${chartHeight}px`} />}
+            />
+          </Container>
+        );
+      }}
+    </Query>
+  );
+}
+
+const VitalsWidget = withRouter(_VitalsWidget);
 
 function HistogramWidget(props: HistogramWidgetProps) {
   const {chartField, Query, Chart, HeaderActions, chartHeight, containerType} = props;

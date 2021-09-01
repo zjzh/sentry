@@ -13,6 +13,7 @@ import withApi from 'app/utils/withApi';
 import withOrganization from 'app/utils/withOrganization';
 import ContextMenu from 'app/views/dashboardsV2/contextMenu';
 import DurationChart from 'app/views/performance/charts/chart';
+import {_VitalChart} from 'app/views/performance/vitalDetail/vitalChart';
 
 import {getTermHelp, PERFORMANCE_TERM} from '../../data';
 import {Chart as _HistogramChart} from '../chart/histogramChart';
@@ -42,6 +43,7 @@ export enum ChartSettingType {
   FCP_HISTOGRAM = 'fcp_histogram',
   FID_HISTOGRAM = 'fid_histogram',
   TPM_AREA = 'tpm_area',
+  WORST_LCP_VITALS = 'worst_lcp_vitals',
 }
 
 interface ChartSetting {
@@ -102,6 +104,12 @@ const CHART_SETTING_OPTIONS: ({
     chartField: 'tpm()',
     dataType: GenericPerformanceWidgetDataType.area,
   },
+  [ChartSettingType.WORST_LCP_VITALS]: {
+    title: t('Worst LCP Web Vitals'),
+    titleTooltip: getTermHelp(organization, PERFORMANCE_TERM.LCP),
+    chartField: 'p75(measurements.lcp)',
+    dataType: GenericPerformanceWidgetDataType.vitals,
+  },
 });
 
 const _WidgetChartContainer = ({organization, index, chartHeight, ...rest}: Props) => {
@@ -140,6 +148,30 @@ const _WidgetChartContainer = ({organization, index, chartHeight, ...rest}: Prop
         Chart={provided => (
           <HistogramChart {...provided} onFilterChange={onFilterChange} />
         )}
+      />
+    );
+  } else if (chartSettingOptions.dataType === GenericPerformanceWidgetDataType.vitals) {
+    return (
+      <GenericPerformanceWidget
+        chartHeight={chartHeight}
+        {...chartSettingOptions}
+        HeaderActions={provided => (
+          <ChartContainerActions
+            {...provided}
+            {...rest}
+            organization={organization}
+            setChartSetting={setChartSetting}
+          />
+        )}
+        Query={provided => (
+          <WrappedEventsRequest
+            organization={organization}
+            {...provided}
+            {...queryProps}
+            numBuckets={20}
+          />
+        )}
+        Chart={provided => <_VitalChart {...provided} />}
       />
     );
   } else {
