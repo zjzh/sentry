@@ -31,7 +31,7 @@ type HeaderProps = {
 };
 
 type BaseProps = {
-  chartField: string;
+  chartFields: string[];
   chartHeight: number;
   dataType: GenericPerformanceWidgetDataType;
   containerType: PerformanceWidgetContainerTypes;
@@ -125,10 +125,10 @@ export function GenericPerformanceWidget(props: WidgetPropUnion) {
 }
 
 function _AreaWidget(props: AreaWidgetProps & {router: InjectedRouter}) {
-  const {chartField, Query, Chart, HeaderActions, chartHeight, router, containerType} =
+  const {chartFields, Query, Chart, HeaderActions, chartHeight, router, containerType} =
     props;
   return (
-    <Query yAxis={[chartField]}>
+    <Query yAxis={chartFields}>
       {results => {
         const loading = results.loading;
         const errored = results.errored;
@@ -153,7 +153,7 @@ function _AreaWidget(props: AreaWidgetProps & {router: InjectedRouter}) {
           utc,
           statsPeriod,
           router,
-          field: chartField,
+          field: chartFields[0],
         };
 
         return (
@@ -183,7 +183,7 @@ function _VitalsWidget(
   props: VitalsWidgetProps & {router: InjectedRouter; location: Location}
 ) {
   const {
-    chartField,
+    chartFields,
     Query,
     location,
     Chart,
@@ -193,24 +193,24 @@ function _VitalsWidget(
     containerType,
   } = props;
   return (
-    <Query yAxis={[chartField]}>
+    <Query yAxis={chartFields}>
       {results => {
         const loading = results.loading;
         const errored = results.errored;
-        const data: Series[] = results.timeseriesData as Series[];
+        const data: Series[] = results.results as Series[];
 
         const start = null;
 
         const end = null;
         const utc = false;
-        const statsPeriod = '14d';
+        const statsPeriod = '7d';
 
         const Container = getPerformanceWidgetContainer({
           containerType,
         });
 
         const childData = {
-          results: results.timeseriesData,
+          results: results.results,
           loading,
           errored,
           data,
@@ -220,7 +220,7 @@ function _VitalsWidget(
           statsPeriod,
           router,
           location,
-          field: chartField,
+          field: chartFields[0],
         };
 
         return (
@@ -248,13 +248,13 @@ function _VitalsWidget(
 const VitalsWidget = withRouter(_VitalsWidget);
 
 function HistogramWidget(props: HistogramWidgetProps) {
-  const {chartField, Query, Chart, HeaderActions, chartHeight, containerType} = props;
+  const {chartFields, Query, Chart, HeaderActions, chartHeight, containerType} = props;
   return (
-    <Query fields={[chartField]} dataFilter="exclude_outliers">
+    <Query fields={chartFields} dataFilter="exclude_outliers">
       {results => {
         const loading = results.isLoading;
         const errored = results.error !== null;
-        const chartData = results.histograms?.[chartField];
+        const chartData = results.histograms?.[chartFields[0]];
 
         const Container = getPerformanceWidgetContainer({
           containerType,
@@ -264,7 +264,7 @@ function HistogramWidget(props: HistogramWidgetProps) {
           loading,
           errored,
           chartData,
-          field: chartField,
+          field: chartFields[0],
         };
 
         return (

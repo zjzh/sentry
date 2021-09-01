@@ -49,7 +49,7 @@ export enum ChartSettingType {
 interface ChartSetting {
   title: string;
   titleTooltip: string;
-  chartField: string;
+  chartFields: string[];
   dataType: GenericPerformanceWidgetDataType;
 }
 
@@ -83,31 +83,37 @@ const CHART_SETTING_OPTIONS: ({
   [ChartSettingType.LCP_HISTOGRAM]: {
     title: t('LCP Distribution'),
     titleTooltip: getTermHelp(organization, PERFORMANCE_TERM.DURATION_DISTRIBUTION),
-    chartField: 'measurements.lcp',
+    chartFields: ['measurements.lcp'],
     dataType: GenericPerformanceWidgetDataType.histogram,
   },
   [ChartSettingType.FCP_HISTOGRAM]: {
     title: t('FCP Distribution'),
     titleTooltip: getTermHelp(organization, PERFORMANCE_TERM.DURATION_DISTRIBUTION),
-    chartField: 'measurements.fcp',
+    chartFields: ['measurements.fcp'],
     dataType: GenericPerformanceWidgetDataType.histogram,
   },
   [ChartSettingType.FID_HISTOGRAM]: {
     title: t('FID Distribution'),
     titleTooltip: getTermHelp(organization, PERFORMANCE_TERM.DURATION_DISTRIBUTION),
-    chartField: 'measurements.fid',
+    chartFields: ['measurements.fid'],
     dataType: GenericPerformanceWidgetDataType.histogram,
   },
   [ChartSettingType.TPM_AREA]: {
     title: t('Transactions Per Minute'),
     titleTooltip: getTermHelp(organization, PERFORMANCE_TERM.TPM),
-    chartField: 'tpm()',
+    chartFields: ['tpm()'],
     dataType: GenericPerformanceWidgetDataType.area,
   },
   [ChartSettingType.WORST_LCP_VITALS]: {
     title: t('Worst LCP Web Vitals'),
     titleTooltip: getTermHelp(organization, PERFORMANCE_TERM.LCP),
-    chartField: 'p75(measurements.lcp)',
+    chartFields: [
+      'count_if(measurements.lcp,greaterOrEquals,4000)',
+      'count_if(measurements.lcp,greaterOrEquals,2500)',
+      'count_if(measurements.lcp,greaterOrEquals,0)',
+      'equation|count_if(measurements.lcp,greaterOrEquals,2500) - count_if(measurements.lcp,greaterOrEquals,4000)',
+      'equation|count_if(measurements.lcp,greaterOrEquals,0) - count_if(measurements.lcp,greaterOrEquals,2500)',
+    ],
     dataType: GenericPerformanceWidgetDataType.vitals,
   },
 });

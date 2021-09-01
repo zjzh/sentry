@@ -294,88 +294,95 @@ export type _VitalChartProps = Props & {
   results: Series[];
   loading: boolean;
   reloading: boolean;
+  field: string;
 };
 
+enum VitalQuality {
+  GOOD,
+  MEH,
+  POOR,
+}
+
 function __VitalChart(props: _VitalChartProps) {
-  const {location, theme, results, loading, reloading} = props;
+  const {location, field: yAxis, theme, results: _results, loading, reloading} = props;
   // const start = props.start ? getUtcToLocalDateObject(props.start) : null;
   // const end = props.end ? getUtcToLocalDateObject(props.end) : null;
   // const utc = decodeScalar(router.location.query.utc) !== 'false';
 
   const vitalName = vitalNameFromLocation(location);
 
-  const yAxis = `p75(${vitalName})`;
+  // const yAxis = `p75(${vitalName})`;
 
-  const legend = {
-    right: 10,
-    top: 0,
-    selected: getSeriesSelection(location),
-  };
+  // const legend = {
+  //   right: 10,
+  //   top: 0,
+  //   selected: getSeriesSelection(location),
+  // }
 
   // const datetimeSelection = {
   //   start,
   //   end,
   //   period: '14d',
   // };
-  const colors = (results && theme.charts.getColorPalette(results.length - 2)) || [];
+  // const colors = (results && theme.charts.getColorPalette(results.length - 2)) || [];
 
   const vitalPoor = webVitalPoor[vitalName];
-  const vitalMeh = webVitalMeh[vitalName];
+  // const vitalMeh = webVitalMeh[vitalName];
 
   const markLines = [
-    {
-      seriesName: 'Thresholds',
-      type: 'line',
-      data: [],
-      markLine: MarkLine({
-        silent: true,
-        lineStyle: {
-          color: theme.red300,
-          type: 'dashed',
-          width: 1.5,
-        },
-        label: {
-          show: true,
-          position: 'insideEndTop',
-          formatter: t('Poor'),
-        },
-        data: [
-          {
-            yAxis: vitalPoor,
-          } as any, // TODO(ts): date on this type is likely incomplete (needs @types/echarts@4.6.2)
-        ],
-      }),
-    },
-    {
-      seriesName: 'Thresholds',
-      type: 'line',
-      data: [],
-      markLine: MarkLine({
-        silent: true,
-        lineStyle: {
-          color: theme.yellow300,
-          type: 'dashed',
-          width: 1.5,
-        },
-        label: {
-          show: true,
-          position: 'insideEndTop',
-          formatter: t('Meh'),
-        },
-        data: [
-          {
-            yAxis: vitalMeh,
-          } as any, // TODO(ts): date on this type is likely incomplete (needs @types/echarts@4.6.2)
-        ],
-      }),
-    },
+    // {
+    //   seriesName: 'Thresholds',
+    //   type: 'line',
+    //   data: [],
+    //   markLine: MarkLine({
+    //     silent: true,
+    //     lineStyle: {
+    //       color: theme.red300,
+    //       type: 'dashed',
+    //       width: 1.5,
+    //     },
+    //     label: {
+    //       show: true,
+    //       position: 'insideEndTop',
+    //       formatter: t('Poor'),
+    //     },
+    //     data: [
+    //       {
+    //         yAxis: vitalPoor,
+    //       } as any, // TODO(ts): date on this type is likely incomplete (needs @types/echarts@4.6.2)
+    //     ],
+    //   }),
+    // },
+    // {
+    //   seriesName: 'Thresholds',
+    //   type: 'line',
+    //   data: [],
+    //   markLine: MarkLine({
+    //     silent: true,
+    //     lineStyle: {
+    //       color: theme.yellow300,
+    //       type: 'dashed',
+    //       width: 1.5,
+    //     },
+    //     label: {
+    //       show: true,
+    //       position: 'insideEndTop',
+    //       formatter: t('Meh'),
+    //     },
+    //     data: [
+    //       {
+    //         yAxis: vitalMeh,
+    //       } as any, // TODO(ts): date on this type is likely incomplete (needs @types/echarts@4.6.2)
+    //     ],
+    //   }),
+    // },
   ];
 
   const chartOptions = {
     grid: {
       left: '5px',
       right: '10px',
-      top: '35px',
+      top: '0px',
       bottom: '0px',
     },
     seriesOptions: {
@@ -397,14 +404,37 @@ function __VitalChart(props: _VitalChartProps) {
       },
     },
   };
+
+  /*
+      'count_if(measurements.lcp,greaterOrEquals,4000)',
+      'count_if(measurements.lcp,greaterOrEquals,2500)',
+      'count_if(measurements.lcp,greaterOrEquals,0)',
+      'equation|count_if(measurements.lcp,greaterOrEquals,2500) - count_if(measurements.lcp,greaterOrEquals,4000)',
+      'equation|count_if(measurements.lcp,greaterOrEquals,0) - count_if(measurements.lcp,greaterOrEquals,2500)',
+  */
+  const FIELD_TO_VITAL_MAP: Record<string, VitalQuality> = {
+    'equation|count_if(measurements.lcp,greaterOrEquals,0) - count_if(measurements.lcp,greaterOrEquals,2500)':
+      VitalQuality.GOOD,
+    'equation|count_if(measurements.lcp,greaterOrEquals,2500) - count_if(measurements.lcp,greaterOrEquals,4000)':
+      VitalQuality.MEH,
+    'count_if(measurements.lcp,greaterOrEquals,4000)': VitalQuality.POOR,
+  };
+  const QUALITY_TO_COLOR: Record<VitalQuality, string> = {
+    [VitalQuality.GOOD]: theme.green300,
+    [VitalQuality.MEH]: theme.yellow300,
+    [VitalQuality.POOR]: theme.red300,
+  };
+
+  const results = _results.filter(r => r.seriesName in FIELD_TO_VITAL_MAP);
+
   const {smoothedResults} = transformEventStatsSmoothed(results);
 
   const smoothedSeries = smoothedResults
-    ? smoothedResults.map(({seriesName, ...rest}, i: number) => {
+    ? smoothedResults.map(({seriesName, ...rest}) => {
         return {
-          seriesName: replaceSeriesName(seriesName) || 'p75',
+          seriesName: replaceSeriesName(seriesName) || 'count',
           ...rest,
-          color: colors[i],
+          color: QUALITY_TO_COLOR[FIELD_TO_VITAL_MAP[seriesName]],
           lineStyle: {
             opacity: 1,
             width: 2,
@@ -424,7 +454,7 @@ function __VitalChart(props: _VitalChartProps) {
           value: (
             <LineChart
               {...chartOptions}
-              legend={legend}
+              // legend={legend}
               onLegendSelectChanged={() => {}}
               series={[...markLines, ...smoothedSeries]}
             />
