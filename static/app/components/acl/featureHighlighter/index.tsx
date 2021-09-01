@@ -1,47 +1,40 @@
 import * as React from 'react';
 import styled from '@emotion/styled';
 
-import {Config} from 'app/types';
-import withConfig from 'app/utils/withConfig';
-
 import {useFeatureHighlighter} from './context';
 import Describer from './describer';
+import {AvailableFeatures} from './types';
 
 type Props = {
-  availableFeatures: {
-    configFeatures: string[];
-    organization: string[];
-    project: string[];
-  };
   children: React.ReactNode;
-  config: Config;
+  isVisible: boolean;
   features: string[];
   className?: string;
 };
 
 function FeatureHighlighter({
-  availableFeatures,
   className,
   children,
-  config,
   features,
+  isVisible,
 }: Props) {
   const highlighter = useFeatureHighlighter();
-  if (!highlighter?.enabled) {
+  const [isSelfVisible, setSelfVisible] = React.useState(true);
+
+  function handleHide() {
+    setSelfVisible(false);
+  }
+
+  if (!highlighter?.enabled || !isVisible || !isSelfVisible) {
     return <React.Fragment>{children}</React.Fragment>;
   }
-  if (!config.user.isStaff) {
-    // TODO: uncomment this
-    // return children;
-  }
-  console.log({availableFeatures});
 
   return (
     <div className={className}>
       <Border position="bottom" />
       <Border position="left" />
       <Border position="right" />
-      <Describer features={features} />
+      <Describer onHide={handleHide} features={features} />
       <InnerHighlight>{children}</InnerHighlight>
     </div>
   );
@@ -93,18 +86,19 @@ const Border = styled(`div`)<BorderProps>`
   ${getBorder}
   background-color: ${p => p.theme.yellow300};
   opacity: 0.85;
-  z-index: 10000;
+  z-index: ${p => p.theme.zIndex.modal - 2};
 `;
 const InnerHighlight = styled('div')``;
-const StyledFeatureHighlighter = styled(FeatureHighlighter)`
+
+const StyledFeatureHighlighter = styled(FeatureHighlighter)<Props>`
   position: relative;
 
   &:hover {
     ${Border}, ${Describer} {
       opacity: 1;
-      z-index: 20000;
+      z-index: ${p => p.theme.zIndex.modal - 1};
     }
   }
 `;
 
-export default withConfig(StyledFeatureHighlighter);
+export default StyledFeatureHighlighter;

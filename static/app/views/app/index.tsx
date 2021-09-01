@@ -230,7 +230,10 @@ class App extends Component<Props, State> {
 
     return (
       <MainContainer tabIndex={-1} ref={this.mainContainerRef}>
-        <FeatureHighlighterProvider isStaff={!!user?.isStaff || true}>
+        <FeatureHighlighterProvider
+          isStaff={!!user?.isStaff || true}
+          organization={this.state.organization}
+        >
           <GlobalModal onClose={this.handleGlobalModalClose} />
           <SystemAlerts className="messages-container" />
           <GlobalNotifications

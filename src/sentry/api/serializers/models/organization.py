@@ -125,6 +125,8 @@ class OrganizationSerializer(Serializer):
 
         batch_features = features.batch_has(org_features, actor=user, organization=obj)
 
+        print(batch_features)
+
         # batch_has has found some features
         if batch_features:
             for feature_name, active in batch_features.get(f"organization:{obj.id}", {}).items():

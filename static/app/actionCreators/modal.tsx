@@ -251,3 +251,10 @@ export async function demoSignupModal(options: ModalOptions = {}) {
 
   openModal(deps => <Modal {...deps} {...options} />, {modalCss});
 }
+
+export async function openFeatureFlagsModal(options: ModalOptions = {}) {
+  const mod = await import('app/components/acl/featureHighlighter/modal');
+  const {default: Modal, modalCss} = mod;
+
+  openModal(deps => <Modal {...deps} {...options} />, {modalCss});
+}

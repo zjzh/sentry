@@ -1,7 +1,11 @@
 import * as React from 'react';
 import {PlainRoute} from 'react-router';
 
-import {openHelpSearchModal, openSudo} from 'app/actionCreators/modal';
+import {
+  openFeatureFlagsModal,
+  openHelpSearchModal,
+  openSudo,
+} from 'app/actionCreators/modal';
 import Access from 'app/components/acl/access';
 import {toggleLocaleDebug} from 'app/locale';
 import ConfigStore from 'app/stores/configStore';
@@ -73,6 +77,16 @@ const ACTIONS: Action[] = [
       if (hooks.highlighter) {
         hooks.highlighter.setEnabled(!hooks.highlighter.enabled);
       }
+    },
+  },
+
+  {
+    title: 'Open Feature Flags Modal',
+    description: 'Open modal to manually tweak feature flags',
+    // TODO(fh): Enable this
+    requiresSuperuser: false,
+    action: () => {
+      openFeatureFlagsModal();
     },
   },
 ];

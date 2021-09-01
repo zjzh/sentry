@@ -1,11 +1,14 @@
 import * as React from 'react';
 import styled from '@emotion/styled';
 
+import {openFeatureFlagsModal} from 'app/actionCreators/modal';
 import Button from 'app/components/button';
 import TextOverflow from 'app/components/textOverflow';
 import {IconClose, IconEdit} from 'app/icons';
 import {t} from 'app/locale';
 import space from 'app/styles/space';
+
+// import {useFeatureHighlighter} from './context';
 
 type Props = {
   features: string[];
@@ -15,21 +18,30 @@ type Props = {
 
 function Describer({className, features, onHide}: Props) {
   const featuresString = features.join(', ');
+  // const highlighter = useFeatureHighlighter();
+
+  function handleOpenDetails() {
+    openFeatureFlagsModal();
+  }
+
   return (
     <div className={className}>
       <MainSection>
-        <FeaturesList>{featuresString}</FeaturesList>
+        <FeaturesList role="button" onClick={handleOpenDetails}>
+          <TextOverflow>{featuresString}</TextOverflow>
+        </FeaturesList>
 
         <Button
           size="xsmall"
           priority="default"
           type="button"
           label={t('Change')}
+          onClick={handleOpenDetails}
           icon={<IconEdit />}
         />
       </MainSection>
       <Section>
-        <Button
+        <CloseButton
           onClick={onHide}
           priority="link"
           size="zero"
@@ -48,7 +60,7 @@ const MainSection = styled(Section)`
   flex: 1;
   overflow: hidden;
 `;
-const FeaturesList = styled(TextOverflow)`
+const FeaturesList = styled('div')`
   font-family: ${p => p.theme.text.familyMono};
   margin-right: ${space(1)};
   cursor: pointer;
@@ -76,6 +88,10 @@ const StyledDescriber = styled(Describer)`
   font-size: ${p => p.theme.fontSizeSmall};
   display: flex;
   align-items: center;
+`;
+
+const CloseButton = styled(Button)`
+  color: ${p => p.theme.gray300};
 `;
 
 export default StyledDescriber;

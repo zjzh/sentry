@@ -118,6 +118,7 @@ class RegisteredFeatureManager:
                         result[obj] = flag
                 span.set_data("Flags Found", batch_size - len(remaining))
 
+        print(result)
         default_flag = settings.SENTRY_FEATURES.get(name, False)
         for obj in remaining:
             result[obj] = default_flag

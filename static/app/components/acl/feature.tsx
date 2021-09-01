@@ -8,6 +8,7 @@ import withConfig from 'app/utils/withConfig';
 import withOrganization from 'app/utils/withOrganization';
 import withProject from 'app/utils/withProject';
 
+import {useFeatureHighlighter} from './featureHighlighter/context';
 import ComingSoon from './comingSoon';
 import FeatureHighlighter from './featureHighlighter';
 
@@ -101,18 +102,42 @@ type AllFeatures = {
   project: string[];
 };
 
+function isFeatureIncluded(feature: string, features: AllFeatures) {
+  const shouldMatchOnlyProject = feature.match(/^projects:(.+)/);
+  const shouldMatchOnlyOrg = feature.match(/^organizations:(.+)/);
+
+  // Array of feature strings
+  const {configFeatures, organization, project} = features;
+
+  // Check config store first as this overrides features scoped to org or
+  // project contexts.
+  if (configFeatures.includes(feature)) {
+    return true;
+  }
+
+  if (shouldMatchOnlyProject) {
+    return project.includes(shouldMatchOnlyProject[1]);
+  }
+
+  if (shouldMatchOnlyOrg) {
+    return organization.includes(shouldMatchOnlyOrg[1]);
+  }
+
+  // default, check all feature arrays
+  return organization.includes(feature) || project.includes(feature);
+}
 /**
  * Component to handle feature flags.
  */
-class Feature extends React.Component<Props> {
-  static defaultProps = {
-    renderDisabled: false,
-    requireAll: true,
-  };
-
-  getAllFeatures(): AllFeatures {
-    const {organization, project, config} = this.props;
-
+function Feature({
+  renderDisabled = false,
+  requireAll = true,
+  organization,
+  project,
+  config,
+  ...props
+}: Props) {
+  function getAllFeatures(): AllFeatures {
     return {
       configFeatures: config.features ? Array.from(config.features) : [],
       organization: (organization && organization.features) || [],
@@ -120,90 +145,59 @@ class Feature extends React.Component<Props> {
     };
   }
 
-  hasFeature(feature: string, features: AllFeatures) {
-    const shouldMatchOnlyProject = feature.match(/^projects:(.+)/);
-    const shouldMatchOnlyOrg = feature.match(/^organizations:(.+)/);
+  const {children, features, hookName} = props;
 
-    // Array of feature strings
-    const {configFeatures, organization, project} = features;
+  const highlighter = useFeatureHighlighter();
+  const allFeatures = getAllFeatures();
+  const method = requireAll ? 'every' : 'some';
+  const hasFeature = highlighter?.enabled
+    ? features[method](feat => highlighter.features.indexOf(feat) > -1)
+    : !features || features[method](feat => isFeatureIncluded(feat, allFeatures));
 
-    // Check config store first as this overrides features scoped to org or
-    // project contexts.
-    if (configFeatures.includes(feature)) {
-      return true;
+  // Default renderDisabled to the ComingSoon component
+  let customDisabledRender =
+    renderDisabled === false
+      ? false
+      : typeof renderDisabled === 'function'
+      ? renderDisabled
+      : () => <ComingSoon />;
+
+  // Override the renderDisabled function with a hook store function if there
+  // is one registered for the feature.
+  if (hookName) {
+    const hooks = HookStore.get(hookName);
+
+    if (hooks.length > 0) {
+      customDisabledRender = hooks[0];
     }
-
-    if (shouldMatchOnlyProject) {
-      return project.includes(shouldMatchOnlyProject[1]);
-    }
-
-    if (shouldMatchOnlyOrg) {
-      return organization.includes(shouldMatchOnlyOrg[1]);
-    }
-
-    // default, check all feature arrays
-    return organization.includes(feature) || project.includes(feature);
   }
 
-  render() {
-    const {
-      children,
-      features,
-      renderDisabled,
-      hookName,
-      organization,
-      project,
-      requireAll,
-    } = this.props;
+  const renderProps = {
+    organization,
+    project,
+    features,
+    hasFeature,
+  };
 
-    const allFeatures = this.getAllFeatures();
-    const method = requireAll ? 'every' : 'some';
-    const hasFeature =
-      !features || features[method](feat => this.hasFeature(feat, allFeatures));
-
-    // Default renderDisabled to the ComingSoon component
-    let customDisabledRender =
-      renderDisabled === false
-        ? false
-        : typeof renderDisabled === 'function'
-        ? renderDisabled
-        : () => <ComingSoon />;
-
-    // Override the renderDisabled function with a hook store function if there
-    // is one registered for the feature.
-    if (hookName) {
-      const hooks = HookStore.get(hookName);
-
-      if (hooks.length > 0) {
-        customDisabledRender = hooks[0];
-      }
-    }
-
-    const renderProps = {
-      organization,
-      project,
-      features,
-      hasFeature,
-    };
-
-    if (!hasFeature && customDisabledRender !== false) {
-      return customDisabledRender({children, ...renderProps});
-    }
-
-    if (isRenderFunc<ChildrenRenderFn>(children)) {
-      return (
-        <FeatureHighlighter availableFeatures={allFeatures} features={features}>
-          {children({renderDisabled, ...renderProps})}
-        </FeatureHighlighter>
-      );
-    }
-
+  if (!hasFeature && customDisabledRender !== false) {
     return (
-      <FeatureHighlighter availableFeatures={allFeatures} features={features}>
-        {hasFeature && children ? children : null}
+      <React.Fragment>{customDisabledRender({children, ...renderProps})}</React.Fragment>
+    );
+  }
+
+  if (isRenderFunc<ChildrenRenderFn>(children)) {
+    return (
+      <FeatureHighlighter isVisible={hasFeature} features={features}>
+        {children({renderDisabled, ...renderProps})}
       </FeatureHighlighter>
     );
   }
+
+  return (
+    <FeatureHighlighter isVisible={hasFeature} features={features}>
+      {hasFeature && children ? children : null}
+    </FeatureHighlighter>
+  );
 }
 
 export default withOrganization(withProject(withConfig(Feature)));

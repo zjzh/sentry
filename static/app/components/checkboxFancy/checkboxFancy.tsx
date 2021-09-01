@@ -7,6 +7,7 @@ import {Theme} from 'app/utils/theme';
 import CheckboxFancyContent from './checkboxFancyContent';
 
 type Props = {
+  id?: string;
   isDisabled?: boolean;
   size?: string;
   className?: string;
@@ -30,8 +31,9 @@ const hoverStyles = (p: Props & {theme: Theme}) =>
   `;
 
 const CheckboxFancy = styled(
-  ({isChecked, className, isDisabled, isIndeterminate, onClick}: Props) => (
+  ({isChecked, className, isDisabled, isIndeterminate, id, onClick}: Props) => (
     <div
+      id={id}
       data-test-id="checkbox-fancy"
       role="checkbox"
       aria-disabled={isDisabled}
