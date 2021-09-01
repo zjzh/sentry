@@ -1,8 +1,11 @@
 import os
 
+from django.conf import settings
 from django.test.utils import override_settings
 
+from sentry import options
 from sentry.testutils import TestCase
+from sentry.utils import json
 from sentry.utils.assets import get_webpack_asset_url
 from sentry.web.frontend.generic import FOREVER_CACHE, NEVER_CACHE
 
@@ -74,6 +77,51 @@ class StaticMediaTest(TestCase):
                 assert response["Cache-Control"] == NEVER_CACHE
                 assert response["Vary"] == "Accept-Encoding"
                 assert response["Access-Control-Allow-Origin"] == "*"
+
+    @override_settings(DEBUG=False)
+    def test_webpack_assets_runtime_manifest(self):
+        """
+        uses manifest from `sentry.options` instead of from `manifest.json` on the filesytem
+        """
+
+        app_manifest_fs = {
+            "app.js": "app.f00f00.js",
+        }
+
+        app_manifest_db = {
+            "app.js": "app.bar.js",
+        }
+
+        options.set(settings.FRONTEND_MANIFEST_KEY, json.dumps(app_manifest_db))
+
+        # We still write to filesystem to ensure that it is not accessed
+        with self.static_asset_manifest(app_manifest_fs):
+            # `get_webpack_asset_url()` should return the mapped filename from db
+            url = get_webpack_asset_url("sentry", "app.js")
+
+            assert url == "/_static/dist/sentry/app.bar.js"
+
+    @override_settings(DEBUG=False)
+    def test_webpack_assets_invalid_manifest(self):
+        """
+        fallback to filesystem manifest if we have an invalid manifest from options
+        """
+
+        app_manifest_fs = {
+            "app.js": "app.f00f00.js",
+        }
+
+        app_manifest_db = {
+            "app.js": "app.bar.js",
+        }
+
+        # The following won't be valid json and will not be decodeable
+        options.set(settings.FRONTEND_MANIFEST_KEY, json.dumps(app_manifest_db) + "_invalid")
+
+        with self.static_asset_manifest(app_manifest_fs):
+            url = get_webpack_asset_url("sentry", "app.js")
+
+            assert url == "/_static/dist/sentry/app.f00f00.js"
 
     @override_settings(DEBUG=False)
     def test_no_cors(self):

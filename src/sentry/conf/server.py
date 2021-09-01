@@ -381,6 +381,10 @@ STATICFILES_DIRS = [
     os.path.join(STATIC_ROOT, "sentry", "dist"),
 ]
 
+# A sentry.options key where a webpack manifest can be stored.
+# Used to decouple frontend builds from backend
+FRONTEND_MANIFEST_KEY = "sentry:frontend-manifest"
+
 # django-manifest-loader settings
 MANIFEST_LOADER = {"cache": True}
 

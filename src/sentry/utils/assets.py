@@ -1,13 +1,33 @@
+import sentry_sdk
 from django.conf import settings
 from manifest_loader.utils import _get_manifest, _load_from_manifest
+
+from sentry import options
+from sentry.utils import json
 
 
 def get_manifest_obj():
     """
-    Returns the webpack asset manifest as a dict of <file key, hashed file name>
+    The manifest helps map a known key to the actual file that
+    is produced by webpack.  Check to see if a manifest is defined
+    in `sentry.options` before looking for a manifest.json file on
+    the filesystem.  Returns the webpack asset manifest as a dict
+    of <file key, hashed file name>
 
-    The `manifest_loader` library caches this (if `cache` settings is set)
+    If looking on the filesystem, the `manifest_loader`
+    library caches this (if `cache` settings is set)
     """
+
+    # This will be an empty string if it doesn't exist
+    manifest_from_options = options.get(settings.FRONTEND_MANIFEST_KEY)
+
+    try:
+        if manifest_from_options:
+            return json.loads(manifest_from_options)
+    except json.JSONDecodeError:
+        # Return manifest from filesystem if decoding fails
+        sentry_sdk.capture_exception()
+
     return _get_manifest()
 
 
