@@ -21,6 +21,7 @@ const MiniChartRow = (props: ChartRowProps) => {
           {...props}
           key={index}
           index={index}
+          chartHeight={160}
           defaultChartSetting={ChartSettingType.LCP_HISTOGRAM}
         />
       ))}

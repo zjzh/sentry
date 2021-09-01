@@ -1,13 +1,12 @@
 import * as React from 'react';
 
 import {MetaType} from 'app/utils/discover/eventView';
-import withApi from 'app/utils/withApi';
-import {TransactionThresholdMetric} from 'app/views/performance/transactionSummary/transactionThresholdModal';
-
 import GenericDiscoverQuery, {
   DiscoverQueryProps,
   GenericChildrenProps,
-} from './genericDiscoverQuery';
+} from 'app/utils/discover/genericDiscoverQuery';
+import withApi from 'app/utils/withApi';
+import {TransactionThresholdMetric} from 'app/views/performance/transactionSummary/transactionThresholdModal';
 
 /**
  * An individual row in a DiscoverQuery result
@@ -47,14 +46,14 @@ function shouldRefetchData(
   );
 }
 
-function DiscoverQuery(props: DiscoverQueryPropsWithThresholds) {
+function EventsStatsQuery(props: DiscoverQueryPropsWithThresholds) {
   return (
     <GenericDiscoverQuery<TableData, DiscoverQueryPropsWithThresholds>
-      route="eventsv2"
+      route="events-stats"
       shouldRefetchData={shouldRefetchData}
       {...props}
     />
   );
 }
 
-export default withApi(DiscoverQuery);
+export default withApi(EventsStatsQuery);

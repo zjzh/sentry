@@ -1,18 +1,24 @@
 import {useState} from 'react';
 import styled from '@emotion/styled';
 
+import EventsRequest from 'app/components/charts/eventsRequest';
 import MenuItem from 'app/components/menuItem';
+import {getParams} from 'app/components/organizations/globalSelectionHeader/getParams';
 import {t} from 'app/locale';
 import {Organization} from 'app/types';
+import {getUtcToLocalDateObject} from 'app/utils/dates';
 import localStorage from 'app/utils/localStorage';
 import HistogramQuery from 'app/utils/performance/histogram/histogramQuery';
+import withApi from 'app/utils/withApi';
 import withOrganization from 'app/utils/withOrganization';
 import ContextMenu from 'app/views/dashboardsV2/contextMenu';
+import DurationChart from 'app/views/performance/charts/chart';
 
 import {getTermHelp, PERFORMANCE_TERM} from '../../data';
 import {Chart as _HistogramChart} from '../chart/histogramChart';
 
-import GenericPerformanceWidget, {
+import {
+  GenericPerformanceWidget,
   GenericPerformanceWidgetDataType,
 } from './genericPerformanceWidget';
 import {ChartRowProps} from './miniChartRow';
@@ -21,15 +27,21 @@ type Props = {
   index: number;
   organization: Organization;
   defaultChartSetting: ChartSettingType;
+  chartHeight: number;
 } & ChartRowProps;
 
-type ForwardedProps = Omit<Props, 'organization' | 'chartSetting' | 'index'> & {
+type ForwardedProps = Omit<
+  Props,
+  'organization' | 'chartSetting' | 'index' | 'chartHeight'
+> & {
   orgSlug: string;
 };
 
 export enum ChartSettingType {
   LCP_HISTOGRAM = 'lcp_histogram',
   FCP_HISTOGRAM = 'fcp_histogram',
+  FID_HISTOGRAM = 'fid_histogram',
+  TPM_AREA = 'tpm_area',
 }
 
 interface ChartSetting {
@@ -76,9 +88,21 @@ const CHART_SETTING_OPTIONS: ({
     chartField: 'measurements.fcp',
     dataType: GenericPerformanceWidgetDataType.histogram,
   },
+  [ChartSettingType.FID_HISTOGRAM]: {
+    title: t('FID Distribution'),
+    titleTooltip: getTermHelp(organization, PERFORMANCE_TERM.DURATION_DISTRIBUTION),
+    chartField: 'measurements.fid',
+    dataType: GenericPerformanceWidgetDataType.histogram,
+  },
+  [ChartSettingType.TPM_AREA]: {
+    title: t('Transactions Per Minute'),
+    titleTooltip: getTermHelp(organization, PERFORMANCE_TERM.TPM),
+    chartField: 'tpm()',
+    dataType: GenericPerformanceWidgetDataType.area,
+  },
 });
 
-const _MiniChartContainer = ({organization, index, ...rest}: Props) => {
+const _MiniChartContainer = ({organization, index, chartHeight, ...rest}: Props) => {
   const _chartSetting = getChartSetting(index, rest.defaultChartSetting);
   const [chartSetting, setChartSettingState] = useState(_chartSetting);
 
@@ -95,23 +119,76 @@ const _MiniChartContainer = ({organization, index, ...rest}: Props) => {
     orgSlug: organization.slug,
   };
 
-  return (
-    <GenericPerformanceWidget
-      chartHeight={160}
-      {...chartSettingOptions}
-      HeaderActions={provided => (
-        <ChartContainerActions
-          {...provided}
-          {...rest}
-          organization={organization}
-          setChartSetting={setChartSetting}
-        />
-      )}
-      Query={provided => <HistogramQuery {...provided} {...queryProps} numBuckets={20} />}
-      Chart={provided => <HistogramChart {...provided} onFilterChange={onFilterChange} />}
-    />
-  );
+  if (chartSettingOptions.dataType === GenericPerformanceWidgetDataType.histogram) {
+    return (
+      <GenericPerformanceWidget
+        chartHeight={chartHeight}
+        {...chartSettingOptions}
+        HeaderActions={provided => (
+          <ChartContainerActions
+            {...provided}
+            {...rest}
+            organization={organization}
+            setChartSetting={setChartSetting}
+          />
+        )}
+        Query={provided => (
+          <HistogramQuery {...provided} {...queryProps} numBuckets={20} />
+        )}
+        Chart={provided => (
+          <HistogramChart {...provided} onFilterChange={onFilterChange} />
+        )}
+      />
+    );
+  } else {
+    const {eventView, location} = rest;
+    const globalSelection = eventView.getGlobalSelection();
+    const start = globalSelection.datetime.start
+      ? getUtcToLocalDateObject(globalSelection.datetime.start)
+      : null;
+
+    const end = globalSelection.datetime.end
+      ? getUtcToLocalDateObject(globalSelection.datetime.end)
+      : null;
+
+    const {utc} = getParams(location.query);
+
+    return (
+      <GenericPerformanceWidget
+        chartHeight={160}
+        {...chartSettingOptions}
+        HeaderActions={provided => (
+          <ChartContainerActions
+            {...provided}
+            {...rest}
+            organization={organization}
+            setChartSetting={setChartSetting}
+          />
+        )}
+        Query={provided => (
+          <WrappedEventsRequest
+            organization={organization}
+            {...provided}
+            {...queryProps}
+            numBuckets={20}
+          />
+        )}
+        Chart={provided => (
+          <DurationChart
+            {...provided}
+            start={start}
+            end={end}
+            utc={utc === 'true'}
+            onFilterChange={onFilterChange}
+            disableMultiAxis
+          />
+        )}
+      />
+    );
+  }
 };
+
+const WrappedEventsRequest = withApi(EventsRequest);
 
 const ChartContainerActions = ({
   organization,

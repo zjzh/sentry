@@ -169,7 +169,9 @@ type TimeAggregationProps =
   | {includeTimeAggregation: true; timeAggregationSeriesName: string}
   | {includeTimeAggregation?: false; timeAggregationSeriesName?: undefined};
 
-type EventsRequestProps = DefaultProps & TimeAggregationProps & EventsRequestPartialProps;
+export type EventsRequestProps = DefaultProps &
+  TimeAggregationProps &
+  EventsRequestPartialProps;
 
 type EventsRequestState = {
   reloading: boolean;

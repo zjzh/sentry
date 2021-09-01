@@ -1,14 +1,18 @@
-import {FunctionComponent, ReactNode} from 'react';
+import React, {FunctionComponent, ReactNode} from 'react';
+import {InjectedRouter, withRouter} from 'react-router';
 import styled from '@emotion/styled';
 
 import ErrorPanel from 'app/components/charts/errorPanel';
+import {EventsRequestProps} from 'app/components/charts/eventsRequest';
 import {HeaderTitleLegend} from 'app/components/charts/styles';
 import Placeholder from 'app/components/placeholder';
 import QuestionTooltip from 'app/components/questionTooltip';
 import {IconWarning} from 'app/icons/iconWarning';
 import space from 'app/styles/space';
+import {Series} from 'app/types/echarts';
 import {HistogramChildren} from 'app/utils/performance/histogram/histogramQuery';
 import {DataFilter} from 'app/utils/performance/histogram/types';
+import DurationChart from 'app/views/performance/charts/chart';
 import getPerformanceWidgetContainer, {
   PerformanceWidgetContainerTypes,
 } from 'app/views/performance/landing/widgets/components/performanceWidgetContainer';
@@ -16,7 +20,8 @@ import getPerformanceWidgetContainer, {
 import {ChartDataProps} from '../chart/histogramChart';
 
 export enum GenericPerformanceWidgetDataType {
-  histogram,
+  histogram = 'histogram',
+  area = 'area',
 }
 
 type HeaderProps = {
@@ -29,6 +34,7 @@ type BaseProps = {
   chartHeight: number;
   dataType: GenericPerformanceWidgetDataType;
   containerType: PerformanceWidgetContainerTypes;
+  HeaderActions?: FunctionComponent<ChartDataProps>;
 } & HeaderProps;
 
 type HistogramWidgetProps = BaseProps & {
@@ -36,8 +42,13 @@ type HistogramWidgetProps = BaseProps & {
   Query: FunctionComponent<
     HistogramChildren & {fields: string[]; dataFilter?: DataFilter}
   >;
-  HeaderActions?: FunctionComponent<ChartDataProps>;
   Chart: FunctionComponent<ChartDataProps & {chartHeight: number}>;
+};
+
+type AreaWidgetProps = BaseProps & {
+  dataType: GenericPerformanceWidgetDataType.area;
+  Query: FunctionComponent<Pick<EventsRequestProps, 'children' | 'yAxis'>>;
+  Chart: FunctionComponent<React.ComponentProps<typeof DurationChart>>;
 };
 
 function DataStateSwitch(props: {
@@ -91,10 +102,76 @@ function WidgetHeader(props: HeaderProps & {renderedActions: ReactNode}) {
 const WidgetHeaderContainer = styled('div')``;
 const HeaderActionsContainer = styled('div')``;
 
-function GenericPerformanceWidget(props: HistogramWidgetProps): React.ReactElement;
-function GenericPerformanceWidget(props: HistogramWidgetProps) {
-  const {chartField, Query, Chart, HeaderActions, chartHeight, containerType} = props;
+type WidgetPropUnion = HistogramWidgetProps | AreaWidgetProps;
 
+export function GenericPerformanceWidget(props: WidgetPropUnion) {
+  switch (props.dataType) {
+    case GenericPerformanceWidgetDataType.area:
+      return <AreaWidget {...props} />;
+    case GenericPerformanceWidgetDataType.histogram:
+      return <HistogramWidget {...props} />;
+    default:
+      throw new Error('Missing support for data type');
+  }
+}
+
+function _AreaWidget(props: AreaWidgetProps & {router: InjectedRouter}) {
+  const {chartField, Query, Chart, HeaderActions, chartHeight, router, containerType} =
+    props;
+  return (
+    <Query yAxis={[chartField]}>
+      {results => {
+        const loading = results.loading;
+        const errored = results.errored;
+        const data: Series[] = results.timeseriesData as Series[];
+
+        const start = null;
+
+        const end = null;
+        const utc = false;
+        const statsPeriod = '14d';
+
+        const Container = getPerformanceWidgetContainer({
+          containerType,
+        });
+
+        const childData = {
+          loading,
+          errored,
+          data,
+          start,
+          end,
+          utc,
+          statsPeriod,
+          router,
+          field: chartField,
+        };
+
+        return (
+          <Container>
+            <WidgetHeader
+              {...props}
+              renderedActions={
+                HeaderActions && <HeaderActions grid={grid} {...childData} />
+              }
+            />
+            <DataStateSwitch
+              {...childData}
+              hasData={!!(data && data.length)}
+              errorComponent={<DefaultErrorComponent chartHeight={chartHeight} />}
+              chartComponent={<Chart {...childData} grid={grid} height={chartHeight} />}
+              emptyComponent={<Placeholder height={`${chartHeight}px`} />}
+            />
+          </Container>
+        );
+      }}
+    </Query>
+  );
+}
+const AreaWidget = withRouter(_AreaWidget);
+
+function HistogramWidget(props: HistogramWidgetProps) {
+  const {chartField, Query, Chart, HeaderActions, chartHeight, containerType} = props;
   return (
     <Query fields={[chartField]} dataFilter="exclude_outliers">
       {results => {
@@ -149,5 +226,3 @@ GenericPerformanceWidget.defaultProps = {
   containerType: 'panel',
   chartHeight: 200,
 };
-
-export default GenericPerformanceWidget;
