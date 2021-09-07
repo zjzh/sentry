@@ -41,7 +41,7 @@ type LoadingStatus = {
 // Chart format for multiple series.
 type MultiSeriesResults = Series[];
 
-type RenderProps = LoadingStatus & TimeSeriesData & {results?: MultiSeriesResults};
+export type RenderProps = LoadingStatus & TimeSeriesData & {results?: MultiSeriesResults};
 
 type DefaultProps = {
   /**

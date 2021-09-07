@@ -1,5 +1,9 @@
+import React, {FunctionComponent, ReactNode} from 'react';
+import {InjectedRouter, withRouter} from 'react-router';
 import {withTheme} from '@emotion/react';
 import styled from '@emotion/styled';
+import {Location} from 'history';
+
 import Button from 'app/components/button';
 import ErrorPanel from 'app/components/charts/errorPanel';
 import {EventsRequestProps} from 'app/components/charts/eventsRequest';
@@ -25,18 +29,12 @@ import getPerformanceWidgetContainer, {
   PerformanceWidgetContainerTypes,
 } from 'app/views/performance/landing/widgets/components/performanceWidgetContainer';
 import {RadioLineItem} from 'app/views/settings/components/forms/controls/radioGroup';
-import {Location} from 'history';
-import React, {FunctionComponent, ReactNode} from 'react';
-import {InjectedRouter, withRouter} from 'react-router';
+
 import {transactionSummaryRouteWithQuery} from '../../transactionSummary/utils';
 import {ChartDataProps} from '../chart/histogramChart';
 import {VitalBar} from '../vitalsCards';
 
-export enum GenericPerformanceWidgetDataType {
-  histogram = 'histogram',
-  area = 'area',
-  vitals = 'vitals',
-}
+import {GenericPerformanceWidgetDataType} from './types';
 
 type HeaderProps = {
   title: string;
@@ -215,7 +213,7 @@ function WidgetFooter(props: FooterProps) {
         showDetail={false}
         barHeight={24}
       />
-      <Button borderless size={'zero'}>
+      <Button borderless size="zero">
         <IconClose />
       </Button>
     </ListItemContainer>
@@ -386,7 +384,7 @@ function _VitalsWidget(
                     isLoading={false}
                     vital={WebVital.LCP}
                     data={mockDataGroupIssues}
-                    showDetail={true}
+                    showDetail
                     showBar={false}
                   />
                 }
