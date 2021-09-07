@@ -516,7 +516,7 @@ const ValueDelta = ({transaction, trendChangeType}: TrendsListItemProps) => {
 
 type TransactionSummaryLinkProps = TrendsListItemProps & {};
 
-const TransactionSummaryLink = (props: TransactionSummaryLinkProps) => {
+export const TransactionSummaryLink = (props: TransactionSummaryLinkProps) => {
   const {
     organization,
     trendView: eventView,

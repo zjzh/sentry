@@ -377,6 +377,7 @@ function __VitalChart(props: _VitalChartProps) {
     //   }),
     // },
   ];
+  const _vitalNameFix = WebVital.LCP;
 
   const chartOptions = {
     grid: {
@@ -391,7 +392,7 @@ function __VitalChart(props: _VitalChartProps) {
     tooltip: {
       trigger: 'axis' as const,
       valueFormatter: (value: number, seriesName?: string) =>
-        tooltipFormatter(value, vitalName === WebVital.CLS ? seriesName : yAxis),
+        tooltipFormatter(value, seriesName),
     },
     yAxis: {
       min: 0,
