@@ -481,6 +481,14 @@ FIELD_ALIASES = {
             ],
             result_type="percentage",
         ),
+        # PseudoField(
+        #     "sessions_crash_percentage",
+        #     "sessions_crash_percentage",
+        #     expression=
+        #         ["divide", ["sessions_crashed", "sessions"]]
+        #     ,
+        #     result_type="percentage",
+        # )
     ]
 }
 
@@ -602,6 +610,7 @@ def resolve_field_list(
         if isinstance(field, str) and field.strip() == "":
             continue
         function = resolve_field(field, snuba_filter.params, functions_acl)
+        print("Function Column ", function.column)
         if function.column is not None and function.column not in columns:
             columns.append(function.column)
             if function.details is not None and isinstance(function.column, (list, tuple)):
@@ -612,6 +621,8 @@ def resolve_field_list(
                 functions[function.aggregate[-1]] = function.details
                 if function.details.instance.redundant_grouping:
                     aggregate_fields[format_column_as_key(function.aggregate[1])].add(field)
+        print("Columns ", columns)
+        print("Function Aggregates ", aggregate_fields)
 
     # Only auto aggregate when there's one other so the group by is not unexpectedly changed
     if auto_aggregations and snuba_filter.having and len(aggregations) > 0:
@@ -914,6 +925,7 @@ def parse_function(field, match=None, err_msg=None):
         raise InvalidSearchQuery(err_msg)
 
     function = match.group("function")
+    print(function)
     return (
         function,
         parse_arguments(function, match.group("columns")),
@@ -923,6 +935,7 @@ def parse_function(field, match=None, err_msg=None):
 
 def is_function(field: str) -> Optional[Match[str]]:
     function_match = FUNCTION_PATTERN.search(field)
+    print("I think it is a function ", function_match)
     if function_match:
         return function_match
 
@@ -1272,7 +1285,7 @@ class NumericColumn(ColumnArg):
             return value
         if not snuba_column:
             raise InvalidFunctionArgument(f"{value} is not a valid column")
-        elif snuba_column not in ["time", "timestamp", "duration"]:
+        elif snuba_column not in ["time", "timestamp", "duration", "sessions", "sessions_crashed"]:
             raise InvalidFunctionArgument(f"{value} is not a numeric column")
         return snuba_column
 
@@ -2147,6 +2160,24 @@ FUNCTIONS = {
                 ],
             ],
         ),
+        DiscoverFunction(
+            "crash_free_percentage",
+            aggregate=[
+                "multiply(minus(1, divide(sessions_crashed, sessions)), 100)",
+                None,
+                None
+            ],
+            default_result_type="number",
+        ),
+        DiscoverFunction(
+            "get_sessions_and_sessions_crashed",
+            column=[
+                "bucketed_started",
+                "sessions",
+                "sessions_crashed",
+            ],
+            default_result_type="number",
+        ),
     ]
 }
 
@@ -2226,6 +2257,7 @@ class QueryFields(QueryBase):
             MEASUREMENTS_FRAMES_SLOW_RATE: self._resolve_measurements_frames_slow_rate,
             MEASUREMENTS_FRAMES_FROZEN_RATE: self._resolve_measurements_frames_frozen_rate,
             MEASUREMENTS_STALL_PERCENTAGE: self._resolve_measurements_stall_percentage,
+            # "sessions_crash_percentage": self._resolve_crash_percentage
         }
 
         self.function_converter: Mapping[str, SnQLFunction] = {
@@ -2346,6 +2378,15 @@ class QueryFields(QueryBase):
                     default_result_type="duration",
                     redundant_grouping=True,
                 ),
+                # SnQLFunction(
+                #     "crash_free_percentage",
+                #     # optional_args=[
+                #     #     with_default("sessions_crashed", NumericColumn("divisor")),
+                #     #     with_default("sessions", NumericColumn("dividend"))
+                #     # ],
+                #     snql_aggregate=self._resolve_crash_percentage,
+                #     default_result_type="percentage",
+                # ),
                 SnQLFunction(
                     "p50",
                     optional_args=[
@@ -3202,6 +3243,9 @@ class QueryFields(QueryBase):
 
     def _resolve_measurements_stall_percentage(self, _: str) -> SelectType:
         return self._resolve_division("measurements.stall_total_time", "transaction.duration")
+
+    def _resolve_crash_percentage(self, _:str):
+        return self._resolve_division("sessions_crashed", "sessions")
 
     def _resolve_unimplemented_function(
         self,

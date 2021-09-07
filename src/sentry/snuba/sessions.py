@@ -977,12 +977,13 @@ def __get_crash_free_rate_data(project_ids, start, end, rollup):
             "sessions_crashed",
             "sessions_errored",
             "sessions_abnormal",
-            "sessions",
+            "sessions"
         ],
         filter_keys={"project_id": project_ids},
         start=start,
         end=end,
         rollup=rollup,
+        aggregations=[["divide(sessions_crashed, sessions)", None, "sum_sessions"]],
         groupby=["project_id"],
         referrer="sessions.totals",
     )["data"]
@@ -1046,6 +1047,7 @@ def get_current_and_previous_crash_free_rates(
         end=current_end,
         rollup=rollup,
     )
+    print(current_crash_free_data)
     for row in current_crash_free_data:
         projects_crash_free_rate_dict[row["project_id"]].update(
             {"currentCrashFreeRate": calculate_crash_free_percentage(row)}
@@ -1058,6 +1060,8 @@ def get_current_and_previous_crash_free_rates(
         end=previous_end,
         rollup=rollup,
     )
+    print("Previouss")
+    print(previous_crash_free_data)
     for row in previous_crash_free_data:
         projects_crash_free_rate_dict[row["project_id"]].update(
             {"previousCrashFreeRate": calculate_crash_free_percentage(row)}

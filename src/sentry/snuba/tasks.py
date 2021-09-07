@@ -5,9 +5,11 @@ import sentry_sdk
 from django.utils import timezone
 from snuba_sdk.legacy import json_to_snql
 
+from sentry.models import Project
 from sentry.search.events.fields import resolve_field_list
 from sentry.search.events.filter import get_filter
 from sentry.snuba.models import QueryDatasets, QuerySubscription
+from sentry.snuba.sessions_v2 import get_constrained_date_range
 from sentry.tasks.base import instrumented_task
 from sentry.utils import json, metrics
 from sentry.utils.snuba import (
@@ -15,7 +17,7 @@ from sentry.utils.snuba import (
     SnubaError,
     _snuba_pool,
     resolve_column,
-    resolve_snuba_aliases,
+    resolve_snuba_aliases, naiveify_datetime,
 )
 
 logger = logging.getLogger(__name__)
@@ -45,6 +47,9 @@ def apply_dataset_query_conditions(dataset, query, event_types, discover=False):
     need it specified, and `event.type` ends up becoming a tag search.
     """
     if not discover and dataset == QueryDatasets.TRANSACTIONS:
+        return query
+
+    if dataset == QueryDatasets.SESSIONS:
         return query
 
     if event_types:
@@ -169,19 +174,53 @@ def delete_subscription_from_snuba(query_subscription_id, **kwargs):
 
 
 def build_snuba_filter(dataset, query, aggregate, environment, event_types, params=None):
-    resolve_func = (
-        resolve_column(Dataset.Events)
-        if dataset == QueryDatasets.EVENTS
-        else resolve_column(Dataset.Transactions)
-    )
+    print("DATSET", dataset)
+    if dataset == QueryDatasets.SESSIONS:
+        snuba_filter = build_snuba_filter_sessions(
+            dataset, query, aggregate, environment, event_types, params)
+
+        print("SNUBA FILTER2", snuba_filter.__dict__)
+        print("AGGREGATE2 ", aggregate)
+        return snuba_filter
+    try:
+        resolve_func = {
+            QueryDatasets.EVENTS: resolve_column(Dataset.Events),
+            QueryDatasets.SESSIONS: resolve_column(Dataset.Sessions)
+        }[dataset]
+    except KeyError:
+        resolve_func = resolve_column(Dataset.Transactions)
+    print(resolve_column(Dataset.Sessions))
     query = apply_dataset_query_conditions(dataset, query, event_types)
     snuba_filter = get_filter(query, params=params)
+
+    print("SNUBA FILTER ", snuba_filter.__dict__)
+    print("AGGREGATE ", aggregate)
     snuba_filter.update_with(resolve_field_list([aggregate], snuba_filter, auto_fields=False))
+
     snuba_filter = resolve_snuba_aliases(snuba_filter, resolve_func)[0]
     if snuba_filter.group_ids:
         snuba_filter.conditions.append(["group_id", "IN", list(map(int, snuba_filter.group_ids))])
     if environment:
         snuba_filter.conditions.append(["environment", "=", environment.name])
+    return snuba_filter
+
+
+def build_snuba_filter_sessions(dataset, query, aggregate, environment, event_types, params=None):
+    groupby = ["bucketed_started"]
+    snuba_filter = get_filter(query, params=params)
+    start, end, _ = get_constrained_date_range({
+        "statsPeriod": "1h"
+    }, allow_minute_resolution=True)
+    snuba_filter.update_with({
+        "selected_columns": resolve_field_list(
+            [aggregate], snuba_filter, auto_fields=False)["selected_columns"][0],
+        "rollup": 60,
+        "groupby": groupby,
+        "start": start,
+        "end": end,
+    })
+    print("SESSIONS ", )
+
     return snuba_filter
 
 
@@ -203,10 +242,19 @@ def _create_in_snuba(subscription):
         "aggregations": snuba_filter.aggregations,
         "time_window": snuba_query.time_window,
         "resolution": snuba_query.resolution,
+        "granularity": snuba_filter.rollup,
+        "selected_columns": snuba_filter.selected_columns,
+        "groupby": snuba_filter.groupby,
+        # "from_date": naiveify_datetime(snuba_filter.start).isoformat(),
+        # "to_date": naiveify_datetime(snuba_filter.end).isoformat(),
+        "organization": Project.objects.get(id=subscription.project_id).organization_id,
+        "offset": 0,
+        "limit": 1000
     }
     try:
         metrics.incr("snuba.snql.subscription.create", tags={"dataset": snuba_query.dataset})
         snql_query = json_to_snql(body, snuba_query.dataset)
+        print("SNQL Query ", snql_query)
         snql_query.validate()
         body["query"] = str(snql_query)
         body["type"] = "delegate"  # mark this as a combined subscription
@@ -222,6 +270,7 @@ def _create_in_snuba(subscription):
         f"/{snuba_query.dataset}/subscriptions",
         body=json.dumps(body),
     )
+    print(response.data)
     if response.status != 202:
         metrics.incr("snuba.snql.subscription.http.error", tags={"dataset": snuba_query.dataset})
         raise SnubaError("HTTP %s response from Snuba!" % response.status)

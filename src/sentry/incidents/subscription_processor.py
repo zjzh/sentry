@@ -55,6 +55,7 @@ class SubscriptionProcessor:
     }
 
     def __init__(self, subscription):
+        print("We here in the subscription")
         self.subscription = subscription
         try:
             self.alert_rule = AlertRule.objects.get_for_subscription(subscription)
@@ -159,6 +160,7 @@ class SubscriptionProcessor:
         return active_warning_it
 
     def process_update(self, subscription_update):
+        print("SUBSCRIPTION WAS CALLED")
         dataset = self.subscription.snuba_query.dataset
         try:
             # Check that the project exists
@@ -193,6 +195,8 @@ class SubscriptionProcessor:
             return
 
         self.last_update = subscription_update["timestamp"]
+
+        print("Subscription Data is the following ", subscription_update["values"])
 
         if len(subscription_update["values"]["data"]) > 1:
             logger.warning(

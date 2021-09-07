@@ -49,6 +49,7 @@ class ProjectCombinedRuleIndexEndpoint(ProjectEndpoint):
         )
 
 
+
 class ProjectAlertRuleIndexEndpoint(ProjectEndpoint):
     permission_classes = (ProjectAlertRulePermission,)
 
@@ -82,6 +83,8 @@ class ProjectAlertRuleIndexEndpoint(ProjectEndpoint):
 
         data = deepcopy(request.data)
         data["projects"] = [project.slug]
+
+        print("Here we are ", data)
 
         serializer = AlertRuleSerializer(
             context={
@@ -117,6 +120,8 @@ class ProjectAlertRuleIndexEndpoint(ProjectEndpoint):
                     session_id=session_id,
                     is_api_token=request.auth is not None,
                 )
+                # ar = AlertRule.objects.filter(id=1)[0]
+                # print(ar.__dict__)
                 return Response(serialize(alert_rule, request.user), status=status.HTTP_201_CREATED)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

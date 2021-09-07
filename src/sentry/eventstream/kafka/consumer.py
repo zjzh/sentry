@@ -99,6 +99,7 @@ def run_commit_log_consumer(
         positions[(message.topic(), message.partition())] = message.offset() + 1
 
         group, topic, partition, offset = get_commit_data(message)
+        print("Topic ", topic)
         if group != synchronize_commit_group:
             logger.debug("Received consumer offsets update from %r, ignoring...", group)
             continue

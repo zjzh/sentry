@@ -401,7 +401,7 @@ def run_sessions_query(query):
         rollup=query.rollup,
         referrer="sessions.totals",
     )
-
+    print("Aggregations here are ", query.aggregations)
     result_timeseries = raw_query(
         dataset=Dataset.Sessions,
         selected_columns=[TS_COL] + query.query_columns,

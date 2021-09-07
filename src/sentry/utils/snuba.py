@@ -71,7 +71,7 @@ OVERRIDE_OPTIONS = {
 }
 
 # Show the snuba query params and the corresponding sql or errors in the server logs
-SNUBA_INFO = os.environ.get("SENTRY_SNUBA_INFO", "false").lower() in ("true", "1")
+SNUBA_INFO = os.environ.get("SENTRY_SNUBA_INFO", "true").lower() in ("true", "1")
 
 # There are several cases here where we support both a top level column name and
 # a tag with the same name. Existing search patterns expect to refer to the tag,
@@ -96,11 +96,16 @@ DISCOVER_COLUMN_MAP = {
     if col.value.discover_name is not None
 }
 
+SESSIONS_COLUMN_MAP = {
+    "sessions": "sessions",
+    "sessions_crashed": "sessions_crashed"
+}
 
 DATASETS = {
     Dataset.Events: SENTRY_SNUBA_MAP,
     Dataset.Transactions: TRANSACTIONS_SNUBA_MAP,
     Dataset.Discover: DISCOVER_COLUMN_MAP,
+    Dataset.Sessions: SESSIONS_COLUMN_MAP
 }
 
 # Store the internal field names to save work later on.
@@ -647,6 +652,7 @@ def raw_query(
         is_grouprelease=is_grouprelease,
         **kwargs,
     )
+    print("Snuba Params ", snuba_params.__dict__)
 
     use_snql = should_use_snql(referrer)
 
@@ -771,6 +777,10 @@ def _bulk_snuba_query(
             "snuba.snql.query.type",
             tags={"type": query_type, "referrer": query_referrer},
         )
+        print("$"*30)
+        print("Sessions Query Type ", query_type)
+        print("Sessions Query Fn ", query_fn)
+        print("$" * 30)
         span.set_tag("snuba.query.type", query_type)
 
         if len(snuba_param_list) > 1:
@@ -986,6 +996,9 @@ def resolve_column(dataset):
         if dataset == Dataset.Discover:
             if isinstance(col, (list, tuple)) or col == "project_id":
                 return col
+        elif dataset == Dataset.Sessions:
+            print("Column ", col)
+            return col
         else:
             if (
                 col in DATASET_FIELDS[dataset]
@@ -1180,6 +1193,7 @@ def resolve_snuba_aliases(snuba_filter, resolve_func, function_translations=None
             translated_columns[snuba_name] = sentry_name
 
     selected_columns = resolved.selected_columns
+    print("Selected Cols ", selected_columns)
     aggregation_aliases = [aggregation[-1] for aggregation in aggregations]
     if selected_columns:
         for (idx, col) in enumerate(selected_columns):
@@ -1189,7 +1203,9 @@ def resolve_snuba_aliases(snuba_filter, resolve_func, function_translations=None
                     derived_columns.add(col[2].strip("`"))
                 # Equations use aggregation aliases as arguments, and we don't want those resolved since they'll resolve
                 # as tags instead
-                resolve_complex_column(col, resolve_func, aggregation_aliases)
+                print("Col before Resolve ", col)
+                # col.pop(2)
+                # resolve_complex_column(col, resolve_func, aggregation_aliases)
             else:
                 name = resolve_func(col)
                 selected_columns[idx] = name

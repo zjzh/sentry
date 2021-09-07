@@ -916,7 +916,7 @@ SENTRY_FEATURES = {
     # Enable imporved syntax highlightign + autocomplete on unified search
     "organizations:improved-search": False,
     # Enable incidents feature
-    "organizations:incidents": False,
+    "organizations:incidents": True,
     # Flags for enabling CdcEventsDatasetSnubaSearchBackend in sentry.io. No effect in open-source
     # sentry at the moment.
     "organizations:issue-search-use-cdc-primary": False,
@@ -1001,7 +1001,7 @@ SENTRY_FEATURES = {
     # https://github.com/getsentry/relay.
     "organizations:relay": True,
     # Enable Session Stats down to a minute resolution
-    "organizations:minute-resolution-sessions": False,
+    "organizations:minute-resolution-sessions": True,
     # Enable option to send alert, workflow, and deploy notifications
     # to 3rd parties (e.g. Slack) in addition to email
     "organizations:notification-platform": False,
@@ -1599,7 +1599,7 @@ SENTRY_RELAY_PORT = 7899
 
 # Controls whether we'll run the snuba subscription processor. If enabled, we'll run
 # it as a worker, and devservices will run Kafka.
-SENTRY_DEV_PROCESS_SUBSCRIPTIONS = False
+SENTRY_DEV_PROCESS_SUBSCRIPTIONS = True
 
 # The chunk size for attachments in blob store. Should be a power of two.
 SENTRY_ATTACHMENT_BLOB_SIZE = 8 * 1024 * 1024  # 8MB
@@ -2121,9 +2121,11 @@ KAFKA_EVENTS = "events"
 KAFKA_OUTCOMES = "outcomes"
 KAFKA_EVENTS_SUBSCRIPTIONS_RESULTS = "events-subscription-results"
 KAFKA_TRANSACTIONS_SUBSCRIPTIONS_RESULTS = "transactions-subscription-results"
+KAFKA_SESSIONS_SUBSCRIPTIONS_RESULTS = "sessions-subscription-results"
 KAFKA_SUBSCRIPTION_RESULT_TOPICS = {
     "events": KAFKA_EVENTS_SUBSCRIPTIONS_RESULTS,
     "transactions": KAFKA_TRANSACTIONS_SUBSCRIPTIONS_RESULTS,
+    "sessions": KAFKA_SESSIONS_SUBSCRIPTIONS_RESULTS
 }
 KAFKA_INGEST_EVENTS = "ingest-events"
 KAFKA_INGEST_ATTACHMENTS = "ingest-attachments"
@@ -2139,6 +2141,10 @@ KAFKA_TOPICS = {
     KAFKA_TRANSACTIONS_SUBSCRIPTIONS_RESULTS: {
         "cluster": "default",
         "topic": KAFKA_TRANSACTIONS_SUBSCRIPTIONS_RESULTS,
+    },
+    KAFKA_SESSIONS_SUBSCRIPTIONS_RESULTS: {
+        "cluster": "default",
+        "topic": KAFKA_SESSIONS_SUBSCRIPTIONS_RESULTS,
     },
     # Topic for receiving simple events (error events without attachments) from Relay
     KAFKA_INGEST_EVENTS: {"cluster": "default", "topic": KAFKA_INGEST_EVENTS},

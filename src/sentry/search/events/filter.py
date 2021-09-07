@@ -606,6 +606,7 @@ def convert_search_filter_to_snuba_query(
     if name in {"group_id"}:
         name = f"tags[{name}]"
 
+    print("Do we even come here? ")
     if name in NO_CONVERSION_FIELDS:
         return
     elif name in key_conversion_map:
@@ -648,6 +649,7 @@ def convert_search_filter_to_snuba_query(
         # most field aliases are handled above but timestamp.to_{hour,day} are
         # handled here
         if name in FIELD_ALIASES:
+            print("Name here ", name)
             name = FIELD_ALIASES[name].get_expression(params)
 
         # Tags are never null, but promoted tags are columns and so can be null.

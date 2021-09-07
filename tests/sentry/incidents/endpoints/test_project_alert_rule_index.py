@@ -79,7 +79,7 @@ class AlertRuleCreateEndpointTest(APITestCase):
     def user(self):
         return self.create_user()
 
-    def test_simple(self):
+    def test_simple_a(self):
         self.create_member(
             user=self.user, organization=self.organization, role="owner", teams=[self.team]
         )
@@ -541,3 +541,67 @@ class ProjectCombinedRuleIndexEndpointTest(BaseAlertRuleSerializerTest, APITestC
 
         self.assert_alert_rule_serialized(self.two_alert_rule, result[0], skip_dates=True)
         self.assert_alert_rule_serialized(self.yet_another_alert_rule, result[1], skip_dates=True)
+
+
+@freeze_time()
+class AlertRuleCreateEndpointTestCrashRateAlert(APITestCase):
+    endpoint = "sentry-api-0-project-alert-rules"
+    method = "post"
+
+    @fixture
+    def organization(self):
+        return self.create_organization()
+
+    @fixture
+    def project(self):
+        return self.create_project(organization=self.organization)
+
+    @fixture
+    def user(self):
+        return self.create_user()
+
+    def test_simple_crash_rate_alerts(self):
+        # Login
+        self.create_member(
+            user=self.user, organization=self.organization, role="owner", teams=[self.team]
+        )
+        self.login_as(self.user)
+
+        valid_alert_rule = {
+            # "aggregate": "crash_free_percentage()",
+            "aggregate": "get_sessions_and_sessions_crashed()",
+            "query": "",
+            "timeWindow": "300",
+            "resolveThreshold": 100,
+            "thresholdType": 0,
+            "triggers": [
+                {
+                    "label": "critical",
+                    "alertThreshold": 200,
+                    "actions": [
+                        {"type": "email", "targetType": "team", "targetIdentifier": self.team.id}
+                    ],
+                },
+                {
+                    "label": "warning",
+                    "alertThreshold": 150,
+                    "actions": [
+                        {"type": "email", "targetType": "team", "targetIdentifier": self.team.id},
+                        {"type": "email", "targetType": "user", "targetIdentifier": self.user.id},
+                    ],
+                },
+            ],
+            "projects": [self.project.slug],
+            "owner": self.user.id,
+            "name": "JustAValidTestRule",
+            "dataset": "sessions",
+            "eventTypes": ["session"],
+            "rollup": 60
+        }
+        with self.feature(["organizations:incidents", "organizations:performance-view"]):
+            resp = self.get_valid_response(
+                self.organization.slug, self.project.slug, status_code=201, **valid_alert_rule
+            )
+        assert "id" in resp.data
+        alert_rule = AlertRule.objects.get(id=resp.data["id"])
+        assert resp.data == serialize(alert_rule, self.user)

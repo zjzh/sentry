@@ -29,6 +29,8 @@ def create_snuba_query(
     query. If not passed, we'll infer a default value based on the dataset.
     :return: A list of QuerySubscriptions
     """
+    print("Aggregate in Snuba Query is ", aggregate)
+    print("Query in Snuba Query is ", query)
     snuba_query = SnubaQuery.objects.create(
         dataset=dataset.value,
         query=query,

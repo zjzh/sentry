@@ -68,6 +68,10 @@ dataset_valid_event_types = {
         SnubaQueryEventType.EventType.DEFAULT,
     },
     QueryDatasets.TRANSACTIONS: {SnubaQueryEventType.EventType.TRANSACTION},
+    QueryDatasets.SESSIONS: {
+        SnubaQueryEventType.EventType.SESSION,
+        SnubaQueryEventType.EventType.USER
+    }
 }
 
 # TODO(davidenwang): eventually we should pass some form of these to the event_search parser to raise an error
@@ -370,12 +374,15 @@ class AlertRuleSerializer(CamelSnakeModelSerializer):
 
     def validate_aggregate(self, aggregate):
         try:
+            if aggregate == "get_sessions_and_sessions_crashed()":
+                return aggregate
             if not check_aggregate_column_support(aggregate):
                 raise serializers.ValidationError(
                     "Invalid Metric: We do not currently support this field."
                 )
         except InvalidSearchQuery as e:
             raise serializers.ValidationError(f"Invalid Metric: {e}")
+        print("Aggregate Validation ", translate_aggregate_field(aggregate))
         return translate_aggregate_field(aggregate)
 
     def validate_dataset(self, dataset):
@@ -437,15 +444,20 @@ class AlertRuleSerializer(CamelSnakeModelSerializer):
         except (InvalidSearchQuery, ValueError) as e:
             raise serializers.ValidationError(f"Invalid Query or Metric: {e}")
         else:
-            if not snuba_filter.aggregations:
-                raise serializers.ValidationError(
-                    "Invalid Metric: Please pass a valid function for aggregation"
-                )
+            # if not snuba_filter.aggregations:
+            #     raise serializers.ValidationError(
+            #         "Invalid Metric: Please pass a valid function for aggregation"
+            #     )
+
+            print("Snuba Filter ", snuba_filter.__dict__)
 
             try:
                 raw_query(
                     aggregations=snuba_filter.aggregations,
                     start=snuba_filter.start,
+                    selected_columns=snuba_filter.selected_columns,
+                    groupby=snuba_filter.groupby,
+                    rollup=snuba_filter.rollup,
                     end=snuba_filter.end,
                     conditions=snuba_filter.conditions,
                     filter_keys=snuba_filter.filter_keys,

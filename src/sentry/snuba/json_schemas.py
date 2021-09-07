@@ -47,7 +47,7 @@ SUBSCRIPTION_PAYLOAD_VERSIONS: Mapping[int, Mapping[str, Any]] = {
                         "items": {
                             "type": "object",
                             "minProperties": 1,
-                            "additionalProperties": {"type": ["number", "null"]},
+                            "additionalProperties": {"type": ["number", "null", "string"]},
                         },
                     }
                 },

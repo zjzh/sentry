@@ -55,6 +55,7 @@ class QuerySubscriptionConsumer:
     topic_to_dataset: Dict[str, QueryDatasets] = {
         settings.KAFKA_EVENTS_SUBSCRIPTIONS_RESULTS: QueryDatasets.EVENTS,
         settings.KAFKA_TRANSACTIONS_SUBSCRIPTIONS_RESULTS: QueryDatasets.TRANSACTIONS,
+        settings.KAFKA_SESSIONS_SUBSCRIPTIONS_RESULTS: QueryDatasets.SESSIONS
     }
 
     def __init__(
@@ -66,6 +67,7 @@ class QuerySubscriptionConsumer:
         force_offset_reset: Optional[str] = None,
     ):
         self.group_id = group_id
+        print("We in this topic ", topic)
         if not topic:
             # TODO(typing): Need a way to get the actual value of settings to avoid this
             topic = cast(str, settings.KAFKA_EVENTS_SUBSCRIPTIONS_RESULTS)
@@ -221,6 +223,7 @@ class QuerySubscriptionConsumer:
         :param message:
         :return:
         """
+        print("We are in the consumer")
         with sentry_sdk.push_scope() as scope:
             try:
                 with metrics.timer("snuba_query_subscriber.parse_message_value"):

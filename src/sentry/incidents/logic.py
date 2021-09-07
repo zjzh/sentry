@@ -641,6 +641,7 @@ def create_alert_rule(
             environment,
             event_types=event_types,
         )
+        print("Snuba query ", snuba_query.__dict__)
         actor = None
         if owner:
             actor = owner.resolve_to_actor()
@@ -1454,7 +1455,9 @@ def get_column_from_aggregate(aggregate):
 
 
 def check_aggregate_column_support(aggregate):
+    print("We actually made it here in check_aggregate_colurmn_support")
     column = get_column_from_aggregate(aggregate)
+    print("Column is ", column)
     return (
         column is None
         or is_measurement(column)

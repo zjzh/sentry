@@ -107,7 +107,8 @@ class Filter:
         }
 
     def update_with(self, updates):
-        keys = ("selected_columns", "aggregations", "conditions", "orderby", "groupby")
+        keys = ("selected_columns", "aggregations", "conditions", "orderby", "groupby", "rollup",
+                "start", "end")
         for key in keys:
             if key in updates:
                 setattr(self, key, updates[key])
