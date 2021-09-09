@@ -1,4 +1,10 @@
-import React, {ComponentProps, FunctionComponent, ReactNode, useState} from 'react';
+import React, {
+  ComponentProps,
+  Fragment,
+  FunctionComponent,
+  ReactNode,
+  useState,
+} from 'react';
 import {InjectedRouter, withRouter} from 'react-router';
 import {withTheme} from '@emotion/react';
 import styled from '@emotion/styled';
@@ -6,7 +12,7 @@ import {Location} from 'history';
 
 import Button from 'app/components/button';
 import ErrorPanel from 'app/components/charts/errorPanel';
-import {EventsRequestProps} from 'app/components/charts/eventsRequest';
+import {EventsRequestProps, TimeSeriesData} from 'app/components/charts/eventsRequest';
 import {HeaderTitleLegend} from 'app/components/charts/styles';
 import Link from 'app/components/links/link';
 import {getParams} from 'app/components/organizations/globalSelectionHeader/getParams';
@@ -64,9 +70,11 @@ type HistogramWidgetProps = BaseProps & {
   Visualization: FunctionComponent<ChartDataProps & {chartHeight: number}>;
 };
 
-interface CommonPerformanceQueryData {
+type CommonPerformanceQueryData = {
   loading: boolean;
-}
+  reloading: boolean;
+  errored: boolean;
+};
 
 type QueryChildren = {
   children: (props: CommonPerformanceQueryData) => ReactNode;
@@ -76,10 +84,20 @@ type QueryFC = FunctionComponent<QueryChildren>;
 type AreaWidgetProps = BaseProps & {
   dataType: GenericPerformanceWidgetDataType.area;
   Queries: {
-    [dataKey: string]: QueryFC;
+    [dataKey: string]: {
+      component: QueryFC;
+      dependsOn?: string[];
+      transform: (
+        props: AreaWidgetFunctionProps,
+        results: CommonPerformanceQueryData
+      ) => CommonPerformanceQueryData;
+    };
   };
   Visualizations: {
-    [dataKey: string]: FunctionComponent<React.ComponentProps<typeof DurationChart>>;
+    [dataKey: string]: {
+      component: FunctionComponent<React.ComponentProps<typeof DurationChart>>;
+      height: number; // Used to determine placeholder and loading sizes. Will also be passed to the component.
+    };
   };
 };
 
@@ -96,7 +114,7 @@ function DataStateSwitch(props: {
 
   loadingComponent?: JSX.Element;
   errorComponent: JSX.Element;
-  dataComponent: JSX.Element;
+  dataComponents: JSX.Element[];
   emptyComponent: JSX.Element;
 }): JSX.Element {
   if (props.loading && props.loadingComponent) {
@@ -108,7 +126,7 @@ function DataStateSwitch(props: {
   if (!props.hasData) {
     return props.emptyComponent;
   }
-  return props.dataComponent;
+  return <Fragment>{props.dataComponents}</Fragment>;
 }
 
 // TODO(k-fish): Remove hardcoding the grid once all the charts are in
@@ -277,8 +295,8 @@ type WidgetData = {
 };
 export function GenericPerformanceWidget(props: WidgetPropUnion) {
   const [widgetData, setWidgetData] = useState<WidgetData>({});
-  const widgetProps = {widgetData, setWidgetData};
 
+  const widgetProps = {widgetData, setWidgetData};
   switch (props.dataType) {
     case GenericPerformanceWidgetDataType.area:
       return <AreaWidget {...props} {...widgetProps} />;
@@ -295,7 +313,7 @@ type AreaWidgetFunctionProps = AreaWidgetProps & {router: InjectedRouter};
 
 export function transformAreaResults(
   widgetProps: AreaWidgetFunctionProps,
-  results: Parameters<ComponentProps<AreaWidgetProps['Queries']>['children']>[0]
+  results: CommonPerformanceQueryData
 ) {
   const {router, fields: chartFields} = widgetProps;
   const {start, end, utc, interval, statsPeriod} = getParams(widgetProps.location.query);
@@ -312,10 +330,11 @@ export function transformAreaResults(
     errored,
     data,
     previousData,
-    start,
-    end,
-    utc,
-    statsPeriod,
+    utc: utc === 'true',
+    interval,
+    statsPeriod: statsPeriod ?? undefined,
+    start: start ?? '',
+    end: end ?? '',
     router,
     field: chartFields[0],
   };
@@ -324,21 +343,15 @@ export function transformAreaResults(
 }
 
 function _AreaWidget(props: AreaWidgetFunctionProps) {
-  const {
-    fields: chartFields,
-    Queries: Query,
-    Visualizations: Chart,
-    HeaderActions,
-    chartHeight,
-    containerType,
-  } = props;
+  const {Queries, Visualizations, HeaderActions, chartHeight, containerType} = props;
 
   const Container = getPerformanceWidgetContainer({
     containerType,
   });
+  const [Query] = Object.values(Queries);
 
   return (
-    <Query yAxis={chartFields}>
+    <Query.component>
       {results => {
         const childData = transformAreaResults(props, results);
 
@@ -354,15 +367,23 @@ function _AreaWidget(props: AreaWidgetFunctionProps) {
               <DataStateSwitch
                 {...childData}
                 hasData={!!(childData.data && childData.data.length)}
-                errorComponent={<DefaultErrorComponent chartHeight={chartHeight} />}
-                dataComponent={<Chart {...childData} grid={grid} height={chartHeight} />}
+                errorComponent={<DefaultErrorComponent height={chartHeight} />}
+                dataComponents={Object.entries(Visualizations).map(
+                  ([key, Visualization]) => (
+                    <Visualization.component
+                      key={key}
+                      {...childData}
+                      height={chartHeight}
+                    />
+                  )
+                )}
                 emptyComponent={<Placeholder height={`${chartHeight}px`} />}
               />
             </ContentContainer>
           </Container>
         );
       }}
-    </Query>
+    </Query.component>
   );
 }
 
@@ -439,8 +460,8 @@ function _VitalsWidget(
               <DataStateSwitch
                 {...childData}
                 hasData={!!(data && data.length)}
-                errorComponent={<DefaultErrorComponent chartHeight={chartHeight} />}
-                dataComponent={<Chart {...childData} grid={grid} height={chartHeight} />}
+                errorComponent={<DefaultErrorComponent height={chartHeight} />}
+                dataComponents={<Chart {...childData} height={chartHeight} />}
                 emptyComponent={<Placeholder height={`${chartHeight}px`} />}
               />
             </ContentContainer>
@@ -525,8 +546,8 @@ function HistogramWidget(props: HistogramWidgetProps) {
               <DataStateSwitch
                 {...childData}
                 hasData={!!(chartData && chartData.length)}
-                errorComponent={<DefaultErrorComponent chartHeight={chartHeight} />}
-                dataComponent={
+                errorComponent={<DefaultErrorComponent height={chartHeight} />}
+                dataComponents={
                   <Chart {...childData} grid={grid} chartHeight={chartHeight} />
                 }
                 emptyComponent={<Placeholder height={`${chartHeight}px`} />}
@@ -539,9 +560,9 @@ function HistogramWidget(props: HistogramWidgetProps) {
   );
 }
 
-const DefaultErrorComponent = (props: {chartHeight: number}) => {
+const DefaultErrorComponent = (props: {height: number}) => {
   return (
-    <ErrorPanel height={`${props.chartHeight}px`}>
+    <ErrorPanel height={`${props.height}px`}>
       <IconWarning color="gray300" size="lg" />
     </ErrorPanel>
   );

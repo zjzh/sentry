@@ -1,3 +1,4 @@
+import {ComponentProps} from 'react';
 import {Location} from 'history';
 import omit from 'lodash/omit';
 
@@ -9,7 +10,7 @@ import EventView from 'app/utils/discover/eventView';
 import withApi from 'app/utils/withApi';
 import DurationChart from 'app/views/performance/charts/chart';
 
-import {GenericPerformanceWidget} from './genericPerformanceWidget';
+import {GenericPerformanceWidget, transformAreaResults} from './genericPerformanceWidget';
 import {GenericPerformanceWidgetDataType} from './types';
 import {performanceWidgetSetting, WidgetContainerActions} from './widgetContainer';
 
@@ -37,36 +38,43 @@ export function SingleFieldAreaWidget(props: Props) {
         <WidgetContainerActions {...provided} setChartSetting={props.setChartSetting} />
       )}
       Queries={{
-        chart: provided => (
-          <WrappedEventsRequest
-            {...provided}
-            {...queryProps}
-            query={props.eventView.getQueryWithAdditionalConditions()}
-            period={statsPeriod ?? undefined}
-            interval={interval ?? ''}
-            limit={1}
-            includePrevious
-            includeTransformedData
-            partial
-          />
-        ),
+        chart: {
+          component: provided => (
+            <WrappedEventsRequest
+              {...provided}
+              {...queryProps}
+              yAxis={provided.fields}
+              limit={1}
+              includePrevious
+              includeTransformedData
+              partial
+              query={props.eventView.getQueryWithAdditionalConditions()}
+              period={statsPeriod ?? undefined}
+              interval={interval ?? ''}
+            />
+          ),
+          transform: transformAreaResults,
+        },
       }}
       Visualizations={{
-        chart: provided => (
-          <DurationChart
-            {...provided}
-            start={start ?? ''}
-            end={end ?? ''}
-            utc={utc === 'true'} // TODO(k-fish): Fix this.
-            grid={{
-              left: space(0),
-              right: space(3),
-              top: space(2),
-              bottom: '0px',
-            }}
-            disableMultiAxis
-          />
-        ),
+        chart: {
+          component: provided => (
+            <DurationChart
+              {...provided}
+              start={start ?? ''}
+              end={end ?? ''}
+              utc={utc === 'true'} // TODO(k-fish): Fix this.
+              grid={{
+                left: space(0),
+                right: space(0),
+                top: space(2),
+                bottom: space(0),
+              }}
+              disableMultiAxis
+            />
+          ),
+          height: 160,
+        },
       }}
     />
   );
