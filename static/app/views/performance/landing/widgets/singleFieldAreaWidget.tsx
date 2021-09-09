@@ -1,4 +1,5 @@
 import {Location} from 'history';
+import omit from 'lodash/omit';
 
 import EventsRequest from 'app/components/charts/eventsRequest';
 import {getParams} from 'app/components/organizations/globalSelectionHeader/getParams';
@@ -25,7 +26,7 @@ type Props = {
 
 export function SingleFieldAreaWidget(props: Props) {
   const {start, end, utc, interval, statsPeriod} = getParams(props.location.query);
-  const queryProps = {...props, orgSlug: props.organization.slug};
+  const queryProps = {...omit(props, 'field'), orgSlug: props.organization.slug};
 
   return (
     <GenericPerformanceWidget
@@ -33,11 +34,7 @@ export function SingleFieldAreaWidget(props: Props) {
       dataType={GenericPerformanceWidgetDataType.area}
       fields={[props.field]}
       HeaderActions={provided => (
-        <WidgetContainerActions
-          {...provided}
-          organization={props.organization}
-          setChartSetting={props.setChartSetting}
-        />
+        <WidgetContainerActions {...provided} setChartSetting={props.setChartSetting} />
       )}
       Queries={{
         chart: provided => (

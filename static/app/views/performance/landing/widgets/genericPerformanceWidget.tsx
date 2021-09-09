@@ -9,6 +9,7 @@ import ErrorPanel from 'app/components/charts/errorPanel';
 import {EventsRequestProps} from 'app/components/charts/eventsRequest';
 import {HeaderTitleLegend} from 'app/components/charts/styles';
 import Link from 'app/components/links/link';
+import {getParams} from 'app/components/organizations/globalSelectionHeader/getParams';
 import Placeholder from 'app/components/placeholder';
 import QuestionTooltip from 'app/components/questionTooltip';
 import Radio from 'app/components/radio';
@@ -63,13 +64,22 @@ type HistogramWidgetProps = BaseProps & {
   Visualization: FunctionComponent<ChartDataProps & {chartHeight: number}>;
 };
 
+interface CommonPerformanceQueryData {
+  loading: boolean;
+}
+
+type QueryChildren = {
+  children: (props: CommonPerformanceQueryData) => ReactNode;
+};
+type QueryFC = FunctionComponent<QueryChildren>;
+
 type AreaWidgetProps = BaseProps & {
   dataType: GenericPerformanceWidgetDataType.area;
   Queries: {
-    [dataKey: String]: FunctionComponent<Pick<EventsRequestProps, 'children' | 'yAxis'>>;
+    [dataKey: string]: QueryFC;
   };
   Visualizations: {
-    [dataKey: String]: FunctionComponent<React.ComponentProps<typeof DurationChart>>;
+    [dataKey: string]: FunctionComponent<React.ComponentProps<typeof DurationChart>>;
   };
 };
 
@@ -267,10 +277,8 @@ type WidgetData = {
 };
 export function GenericPerformanceWidget(props: WidgetPropUnion) {
   const [widgetData, setWidgetData] = useState<WidgetData>({});
-  const widgetProps: {
-    widgetData: WidgetData;
-    setWidgetData: (data: WidgetData) => void;
-  } = {widgetData, setWidgetData};
+  const widgetProps = {widgetData, setWidgetData};
+
   switch (props.dataType) {
     case GenericPerformanceWidgetDataType.area:
       return <AreaWidget {...props} {...widgetProps} />;
@@ -290,6 +298,7 @@ export function transformAreaResults(
   results: Parameters<ComponentProps<AreaWidgetProps['Queries']>['children']>[0]
 ) {
   const {router, fields: chartFields} = widgetProps;
+  const {start, end, utc, interval, statsPeriod} = getParams(widgetProps.location.query);
 
   const loading = results.loading;
   const errored = results.errored;
@@ -297,12 +306,6 @@ export function transformAreaResults(
   const previousData = results.previousTimeseriesData
     ? results.previousTimeseriesData
     : undefined;
-
-  const start = null;
-
-  const end = null;
-  const utc = false;
-  const statsPeriod = '24h';
 
   const childData = {
     loading,
