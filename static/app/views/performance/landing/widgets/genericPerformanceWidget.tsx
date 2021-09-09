@@ -13,7 +13,7 @@ import {Location} from 'history';
 import Button from 'app/components/button';
 import ErrorPanel from 'app/components/charts/errorPanel';
 import {EventsRequestProps, TimeSeriesData} from 'app/components/charts/eventsRequest';
-import {HeaderTitleLegend} from 'app/components/charts/styles';
+import {HeaderTitleLegend, HeaderValue} from 'app/components/charts/styles';
 import Link from 'app/components/links/link';
 import {getParams} from 'app/components/organizations/globalSelectionHeader/getParams';
 import Placeholder from 'app/components/placeholder';
@@ -72,7 +72,7 @@ type HistogramWidgetProps = BaseProps & {
 
 type CommonPerformanceQueryData = {
   loading: boolean;
-  reloading: boolean;
+  // reloading: boolean;
   errored: boolean;
 };
 
@@ -81,18 +81,21 @@ type QueryChildren = {
 };
 type QueryFC = FunctionComponent<QueryChildren>;
 
+type QueryDefinition = {
+  component: QueryFC;
+  enabled?: boolean;
+  transform: (
+    props: AreaWidgetFunctionProps,
+    results: CommonPerformanceQueryData
+  ) => CommonPerformanceQueryData;
+};
+type Queries = {
+  [dataKey: string]: QueryDefinition;
+};
+
 type AreaWidgetProps = BaseProps & {
   dataType: GenericPerformanceWidgetDataType.area;
-  Queries: {
-    [dataKey: string]: {
-      component: QueryFC;
-      dependsOn?: string[];
-      transform: (
-        props: AreaWidgetFunctionProps,
-        results: CommonPerformanceQueryData
-      ) => CommonPerformanceQueryData;
-    };
-  };
+  Queries: Queries;
   Visualizations: {
     [dataKey: string]: {
       component: FunctionComponent<React.ComponentProps<typeof DurationChart>>;
@@ -146,8 +149,7 @@ function WidgetHeader(props: HeaderProps & {renderedActions: ReactNode}) {
           {title}
           <QuestionTooltip position="top" size="sm" title={titleTooltip} />
         </StyledHeaderTitleLegend>
-        <div />
-        {subtitle ? subtitle : null}
+        <div>{subtitle ? subtitle : null}</div>
       </TitleContainer>
 
       {renderedActions && (
@@ -288,15 +290,25 @@ const HeaderActionsContainer = styled('div')``;
 
 type WidgetPropUnion = HistogramWidgetProps | AreaWidgetProps | VitalsWidgetProps;
 
-interface WidgetDataTypes {} // TODO(k-fish): Refine this.
-
+interface WidgetDataTypes extends CommonPerformanceQueryData {}
+// TODO(k-fish): Refine this.
 type WidgetData = {
   [dataKey: string]: WidgetDataTypes;
+};
+
+export type WidgetDataProps = {
+  widgetData: WidgetData;
+  setWidgetDataForKey: (dataKey: string, result: WidgetDataTypes) => {};
 };
 export function GenericPerformanceWidget(props: WidgetPropUnion) {
   const [widgetData, setWidgetData] = useState<WidgetData>({});
 
-  const widgetProps = {widgetData, setWidgetData};
+  const setWidgetDataForKey = (dataKey: string, result: WidgetDataTypes) => {
+    const newData: WidgetData = {...widgetData, [dataKey]: result};
+    setWidgetData(newData);
+  };
+
+  const widgetProps = {widgetData, setWidgetDataForKey};
   switch (props.dataType) {
     case GenericPerformanceWidgetDataType.area:
       return <AreaWidget {...props} {...widgetProps} />;
@@ -310,6 +322,13 @@ export function GenericPerformanceWidget(props: WidgetPropUnion) {
 }
 
 type AreaWidgetFunctionProps = AreaWidgetProps & {router: InjectedRouter};
+
+const defaultGrid = {
+  left: space(0),
+  right: space(0),
+  top: space(2),
+  bottom: space(0),
+};
 
 export function transformAreaResults(
   widgetProps: AreaWidgetFunctionProps,
@@ -372,6 +391,7 @@ function _AreaWidget(props: AreaWidgetFunctionProps) {
                   ([key, Visualization]) => (
                     <Visualization.component
                       key={key}
+                      grid={defaultGrid}
                       {...childData}
                       height={chartHeight}
                     />
@@ -388,6 +408,8 @@ function _AreaWidget(props: AreaWidgetFunctionProps) {
 }
 
 export const AreaWidget = withRouter(_AreaWidget);
+
+function QueryHandler();
 
 function _VitalsWidget(
   props: VitalsWidgetProps & {

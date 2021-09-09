@@ -1,16 +1,20 @@
-import {ComponentProps} from 'react';
+import styled from '@emotion/styled';
 import {Location} from 'history';
 import omit from 'lodash/omit';
 
 import EventsRequest from 'app/components/charts/eventsRequest';
 import {getParams} from 'app/components/organizations/globalSelectionHeader/getParams';
-import space from 'app/styles/space';
+import {t} from 'app/locale';
 import {Organization} from 'app/types';
 import EventView from 'app/utils/discover/eventView';
 import withApi from 'app/utils/withApi';
 import DurationChart from 'app/views/performance/charts/chart';
 
-import {GenericPerformanceWidget, transformAreaResults} from './genericPerformanceWidget';
+import {
+  GenericPerformanceWidget,
+  transformAreaResults,
+  WidgetDataProps,
+} from './genericPerformanceWidget';
 import {GenericPerformanceWidgetDataType} from './types';
 import {performanceWidgetSetting, WidgetContainerActions} from './widgetContainer';
 
@@ -23,15 +27,16 @@ type Props = {
   location: Location;
   organization: Organization;
   setChartSetting: (setting: performanceWidgetSetting) => void;
-};
+} & WidgetDataProps;
 
 export function SingleFieldAreaWidget(props: Props) {
-  const {start, end, utc, interval, statsPeriod} = getParams(props.location.query);
+  const {interval, statsPeriod} = getParams(props.location.query);
   const queryProps = {...omit(props, 'field'), orgSlug: props.organization.slug};
 
   return (
     <GenericPerformanceWidget
       {...props}
+      subtitle={<Subtitle>{t('Compared to last %s ', statsPeriod)}</Subtitle>}
       dataType={GenericPerformanceWidgetDataType.area}
       fields={[props.field]}
       HeaderActions={provided => (
@@ -43,7 +48,7 @@ export function SingleFieldAreaWidget(props: Props) {
             <WrappedEventsRequest
               {...provided}
               {...queryProps}
-              yAxis={provided.fields}
+              yAxis={props.field}
               limit={1}
               includePrevious
               includeTransformedData
@@ -58,21 +63,7 @@ export function SingleFieldAreaWidget(props: Props) {
       }}
       Visualizations={{
         chart: {
-          component: provided => (
-            <DurationChart
-              {...provided}
-              start={start ?? ''}
-              end={end ?? ''}
-              utc={utc === 'true'} // TODO(k-fish): Fix this.
-              grid={{
-                left: space(0),
-                right: space(0),
-                top: space(2),
-                bottom: space(0),
-              }}
-              disableMultiAxis
-            />
-          ),
+          component: provided => <DurationChart {...provided} disableMultiAxis />,
           height: 160,
         },
       }}
@@ -81,3 +72,7 @@ export function SingleFieldAreaWidget(props: Props) {
 }
 
 const WrappedEventsRequest = withApi(EventsRequest);
+const Subtitle = styled('span')`
+  color: ${p => p.theme.gray300};
+  font-size: ${p => p.theme.fontSizeMedium};
+`;
