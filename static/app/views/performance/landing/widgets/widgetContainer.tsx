@@ -18,16 +18,16 @@ import {_VitalChart} from 'app/views/performance/vitalDetail/vitalChart';
 import {getTermHelp, PERFORMANCE_TERM} from '../../data';
 import {Chart as _HistogramChart} from '../chart/histogramChart';
 
-import {
-  GenericPerformanceWidget,
-  GenericPerformanceWidgetDataType,
-} from './genericPerformanceWidget';
+import {GenericPerformanceWidget} from './genericPerformanceWidget';
 import {ChartRowProps} from './miniChartRow';
+import {SingleFieldAreaWidget} from './singleFieldAreaWidget';
+import {GenericPerformanceWidgetDataType} from './types';
 
 type Props = {
   index: number;
   organization: Organization;
-  defaultChartSetting: ChartSettingType;
+  isNewType?: boolean;
+  defaultChartSetting: performanceWidgetSetting;
   chartHeight: number;
 } & ChartRowProps;
 
@@ -38,7 +38,7 @@ type ForwardedProps = Omit<
   orgSlug: string;
 };
 
-export enum ChartSettingType {
+export enum performanceWidgetSetting {
   LCP_HISTOGRAM = 'lcp_histogram',
   FCP_HISTOGRAM = 'fcp_histogram',
   FID_HISTOGRAM = 'fid_histogram',
@@ -58,53 +58,60 @@ const getContainerLocalStorageKey = (index: number, height: number) =>
 const getChartSetting = (
   index: number,
   height: number,
-  defaultType: ChartSettingType
-): ChartSettingType => {
+  defaultType: performanceWidgetSetting
+): performanceWidgetSetting => {
   const key = getContainerLocalStorageKey(index, height);
   const value = localStorage.getItem(key);
-  if (value && Object.values(ChartSettingType).includes(value as ChartSettingType)) {
-    const _value: ChartSettingType = value as ChartSettingType;
+  if (
+    value &&
+    Object.values(performanceWidgetSetting).includes(value as performanceWidgetSetting)
+  ) {
+    const _value: performanceWidgetSetting = value as performanceWidgetSetting;
     return _value;
   }
   return defaultType;
 };
-const _setChartSetting = (index: number, height: number, setting: ChartSettingType) => {
+const _setChartSetting = (
+  index: number,
+  height: number,
+  setting: performanceWidgetSetting
+) => {
   const key = getContainerLocalStorageKey(index, height);
   localStorage.setItem(key, setting);
 };
 
-const CHART_SETTING_OPTIONS: ({
+const WIDGET_SETTING_OPTIONS: ({
   organization: Organization,
-}) => Record<ChartSettingType, ChartSetting> = ({
+}) => Record<performanceWidgetSetting, ChartSetting> = ({
   organization,
 }: {
   organization: Organization;
 }) => ({
-  [ChartSettingType.LCP_HISTOGRAM]: {
+  [performanceWidgetSetting.LCP_HISTOGRAM]: {
     title: t('LCP Distribution'),
     titleTooltip: getTermHelp(organization, PERFORMANCE_TERM.DURATION_DISTRIBUTION),
     chartFields: ['measurements.lcp'],
     dataType: GenericPerformanceWidgetDataType.histogram,
   },
-  [ChartSettingType.FCP_HISTOGRAM]: {
+  [performanceWidgetSetting.FCP_HISTOGRAM]: {
     title: t('FCP Distribution'),
     titleTooltip: getTermHelp(organization, PERFORMANCE_TERM.DURATION_DISTRIBUTION),
     chartFields: ['measurements.fcp'],
     dataType: GenericPerformanceWidgetDataType.histogram,
   },
-  [ChartSettingType.FID_HISTOGRAM]: {
+  [performanceWidgetSetting.FID_HISTOGRAM]: {
     title: t('FID Distribution'),
     titleTooltip: getTermHelp(organization, PERFORMANCE_TERM.DURATION_DISTRIBUTION),
     chartFields: ['measurements.fid'],
     dataType: GenericPerformanceWidgetDataType.histogram,
   },
-  [ChartSettingType.TPM_AREA]: {
+  [performanceWidgetSetting.TPM_AREA]: {
     title: t('Transactions Per Minute'),
     titleTooltip: getTermHelp(organization, PERFORMANCE_TERM.TPM),
     chartFields: ['tpm()'],
     dataType: GenericPerformanceWidgetDataType.area,
   },
-  [ChartSettingType.WORST_LCP_VITALS]: {
+  [performanceWidgetSetting.WORST_LCP_VITALS]: {
     title: t('Worst LCP Web Vitals'),
     titleTooltip: getTermHelp(organization, PERFORMANCE_TERM.LCP),
     chartFields: [
@@ -118,22 +125,40 @@ const CHART_SETTING_OPTIONS: ({
   },
 });
 
-const _WidgetChartContainer = ({organization, index, chartHeight, ...rest}: Props) => {
+const _WidgetContainer = ({
+  organization,
+  index,
+  chartHeight,
+  isNewType,
+  ...rest
+}: Props) => {
   const _chartSetting = getChartSetting(index, chartHeight, rest.defaultChartSetting);
   const [chartSetting, setChartSettingState] = useState(_chartSetting);
 
-  const setChartSetting = (setting: ChartSettingType) => {
+  const setChartSetting = (setting: performanceWidgetSetting) => {
     _setChartSetting(index, chartHeight, setting);
     setChartSettingState(setting);
   };
   const onFilterChange = () => {};
 
-  const chartSettingOptions = CHART_SETTING_OPTIONS({organization})[chartSetting];
+  const chartSettingOptions = WIDGET_SETTING_OPTIONS({organization})[chartSetting];
 
   const queryProps: ForwardedProps = {
     ...rest,
     orgSlug: organization.slug,
   };
+
+  if (isNewType) {
+    return (
+      <SingleFieldAreaWidget
+        title={t('Transactions Per Minute')}
+        titleTooltip={getTermHelp(organization, PERFORMANCE_TERM.TPM)}
+        chartField="tpm()"
+        {...rest}
+        organization={organization}
+      />
+    );
+  }
 
   if (chartSettingOptions.dataType === GenericPerformanceWidgetDataType.histogram) {
     return (
@@ -236,13 +261,15 @@ const ChartContainerActions = ({
 }: {
   loading: boolean;
   organization: Organization;
-  setChartSetting: (setting: ChartSettingType) => void;
+  setChartSetting: (setting: performanceWidgetSetting) => void;
 }) => {
   const menuOptions: React.ReactNode[] = [];
 
-  const settingsMap = CHART_SETTING_OPTIONS({organization});
-  for (const _setting in ChartSettingType) {
-    const setting: ChartSettingType = ChartSettingType[_setting] as ChartSettingType;
+  const settingsMap = WIDGET_SETTING_OPTIONS({organization});
+  for (const _setting in performanceWidgetSetting) {
+    const setting: performanceWidgetSetting = performanceWidgetSetting[
+      _setting
+    ] as performanceWidgetSetting;
 
     const options = settingsMap[setting];
     menuOptions.push(
@@ -270,6 +297,6 @@ const HistogramChart = styled(_HistogramChart)`
   }
 `;
 
-const WidgetChartContainer = withOrganization(_WidgetChartContainer);
+const WidgetContainer = withOrganization(_WidgetContainer);
 
-export default WidgetChartContainer;
+export default WidgetContainer;

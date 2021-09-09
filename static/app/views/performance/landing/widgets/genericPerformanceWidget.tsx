@@ -1,4 +1,4 @@
-import React, {FunctionComponent, ReactNode} from 'react';
+import React, {ComponentProps, FunctionComponent, ReactNode} from 'react';
 import {InjectedRouter, withRouter} from 'react-router';
 import {withTheme} from '@emotion/react';
 import styled from '@emotion/styled';
@@ -264,37 +264,50 @@ export function GenericPerformanceWidget(props: WidgetPropUnion) {
   }
 }
 
-function _AreaWidget(props: AreaWidgetProps & {router: InjectedRouter}) {
-  const {chartFields, Query, Chart, HeaderActions, chartHeight, router, containerType} =
-    props;
+type AreaWidgetFunctionProps = AreaWidgetProps & {router: InjectedRouter};
+
+export function transformAreaResults(
+  widgetProps: AreaWidgetFunctionProps,
+  results: Parameters<ComponentProps<AreaWidgetProps['Query']>['children']>[0]
+) {
+  const {router, chartFields} = widgetProps;
+
+  const loading = results.loading;
+  const errored = results.errored;
+  const data: Series[] = results.timeseriesData as Series[];
+
+  const start = null;
+
+  const end = null;
+  const utc = false;
+  const statsPeriod = '14d';
+
+  const childData = {
+    loading,
+    errored,
+    data,
+    start,
+    end,
+    utc,
+    statsPeriod,
+    router,
+    field: chartFields[0],
+  };
+
+  return childData;
+}
+
+function _AreaWidget(props: AreaWidgetFunctionProps) {
+  const {chartFields, Query, Chart, HeaderActions, chartHeight, containerType} = props;
+
+  const Container = getPerformanceWidgetContainer({
+    containerType,
+  });
+
   return (
     <Query yAxis={chartFields}>
       {results => {
-        const loading = results.loading;
-        const errored = results.errored;
-        const data: Series[] = results.timeseriesData as Series[];
-
-        const start = null;
-
-        const end = null;
-        const utc = false;
-        const statsPeriod = '14d';
-
-        const Container = getPerformanceWidgetContainer({
-          containerType,
-        });
-
-        const childData = {
-          loading,
-          errored,
-          data,
-          start,
-          end,
-          utc,
-          statsPeriod,
-          router,
-          field: chartFields[0],
-        };
+        const childData = transformAreaResults(props, results);
 
         return (
           <Container>
@@ -307,7 +320,7 @@ function _AreaWidget(props: AreaWidgetProps & {router: InjectedRouter}) {
               />
               <DataStateSwitch
                 {...childData}
-                hasData={!!(data && data.length)}
+                hasData={!!(childData.data && childData.data.length)}
                 errorComponent={<DefaultErrorComponent chartHeight={chartHeight} />}
                 dataComponent={<Chart {...childData} grid={grid} height={chartHeight} />}
                 emptyComponent={<Placeholder height={`${chartHeight}px`} />}
@@ -319,7 +332,8 @@ function _AreaWidget(props: AreaWidgetProps & {router: InjectedRouter}) {
     </Query>
   );
 }
-const AreaWidget = withRouter(_AreaWidget);
+
+export const AreaWidget = withRouter(_AreaWidget);
 
 function _VitalsWidget(
   props: VitalsWidgetProps & {
