@@ -22,7 +22,7 @@ export const MiniChartRow = (props: ChartRowProps) => {
           key={index}
           index={index}
           chartHeight={160}
-          isNewType={index === 0}
+          isNewType
           defaultChartSetting={performanceWidgetSetting.LCP_HISTOGRAM}
         />
       ))}

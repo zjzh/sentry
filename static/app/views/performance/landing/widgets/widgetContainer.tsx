@@ -125,13 +125,8 @@ const WIDGET_SETTING_OPTIONS: ({
   },
 });
 
-const _WidgetContainer = ({
-  organization,
-  index,
-  chartHeight,
-  isNewType,
-  ...rest
-}: Props) => {
+const _WidgetContainer = (props: Props) => {
+  const {organization, index, chartHeight, isNewType, ...rest} = props;
   const _chartSetting = getChartSetting(index, chartHeight, rest.defaultChartSetting);
   const [chartSetting, setChartSettingState] = useState(_chartSetting);
 
@@ -139,123 +134,125 @@ const _WidgetContainer = ({
     _setChartSetting(index, chartHeight, setting);
     setChartSettingState(setting);
   };
-  const onFilterChange = () => {};
+  // const onFilterChange = () => {};
 
   const chartSettingOptions = WIDGET_SETTING_OPTIONS({organization})[chartSetting];
 
-  const queryProps: ForwardedProps = {
-    ...rest,
-    orgSlug: organization.slug,
-  };
+  // const queryProps: ForwardedProps = {
+  //   ...rest,
+  //   orgSlug: organization.slug,
+  // };
 
   if (isNewType) {
     return (
       <SingleFieldAreaWidget
+        {...props}
+        {...chartSettingOptions}
         title={t('Transactions Per Minute')}
         titleTooltip={getTermHelp(organization, PERFORMANCE_TERM.TPM)}
-        chartField="tpm()"
-        {...rest}
-        organization={organization}
+        field="tpm()"
+        setChartSetting={setChartSetting}
       />
     );
   }
 
-  if (chartSettingOptions.dataType === GenericPerformanceWidgetDataType.histogram) {
-    return (
-      <GenericPerformanceWidget
-        chartHeight={chartHeight}
-        {...chartSettingOptions}
-        HeaderActions={provided => (
-          <ChartContainerActions
-            {...provided}
-            {...rest}
-            organization={organization}
-            setChartSetting={setChartSetting}
-          />
-        )}
-        Query={provided => (
-          <HistogramQuery {...provided} {...queryProps} numBuckets={20} />
-        )}
-        Chart={provided => (
-          <HistogramChart {...provided} onFilterChange={onFilterChange} />
-        )}
-      />
-    );
-  } else if (chartSettingOptions.dataType === GenericPerformanceWidgetDataType.vitals) {
-    return (
-      <GenericPerformanceWidget
-        chartHeight={chartHeight}
-        {...chartSettingOptions}
-        HeaderActions={provided => (
-          <ChartContainerActions
-            {...provided}
-            {...rest}
-            organization={organization}
-            setChartSetting={setChartSetting}
-          />
-        )}
-        Query={provided => (
-          <WrappedEventsRequest
-            organization={organization}
-            {...provided}
-            {...queryProps}
-            numBuckets={20}
-          />
-        )}
-        Chart={provided => <_VitalChart {...provided} />}
-      />
-    );
-  } else {
-    const {eventView, location} = rest;
-    const globalSelection = eventView.getGlobalSelection();
-    const start = globalSelection.datetime.start
-      ? getUtcToLocalDateObject(globalSelection.datetime.start)
-      : null;
+  // if (chartSettingOptions.dataType === GenericPerformanceWidgetDataType.histogram) {
+  //   return (
+  //     <GenericPerformanceWidget
+  //       {...props}
+  //       {...chartSettingOptions}
+  //       HeaderActions={provided => (
+  //         <WidgetContainerActions
+  //           {...provided}
+  //           {...rest}
+  //           organization={organization}
+  //           setChartSetting={setChartSetting}
+  //         />
+  //       )}
+  //       Queries={provided => (
+  //         <HistogramQuery {...provided} {...queryProps} numBuckets={20} />
+  //       )}
+  //       Visualizations={provided => (
+  //         <HistogramChart {...provided} onFilterChange={onFilterChange} />
+  //       )}
+  //     />
+  //   );
+  // } else if (chartSettingOptions.dataType === GenericPerformanceWidgetDataType.vitals) {
+  //   return (
+  //     <GenericPerformanceWidget
+  //       {...props}
+  //       {...chartSettingOptions}
+  //       HeaderActions={provided => (
+  //         <WidgetContainerActions
+  //           {...provided}
+  //           {...rest}
+  //           organization={organization}
+  //           setChartSetting={setChartSetting}
+  //         />
+  //       )}
+  //       Queries={provided => (
+  //         <WrappedEventsRequest
+  //           organization={organization}
+  //           {...provided}
+  //           {...queryProps}
+  //           numBuckets={20}
+  //         />
+  //       )}
+  //       Visualizations={provided => <_VitalChart {...provided} />}
+  //     />
+  //   );
+  // } else {
+  //   const {eventView, location} = rest;
+  //   const globalSelection = eventView.getGlobalSelection();
+  //   const start = globalSelection.datetime.start
+  //     ? getUtcToLocalDateObject(globalSelection.datetime.start)
+  //     : null;
 
-    const end = globalSelection.datetime.end
-      ? getUtcToLocalDateObject(globalSelection.datetime.end)
-      : null;
+  //   const end = globalSelection.datetime.end
+  //     ? getUtcToLocalDateObject(globalSelection.datetime.end)
+  //     : null;
 
-    const {utc} = getParams(location.query);
+  //   const {utc} = getParams(location.query);
 
-    return (
-      <GenericPerformanceWidget
-        chartHeight={160}
-        {...chartSettingOptions}
-        HeaderActions={provided => (
-          <ChartContainerActions
-            {...provided}
-            {...rest}
-            organization={organization}
-            setChartSetting={setChartSetting}
-          />
-        )}
-        Query={provided => (
-          <WrappedEventsRequest
-            organization={organization}
-            {...provided}
-            {...queryProps}
-            numBuckets={20}
-          />
-        )}
-        Chart={provided => (
-          <DurationChart
-            {...provided}
-            start={start}
-            end={end}
-            utc={utc === 'true'}
-            onFilterChange={onFilterChange}
-            disableMultiAxis
-          />
-        )}
-      />
-    );
-  }
+  //   return (
+  //     <GenericPerformanceWidget
+  //       {...props}
+  //       {...chartSettingOptions}
+  //       HeaderActions={provided => (
+  //         <WidgetContainerActions
+  //           {...provided}
+  //           {...rest}
+  //           organization={organization}
+  //           setChartSetting={setChartSetting}
+  //         />
+  //       )}
+  //       Queries={provided => (
+  //         <WrappedEventsRequest
+  //           organization={organization}
+  //           {...provided}
+  //           {...queryProps}
+  //           numBuckets={20}
+  //         />
+  //       )}
+  //       Visualizations={provided => (
+  //         <DurationChart
+  //           {...provided}
+  //           start={start}
+  //           end={end}
+  //           utc={utc === 'true'}
+  //           onFilterChange={onFilterChange}
+  //           disableMultiAxis
+  //         />
+  //       )}
+  //     />
+  //   );
+  // }
+  return <div>Error</div>;
 };
 
-const WrappedEventsRequest = withApi(EventsRequest);
+// const WrappedEventsRequest = withApi(EventsRequest);
 
-const ChartContainerActions = ({
+export const WidgetContainerActions = ({
   organization,
   setChartSetting,
 }: {
@@ -291,11 +288,11 @@ const ChartActionContainer = styled('div')`
   justify-content: flex-end;
 `;
 
-const HistogramChart = styled(_HistogramChart)`
-  & .Container {
-    padding-bottom: 0px;
-  }
-`;
+// const HistogramChart = styled(_HistogramChart)`
+//   & .Container {
+//     padding-bottom: 0px;
+//   }
+// `;
 
 const WidgetContainer = withOrganization(_WidgetContainer);
 

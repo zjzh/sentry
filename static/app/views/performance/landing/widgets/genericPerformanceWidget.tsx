@@ -1,4 +1,4 @@
-import React, {ComponentProps, FunctionComponent, ReactNode} from 'react';
+import React, {ComponentProps, FunctionComponent, ReactNode, useState} from 'react';
 import {InjectedRouter, withRouter} from 'react-router';
 import {withTheme} from '@emotion/react';
 import styled from '@emotion/styled';
@@ -18,6 +18,7 @@ import overflowEllipsis from 'app/styles/overflowEllipsis';
 import space from 'app/styles/space';
 import {Organization} from 'app/types';
 import {Series} from 'app/types/echarts';
+import EventView from 'app/utils/discover/eventView';
 import {WebVital} from 'app/utils/discover/fields';
 import {HistogramChildren} from 'app/utils/performance/histogram/histogramQuery';
 import {DataFilter} from 'app/utils/performance/histogram/types';
@@ -43,11 +44,15 @@ type HeaderProps = {
 };
 
 type BaseProps = {
-  chartFields: string[];
+  fields: string[];
   chartHeight: number;
   dataType: GenericPerformanceWidgetDataType;
   containerType: PerformanceWidgetContainerTypes;
   HeaderActions?: FunctionComponent<ChartDataProps>;
+
+  location: Location;
+  eventView: EventView;
+  organization: Organization;
 } & HeaderProps;
 
 type HistogramWidgetProps = BaseProps & {
@@ -55,19 +60,23 @@ type HistogramWidgetProps = BaseProps & {
   Query: FunctionComponent<
     HistogramChildren & {fields: string[]; dataFilter?: DataFilter}
   >;
-  Chart: FunctionComponent<ChartDataProps & {chartHeight: number}>;
+  Visualization: FunctionComponent<ChartDataProps & {chartHeight: number}>;
 };
 
 type AreaWidgetProps = BaseProps & {
   dataType: GenericPerformanceWidgetDataType.area;
-  Query: FunctionComponent<Pick<EventsRequestProps, 'children' | 'yAxis'>>;
-  Chart: FunctionComponent<React.ComponentProps<typeof DurationChart>>;
+  Queries: {
+    [dataKey: String]: FunctionComponent<Pick<EventsRequestProps, 'children' | 'yAxis'>>;
+  };
+  Visualizations: {
+    [dataKey: String]: FunctionComponent<React.ComponentProps<typeof DurationChart>>;
+  };
 };
 
 type VitalsWidgetProps = BaseProps & {
   dataType: GenericPerformanceWidgetDataType.vitals;
   Query: FunctionComponent<Pick<EventsRequestProps, 'children' | 'yAxis'>>;
-  Chart: FunctionComponent<React.ComponentProps<typeof DurationChart>>;
+  Visualization: FunctionComponent<React.ComponentProps<typeof DurationChart>>;
 };
 
 function DataStateSwitch(props: {
@@ -251,14 +260,24 @@ const HeaderActionsContainer = styled('div')``;
 
 type WidgetPropUnion = HistogramWidgetProps | AreaWidgetProps | VitalsWidgetProps;
 
+interface WidgetDataTypes {} // TODO(k-fish): Refine this.
+
+type WidgetData = {
+  [dataKey: string]: WidgetDataTypes;
+};
 export function GenericPerformanceWidget(props: WidgetPropUnion) {
+  const [widgetData, setWidgetData] = useState<WidgetData>({});
+  const widgetProps: {
+    widgetData: WidgetData;
+    setWidgetData: (data: WidgetData) => void;
+  } = {widgetData, setWidgetData};
   switch (props.dataType) {
     case GenericPerformanceWidgetDataType.area:
-      return <AreaWidget {...props} />;
+      return <AreaWidget {...props} {...widgetProps} />;
     case GenericPerformanceWidgetDataType.histogram:
-      return <HistogramWidget {...props} />;
+      return <HistogramWidget {...props} {...widgetProps} />;
     case GenericPerformanceWidgetDataType.vitals:
-      return <VitalsWidget {...props} />;
+      return <VitalsWidget {...props} {...widgetProps} />;
     default:
       throw new Error('Missing support for data type');
   }
@@ -268,24 +287,28 @@ type AreaWidgetFunctionProps = AreaWidgetProps & {router: InjectedRouter};
 
 export function transformAreaResults(
   widgetProps: AreaWidgetFunctionProps,
-  results: Parameters<ComponentProps<AreaWidgetProps['Query']>['children']>[0]
+  results: Parameters<ComponentProps<AreaWidgetProps['Queries']>['children']>[0]
 ) {
-  const {router, chartFields} = widgetProps;
+  const {router, fields: chartFields} = widgetProps;
 
   const loading = results.loading;
   const errored = results.errored;
   const data: Series[] = results.timeseriesData as Series[];
+  const previousData = results.previousTimeseriesData
+    ? results.previousTimeseriesData
+    : undefined;
 
   const start = null;
 
   const end = null;
   const utc = false;
-  const statsPeriod = '14d';
+  const statsPeriod = '24h';
 
   const childData = {
     loading,
     errored,
     data,
+    previousData,
     start,
     end,
     utc,
@@ -298,7 +321,14 @@ export function transformAreaResults(
 }
 
 function _AreaWidget(props: AreaWidgetFunctionProps) {
-  const {chartFields, Query, Chart, HeaderActions, chartHeight, containerType} = props;
+  const {
+    fields: chartFields,
+    Queries: Query,
+    Visualizations: Chart,
+    HeaderActions,
+    chartHeight,
+    containerType,
+  } = props;
 
   const Container = getPerformanceWidgetContainer({
     containerType,
@@ -344,10 +374,10 @@ function _VitalsWidget(
   }
 ) {
   const {
-    chartFields,
+    fields: chartFields,
     Query,
     location,
-    Chart,
+    Visualization: Chart,
     organization,
     HeaderActions,
     chartHeight,
@@ -454,7 +484,14 @@ const ContentContainer = styled('div')`
 const VitalsWidget = withTheme(withOrganization(withRouter(_VitalsWidget)));
 
 function HistogramWidget(props: HistogramWidgetProps) {
-  const {chartFields, Query, Chart, HeaderActions, chartHeight, containerType} = props;
+  const {
+    fields: chartFields,
+    Query,
+    Visualization: Chart,
+    HeaderActions,
+    chartHeight,
+    containerType,
+  } = props;
   return (
     <Query fields={chartFields} dataFilter="exclude_outliers">
       {results => {
