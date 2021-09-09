@@ -1,19 +1,15 @@
-import React, {
-  ComponentProps,
-  Fragment,
-  FunctionComponent,
-  ReactNode,
-  useState,
-} from 'react';
+import React, {Fragment, FunctionComponent, ReactNode, useEffect, useState} from 'react';
 import {InjectedRouter, withRouter} from 'react-router';
 import {withTheme} from '@emotion/react';
 import styled from '@emotion/styled';
 import {Location} from 'history';
 
+import {queries} from 'sentry-test/reactTestingLibrary';
+
 import Button from 'app/components/button';
 import ErrorPanel from 'app/components/charts/errorPanel';
-import {EventsRequestProps, TimeSeriesData} from 'app/components/charts/eventsRequest';
-import {HeaderTitleLegend, HeaderValue} from 'app/components/charts/styles';
+import {EventsRequestProps} from 'app/components/charts/eventsRequest';
+import {HeaderTitleLegend} from 'app/components/charts/styles';
 import Link from 'app/components/links/link';
 import {getParams} from 'app/components/organizations/globalSelectionHeader/getParams';
 import Placeholder from 'app/components/placeholder';
@@ -26,7 +22,7 @@ import space from 'app/styles/space';
 import {Organization} from 'app/types';
 import {Series} from 'app/types/echarts';
 import EventView from 'app/utils/discover/eventView';
-import {WebVital} from 'app/utils/discover/fields';
+import {QueryFieldValue, WebVital} from 'app/utils/discover/fields';
 import {HistogramChildren} from 'app/utils/performance/histogram/histogramQuery';
 import {DataFilter} from 'app/utils/performance/histogram/types';
 import {VitalsData} from 'app/utils/performance/vitals/vitalsCardsDiscoverQuery';
@@ -60,7 +56,8 @@ type BaseProps = {
   location: Location;
   eventView: EventView;
   organization: Organization;
-} & HeaderProps;
+} & HeaderProps &
+  WidgetDataProps;
 
 type HistogramWidgetProps = BaseProps & {
   dataType: GenericPerformanceWidgetDataType.histogram;
@@ -307,8 +304,8 @@ export function GenericPerformanceWidget(props: WidgetPropUnion) {
     const newData: WidgetData = {...widgetData, [dataKey]: result};
     setWidgetData(newData);
   };
-
   const widgetProps = {widgetData, setWidgetDataForKey};
+
   switch (props.dataType) {
     case GenericPerformanceWidgetDataType.area:
       return <AreaWidget {...props} {...widgetProps} />;
@@ -376,30 +373,40 @@ function _AreaWidget(props: AreaWidgetFunctionProps) {
 
         return (
           <Container>
-            <ContentContainer>
-              <WidgetHeader
-                {...props}
-                renderedActions={
-                  HeaderActions && <HeaderActions grid={grid} {...childData} />
-                }
-              />
-              <DataStateSwitch
-                {...childData}
-                hasData={!!(childData.data && childData.data.length)}
-                errorComponent={<DefaultErrorComponent height={chartHeight} />}
-                dataComponents={Object.entries(Visualizations).map(
-                  ([key, Visualization]) => (
-                    <Visualization.component
-                      key={key}
-                      grid={defaultGrid}
-                      {...childData}
-                      height={chartHeight}
-                    />
-                  )
-                )}
-                emptyComponent={<Placeholder height={`${chartHeight}px`} />}
-              />
-            </ContentContainer>
+            <QueryHandler
+              widgetData={props.widgetData}
+              setWidgetDataForKey={props.setWidgetDataForKey}
+              queryProps={props}
+              queries={Object.entries(Queries).map(([key, definition]) => ({
+                ...definition,
+                queryKey: key,
+              }))}
+            >
+              <ContentContainer>
+                <WidgetHeader
+                  {...props}
+                  renderedActions={
+                    HeaderActions && <HeaderActions grid={grid} {...childData} />
+                  }
+                />
+                <DataStateSwitch
+                  {...childData}
+                  hasData={!!(childData.data && childData.data.length)}
+                  errorComponent={<DefaultErrorComponent height={chartHeight} />}
+                  dataComponents={Object.entries(Visualizations).map(
+                    ([key, Visualization]) => (
+                      <Visualization.component
+                        key={key}
+                        grid={defaultGrid}
+                        {...childData}
+                        height={chartHeight}
+                      />
+                    )
+                  )}
+                  emptyComponent={<Placeholder height={`${chartHeight}px`} />}
+                />
+              </ContentContainer>
+            </QueryHandler>
           </Container>
         );
       }}
@@ -409,7 +416,47 @@ function _AreaWidget(props: AreaWidgetFunctionProps) {
 
 export const AreaWidget = withRouter(_AreaWidget);
 
-function QueryHandler();
+type QueryDefinitionWithKey = QueryDefinition & {queryKey: string};
+type QueryHandlerProps = {
+  queries: QueryDefinitionWithKey[];
+  children: ReactNode;
+  queryProps: AreaWidgetFunctionProps;
+} & WidgetDataProps;
+
+function QueryHandler(props: QueryHandlerProps) {
+  if (!props.queries.length) {
+    return <div>{props.children}</div>;
+  }
+  const [query, ...remainingQueries] = props.queries;
+  if (typeof query.enabled !== 'undefined' && !query.enabled) {
+    return <QueryHandler {...props} queries={remainingQueries} />;
+  }
+  return (
+    <query.component>
+      {results => {
+        return (
+          <Fragment>
+            <QueryRepeater results={results} {...props} query={query} />
+            <QueryHandler {...props} queries={remainingQueries} />
+          </Fragment>
+        );
+      }}
+    </query.component>
+  );
+}
+
+function QueryRepeater(
+  props: {
+    results: CommonPerformanceQueryData;
+    query: QueryDefinitionWithKey;
+  } & QueryHandlerProps
+) {
+  const {results, query} = props;
+  useEffect(() => {
+    props.setWidgetDataForKey(query.queryKey, query.transform(props.queryProps, results));
+  }, [results.data]);
+  return <Fragment />;
+}
 
 function _VitalsWidget(
   props: VitalsWidgetProps & {
