@@ -72,6 +72,9 @@ type CommonPerformanceQueryData = {
   loading: boolean;
   // reloading: boolean;
   errored: boolean;
+
+  timeseriesData?: Series[];
+  previousTimeseriesData?: Series[];
 };
 
 type QueryChildren = {

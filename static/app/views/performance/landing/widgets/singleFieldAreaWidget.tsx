@@ -64,7 +64,14 @@ export function SingleFieldAreaWidget(props: Props) {
       }}
       Visualizations={{
         chart: {
-          component: provided => <DurationChart {...provided} disableMultiAxis />,
+          component: provided => (
+            <DurationChart
+              {...provided}
+              disableMultiAxis
+              disableXAxis
+              grid={{containLabel: false, top: 0, bottom: 0, left: 0, right: 0}}
+            />
+          ),
           height: 160,
         },
       }}
@@ -72,7 +79,7 @@ export function SingleFieldAreaWidget(props: Props) {
   );
 }
 
-const WrappedEventsRequest = withApi(_EventsRequest);
+const EventsRequest = withApi(_EventsRequest);
 const Subtitle = styled('span')`
   color: ${p => p.theme.gray300};
   font-size: ${p => p.theme.fontSizeMedium};

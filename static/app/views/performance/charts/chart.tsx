@@ -24,6 +24,7 @@ type Props = {
   height?: number;
   grid?: AreaChart['props']['grid'];
   disableMultiAxis?: boolean;
+  disableXAxis?: boolean;
   loading: boolean;
 };
 
@@ -70,6 +71,7 @@ class Chart extends Component<Props> {
       height,
       grid,
       disableMultiAxis,
+      disableXAxis,
     } = this.props;
 
     if (!data || data.length <= 0) {
@@ -204,6 +206,7 @@ class Chart extends Component<Props> {
             {...zoomRenderProps}
             series={series}
             previousPeriod={previousData ? [previousData] : undefined}
+            xAxis={disableXAxis ? {show: false} : undefined}
             {...areaChartProps}
           />
         )}
