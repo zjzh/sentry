@@ -51,7 +51,10 @@ type BaseProps = {
   chartHeight: number;
   dataType: GenericPerformanceWidgetDataType;
   containerType: PerformanceWidgetContainerTypes;
-  HeaderActions?: FunctionComponent<ChartDataProps>;
+  HeaderActions?: FunctionComponent<{
+    widgetData: WidgetData;
+    setChartSetting: (setting: any) => void;
+  }>;
 
   location: Location;
   eventView: EventView;
@@ -67,108 +70,11 @@ type HistogramWidgetProps = BaseProps & {
   Visualization: FunctionComponent<ChartDataProps & {chartHeight: number}>;
 };
 
-type CommonPerformanceQueryData = {
-  data: any;
-  loading: boolean;
-  // reloading: boolean;
-  errored: boolean;
-
-  timeseriesData?: Series[];
-  previousTimeseriesData?: Series[];
-};
-
-type QueryChildren = {
-  children: (props: CommonPerformanceQueryData) => ReactNode;
-};
-type QueryFC = FunctionComponent<QueryChildren>;
-
-type QueryDefinition = {
-  component: QueryFC;
-  enabled?: (data: WidgetData) => boolean;
-  transform: (
-    props: AreaWidgetFunctionProps,
-    results: CommonPerformanceQueryData
-  ) => CommonPerformanceQueryData;
-};
-type Queries = {
-  [dataKey: string]: QueryDefinition;
-};
-
-type AreaWidgetProps = BaseProps & {
-  dataType: GenericPerformanceWidgetDataType.area;
-  Queries: Queries;
-  Visualizations: {
-    [dataKey: string]: {
-      component: FunctionComponent<React.ComponentProps<typeof DurationChart>>;
-      height: number; // Used to determine placeholder and loading sizes. Will also be passed to the component.
-    };
-  };
-};
-
 type VitalsWidgetProps = BaseProps & {
   dataType: GenericPerformanceWidgetDataType.vitals;
   Query: FunctionComponent<Pick<EventsRequestProps, 'children' | 'yAxis'>>;
   Visualization: FunctionComponent<React.ComponentProps<typeof DurationChart>>;
 };
-
-function DataStateSwitch(props: {
-  loading: boolean;
-  errored: boolean;
-  hasData: boolean;
-
-  loadingComponent?: JSX.Element;
-  errorComponent: JSX.Element;
-  dataComponents: JSX.Element[];
-  emptyComponent: JSX.Element;
-}): JSX.Element {
-  if (props.loading && props.loadingComponent) {
-    return props.loadingComponent;
-  }
-  if (props.errored) {
-    return props.errorComponent;
-  }
-  if (!props.hasData) {
-    return props.emptyComponent;
-  }
-  return <Fragment>{props.dataComponents}</Fragment>;
-}
-
-// TODO(k-fish): Remove hardcoding the grid once all the charts are in
-const grid = {
-  left: space(3),
-  right: space(3),
-  top: '25px',
-  bottom: '0px',
-};
-
-function WidgetHeader(props: HeaderProps & {renderedActions: ReactNode}) {
-  const {title, titleTooltip, renderedActions, subtitle} = props;
-  return (
-    <WidgetHeaderContainer>
-      <TitleContainer>
-        <StyledHeaderTitleLegend>
-          {title}
-          <QuestionTooltip position="top" size="sm" title={titleTooltip} />
-        </StyledHeaderTitleLegend>
-        <div>{subtitle ? subtitle : null}</div>
-      </TitleContainer>
-
-      {renderedActions && (
-        <HeaderActionsContainer>{renderedActions}</HeaderActionsContainer>
-      )}
-    </WidgetHeaderContainer>
-  );
-}
-
-const StyledHeaderTitleLegend = styled(HeaderTitleLegend)`
-  position: relative;
-  z-index: initial;
-`;
-
-const TitleContainer = styled('div')`
-  display: flex;
-  flex-direction: column;
-`;
 
 type Transaction = {
   transaction: string;
@@ -375,7 +281,7 @@ export function transformAreaResults(
 }
 
 function _AreaWidget(props: AreaWidgetFunctionProps) {
-  const {Visualizations, HeaderActions, chartHeight, containerType} = props;
+  const {Visualizations, chartHeight, containerType} = props;
 
   const Container = getPerformanceWidgetContainer({
     containerType,
@@ -386,10 +292,7 @@ function _AreaWidget(props: AreaWidgetFunctionProps) {
   return (
     <Container>
       <ContentContainer>
-        <WidgetHeader
-          {...props}
-          renderedActions={HeaderActions && <HeaderActions grid={grid} {...childData} />}
-        />
+        <WidgetHeader {...props} />
         <DataStateSwitch
           {...childData}
           hasData={!!(childData?.data && childData?.data.length)}
@@ -398,7 +301,8 @@ function _AreaWidget(props: AreaWidgetFunctionProps) {
             <Visualization.component
               key={key}
               grid={defaultGrid}
-              {...childData}
+              {...props.widgetData[key]}
+              widgetData={props.widgetData}
               height={chartHeight}
             />
           ))}
@@ -417,41 +321,6 @@ type QueryHandlerProps = {
   children: ReactNode;
   queryProps: AreaWidgetFunctionProps;
 } & WidgetDataProps;
-
-function QueryHandler(props: QueryHandlerProps) {
-  if (!props.queries.length) {
-    return <div>{props.children}</div>;
-  }
-  const [query, ...remainingQueries] = props.queries;
-  if (typeof query.enabled !== 'undefined' && !query.enabled) {
-    return <QueryHandler {...props} queries={remainingQueries} />;
-  }
-  return (
-    <query.component>
-      {results => {
-        return (
-          <Fragment>
-            <QueryResultSaver results={results} {...props} query={query} />
-            <QueryHandler {...props} queries={remainingQueries} />
-          </Fragment>
-        );
-      }}
-    </query.component>
-  );
-}
-
-function QueryResultSaver(
-  props: {
-    results: CommonPerformanceQueryData;
-    query: QueryDefinitionWithKey;
-  } & QueryHandlerProps
-) {
-  const {results, query} = props;
-  useEffect(() => {
-    props.setWidgetDataForKey(query.queryKey, query.transform(props.queryProps, results));
-  }, [results.data, results.loading, results.errored]);
-  return <Fragment />;
-}
 
 function _VitalsWidget(
   props: VitalsWidgetProps & {

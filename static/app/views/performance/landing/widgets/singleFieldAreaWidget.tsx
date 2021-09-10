@@ -10,12 +10,8 @@ import EventView from 'app/utils/discover/eventView';
 import withApi from 'app/utils/withApi';
 import DurationChart from 'app/views/performance/charts/chart';
 
-import {
-  GenericPerformanceWidget,
-  transformAreaResults,
-  WidgetDataProps,
-} from './genericPerformanceWidget';
-import {GenericPerformanceWidgetDataType} from './types';
+import {GenericPerformanceWidget, transformAreaResults} from './genericPerformanceWidget';
+import {GenericPerformanceWidgetDataType, WidgetDataProps} from './types';
 import {performanceWidgetSetting, WidgetContainerActions} from './widgetContainer';
 
 type Props = {
@@ -59,19 +55,11 @@ export function SingleFieldAreaWidget(props: Props) {
             />
           ),
           transform: transformAreaResults,
-          enabled: data => true,
         },
       }}
       Visualizations={{
         chart: {
-          component: provided => (
-            <DurationChart
-              {...provided}
-              disableMultiAxis
-              disableXAxis
-              grid={{containLabel: false, top: 0, bottom: 0, left: 0, right: 0}}
-            />
-          ),
+          component: provided => <DurationChart {...provided} disableMultiAxis />,
           height: 160,
         },
       }}
