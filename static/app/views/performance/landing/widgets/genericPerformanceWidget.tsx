@@ -245,13 +245,6 @@ function _AreaWidget(props: AreaWidgetFunctionProps) {
 
 export const AreaWidget = withRouter(_AreaWidget);
 
-type QueryDefinitionWithKey = QueryDefinition & {queryKey: string};
-type QueryHandlerProps = {
-  queries: QueryDefinitionWithKey[];
-  children: ReactNode;
-  queryProps: AreaWidgetFunctionProps;
-} & WidgetDataProps;
-
 function _VitalsWidget(
   props: VitalsWidgetProps & {
     router: InjectedRouter;

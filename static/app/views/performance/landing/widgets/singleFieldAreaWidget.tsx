@@ -1,3 +1,4 @@
+import {InjectedRouter, withRouter} from 'react-router';
 import styled from '@emotion/styled';
 import {Location} from 'history';
 import omit from 'lodash/omit';
@@ -8,7 +9,7 @@ import {t} from 'app/locale';
 import {Organization} from 'app/types';
 import EventView from 'app/utils/discover/eventView';
 import withApi from 'app/utils/withApi';
-import DurationChart from 'app/views/performance/charts/chart';
+import _DurationChart from 'app/views/performance/charts/chart';
 
 import {GenericPerformanceWidget} from './components/performanceWidget';
 import {transformEventsRequestToArea} from './transforms/transformEventsToArea';
@@ -69,6 +70,7 @@ export function SingleFieldAreaWidget(props: Props) {
 }
 
 const EventsRequest = withApi(_EventsRequest);
+const DurationChart = withRouter(_DurationChart);
 const Subtitle = styled('span')`
   color: ${p => p.theme.gray300};
   font-size: ${p => p.theme.fontSizeMedium};

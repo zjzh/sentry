@@ -32,7 +32,7 @@ export type GenericPerformanceWidgetProps = {
   containerType: PerformanceWidgetContainerTypes;
   HeaderActions?: FunctionComponent<{
     widgetData: WidgetData;
-    setChartSetting: (setting: any) => void;
+    setChartSetting: (setting: any) => {};
   }>;
 
   location: Location;
@@ -44,7 +44,7 @@ export type GenericPerformanceWithData = GenericPerformanceWidgetProps & WidgetD
 
 export type WidgetDataProps = {
   widgetData: WidgetData;
-  setWidgetDataForKey: (dataKey: string, result: WidgetDataTypes) => {};
+  setWidgetDataForKey: (dataKey: string, result: WidgetDataTypes) => void;
 };
 
 export type HistogramQueryChildrenProps = HistogramChildrenProps;
@@ -62,7 +62,7 @@ export type CommonPerformanceQueryData = {
   previousTimeseriesData?: Series[];
 };
 
-export type AreaWidgetFunctionProps = AreaWidgetProps & {router: InjectedRouter};
+export type AreaWidgetFunctionProps = AreaWidgetProps;
 
 export type QueryChildren = {
   children: (props: CommonPerformanceQueryData) => ReactNode;
@@ -86,7 +86,9 @@ export type AreaWidgetProps = GenericPerformanceWidgetProps & {
   Queries: Queries;
   Visualizations: {
     [dataKey: string]: {
-      component: FunctionComponent<React.ComponentProps<typeof DurationChart>>;
+      component: FunctionComponent<
+        React.ComponentProps<typeof DurationChart> & {widgetData: WidgetData}
+      >;
       height: number; // Used to determine placeholder and loading sizes. Will also be passed to the component.
     };
   };
@@ -97,3 +99,10 @@ export interface WidgetDataTypes extends CommonPerformanceQueryData {}
 export type WidgetData = {
   [dataKey: string]: WidgetDataTypes;
 };
+
+export type QueryDefinitionWithKey = QueryDefinition & {queryKey: string};
+export type QueryHandlerProps = {
+  queries: QueryDefinitionWithKey[];
+  children: ReactNode;
+  queryProps: AreaWidgetFunctionProps;
+} & WidgetDataProps;

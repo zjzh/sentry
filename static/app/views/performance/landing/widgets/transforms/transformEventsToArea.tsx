@@ -7,7 +7,7 @@ export function transformEventsRequestToArea(
   widgetProps: AreaWidgetFunctionProps,
   results: CommonPerformanceQueryData
 ) {
-  const {router, fields: chartFields} = widgetProps;
+  const {fields: chartFields} = widgetProps;
   const {start, end, utc, interval, statsPeriod} = getParams(widgetProps.location.query);
 
   const loading = results.loading;
@@ -27,7 +27,6 @@ export function transformEventsRequestToArea(
     statsPeriod: statsPeriod ?? undefined,
     start: start ?? '',
     end: end ?? '',
-    router,
     field: chartFields[0],
   };
 

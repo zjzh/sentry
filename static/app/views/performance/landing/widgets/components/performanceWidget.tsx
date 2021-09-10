@@ -44,7 +44,7 @@ export function GenericPerformanceWidget(props: WidgetPropUnion) {
             queryKey: key,
           }))}
         >
-          <AreaWidget {...props} {...widgetProps} />
+          <_AreaWidget {...props} {...widgetProps} />
         </QueryHandler>
       );
     default:
@@ -80,7 +80,7 @@ function _AreaWidget(props: AreaWidgetFunctionProps & WidgetDataProps) {
             <Visualization.component
               key={key}
               grid={defaultGrid}
-              {...props.widgetData[key]}
+              {...(props.widgetData[key] ?? {})}
               widgetData={props.widgetData}
               height={chartHeight}
             />
