@@ -2,7 +2,7 @@ import styled from '@emotion/styled';
 import {Location} from 'history';
 import omit from 'lodash/omit';
 
-import EventsRequest from 'app/components/charts/eventsRequest';
+import _EventsRequest from 'app/components/charts/eventsRequest';
 import {getParams} from 'app/components/organizations/globalSelectionHeader/getParams';
 import {t} from 'app/locale';
 import {Organization} from 'app/types';
@@ -45,7 +45,7 @@ export function SingleFieldAreaWidget(props: Props) {
       Queries={{
         chart: {
           component: provided => (
-            <WrappedEventsRequest
+            <EventsRequest
               {...provided}
               {...queryProps}
               yAxis={props.field}
@@ -59,6 +59,7 @@ export function SingleFieldAreaWidget(props: Props) {
             />
           ),
           transform: transformAreaResults,
+          enabled: data => true,
         },
       }}
       Visualizations={{
@@ -71,7 +72,7 @@ export function SingleFieldAreaWidget(props: Props) {
   );
 }
 
-const WrappedEventsRequest = withApi(EventsRequest);
+const WrappedEventsRequest = withApi(_EventsRequest);
 const Subtitle = styled('span')`
   color: ${p => p.theme.gray300};
   font-size: ${p => p.theme.fontSizeMedium};

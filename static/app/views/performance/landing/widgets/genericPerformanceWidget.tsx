@@ -68,6 +68,7 @@ type HistogramWidgetProps = BaseProps & {
 };
 
 type CommonPerformanceQueryData = {
+  data: any;
   loading: boolean;
   // reloading: boolean;
   errored: boolean;
@@ -80,7 +81,7 @@ type QueryFC = FunctionComponent<QueryChildren>;
 
 type QueryDefinition = {
   component: QueryFC;
-  enabled?: boolean;
+  enabled?: (data: WidgetData) => boolean;
   transform: (
     props: AreaWidgetFunctionProps,
     results: CommonPerformanceQueryData
@@ -308,7 +309,19 @@ export function GenericPerformanceWidget(props: WidgetPropUnion) {
 
   switch (props.dataType) {
     case GenericPerformanceWidgetDataType.area:
-      return <AreaWidget {...props} {...widgetProps} />;
+      return (
+        <QueryHandler
+          widgetData={widgetData}
+          setWidgetDataForKey={setWidgetDataForKey}
+          queryProps={props}
+          queries={Object.entries(props.Queries).map(([key, definition]) => ({
+            ...definition,
+            queryKey: key,
+          }))}
+        >
+          <AreaWidget {...props} {...widgetProps} />
+        </QueryHandler>
+      );
     case GenericPerformanceWidgetDataType.histogram:
       return <HistogramWidget {...props} {...widgetProps} />;
     case GenericPerformanceWidgetDataType.vitals:
@@ -359,58 +372,37 @@ export function transformAreaResults(
 }
 
 function _AreaWidget(props: AreaWidgetFunctionProps) {
-  const {Queries, Visualizations, HeaderActions, chartHeight, containerType} = props;
+  const {Visualizations, HeaderActions, chartHeight, containerType} = props;
 
   const Container = getPerformanceWidgetContainer({
     containerType,
   });
-  const [Query] = Object.values(Queries);
+
+  const childData = props.widgetData[Object.keys(Visualizations)[0]];
 
   return (
-    <Query.component>
-      {results => {
-        const childData = transformAreaResults(props, results);
-
-        return (
-          <Container>
-            <QueryHandler
-              widgetData={props.widgetData}
-              setWidgetDataForKey={props.setWidgetDataForKey}
-              queryProps={props}
-              queries={Object.entries(Queries).map(([key, definition]) => ({
-                ...definition,
-                queryKey: key,
-              }))}
-            >
-              <ContentContainer>
-                <WidgetHeader
-                  {...props}
-                  renderedActions={
-                    HeaderActions && <HeaderActions grid={grid} {...childData} />
-                  }
-                />
-                <DataStateSwitch
-                  {...childData}
-                  hasData={!!(childData.data && childData.data.length)}
-                  errorComponent={<DefaultErrorComponent height={chartHeight} />}
-                  dataComponents={Object.entries(Visualizations).map(
-                    ([key, Visualization]) => (
-                      <Visualization.component
-                        key={key}
-                        grid={defaultGrid}
-                        {...childData}
-                        height={chartHeight}
-                      />
-                    )
-                  )}
-                  emptyComponent={<Placeholder height={`${chartHeight}px`} />}
-                />
-              </ContentContainer>
-            </QueryHandler>
-          </Container>
-        );
-      }}
-    </Query.component>
+    <Container>
+      <ContentContainer>
+        <WidgetHeader
+          {...props}
+          renderedActions={HeaderActions && <HeaderActions grid={grid} {...childData} />}
+        />
+        <DataStateSwitch
+          {...childData}
+          hasData={!!(childData?.data && childData?.data.length)}
+          errorComponent={<DefaultErrorComponent height={chartHeight} />}
+          dataComponents={Object.entries(Visualizations).map(([key, Visualization]) => (
+            <Visualization.component
+              key={key}
+              grid={defaultGrid}
+              {...childData}
+              height={chartHeight}
+            />
+          ))}
+          emptyComponent={<Placeholder height={`${chartHeight}px`} />}
+        />
+      </ContentContainer>
+    </Container>
   );
 }
 
@@ -436,7 +428,7 @@ function QueryHandler(props: QueryHandlerProps) {
       {results => {
         return (
           <Fragment>
-            <QueryRepeater results={results} {...props} query={query} />
+            <QueryResultSaver results={results} {...props} query={query} />
             <QueryHandler {...props} queries={remainingQueries} />
           </Fragment>
         );
@@ -445,7 +437,7 @@ function QueryHandler(props: QueryHandlerProps) {
   );
 }
 
-function QueryRepeater(
+function QueryResultSaver(
   props: {
     results: CommonPerformanceQueryData;
     query: QueryDefinitionWithKey;
@@ -454,7 +446,7 @@ function QueryRepeater(
   const {results, query} = props;
   useEffect(() => {
     props.setWidgetDataForKey(query.queryKey, query.transform(props.queryProps, results));
-  }, [results.data]);
+  }, [results.data, results.loading, results.errored]);
   return <Fragment />;
 }
 
