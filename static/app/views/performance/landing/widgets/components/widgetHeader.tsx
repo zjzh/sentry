@@ -1,10 +1,11 @@
-import React from 'react';
 import styled from '@emotion/styled';
 
 import {HeaderTitleLegend} from 'app/components/charts/styles';
 import QuestionTooltip from 'app/components/questionTooltip';
 
-function WidgetHeader(props: HeaderProps) {
+import {GenericPerformanceWidgetProps, WidgetDataProps} from '../types';
+
+export function WidgetHeader(props: GenericPerformanceWidgetProps & WidgetDataProps) {
   const {title, titleTooltip, subtitle, HeaderActions} = props;
   return (
     <WidgetHeaderContainer>

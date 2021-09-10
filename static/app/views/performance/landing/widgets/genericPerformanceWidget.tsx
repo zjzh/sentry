@@ -38,6 +38,7 @@ import {transactionSummaryRouteWithQuery} from '../../transactionSummary/utils';
 import {ChartDataProps} from '../chart/histogramChart';
 import {VitalBar} from '../vitalsCards';
 
+import {QueryHandler} from './components/queryHandler';
 import {GenericPerformanceWidgetDataType} from './types';
 
 type HistogramWidgetProps = BaseProps & {
