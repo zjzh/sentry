@@ -19,7 +19,8 @@ import {performanceWidgetSetting, WidgetContainerActions} from './widgetContaine
 type Props = {
   title: string;
   titleTooltip: string;
-  field: string;
+  fields: string[];
+  chartColor?: string;
 
   eventView: EventView;
   location: Location;
@@ -31,12 +32,16 @@ export function SingleFieldAreaWidget(props: Props) {
   const {interval, statsPeriod} = getParams(props.location.query);
   const queryProps = {...omit(props, 'field'), orgSlug: props.organization.slug};
 
+  if (props.fields.length !== 1) {
+    throw new Error(`Single field area can only accept a single field (${props.fields})`);
+  }
+
   return (
     <GenericPerformanceWidget
       {...props}
       subtitle={<Subtitle>{t('Compared to last %s ', statsPeriod)}</Subtitle>}
       dataType={GenericPerformanceWidgetDataType.area}
-      fields={[props.field]}
+      fields={[...props.fields]}
       HeaderActions={provided => (
         <WidgetContainerActions {...provided} setChartSetting={props.setChartSetting} />
       )}
@@ -46,7 +51,7 @@ export function SingleFieldAreaWidget(props: Props) {
             <EventsRequest
               {...provided}
               {...queryProps}
-              yAxis={props.field}
+              yAxis={props.fields[0]}
               limit={1}
               includePrevious
               includeTransformedData
@@ -61,7 +66,13 @@ export function SingleFieldAreaWidget(props: Props) {
       }}
       Visualizations={{
         chart: {
-          component: provided => <DurationChart {...provided} disableMultiAxis />,
+          component: provided => (
+            <DurationChart
+              {...provided}
+              disableMultiAxis
+              chartColors={props.chartColor ? [props.chartColor] : undefined}
+            />
+          ),
           height: 160,
         },
       }}

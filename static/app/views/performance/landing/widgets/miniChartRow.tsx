@@ -1,3 +1,4 @@
+import {useTheme} from '@emotion/react';
 import styled from '@emotion/styled';
 import {Location} from 'history';
 
@@ -14,15 +15,18 @@ export type ChartRowProps = {
 };
 
 export const MiniChartRow = (props: ChartRowProps) => {
+  const charts = 3;
+  const theme = useTheme();
+  const palette = theme.charts.getColorPalette(charts);
   return (
     <StyledRow minSize={200}>
-      {new Array(3).fill(0).map((_, index) => (
+      {new Array(charts).fill(0).map((_, index) => (
         <WidgetContainer
           {...props}
           key={index}
           index={index}
           chartHeight={160}
-          isNewType
+          chartColor={palette[index]}
           defaultChartSetting={performanceWidgetSetting.LCP_HISTOGRAM}
         />
       ))}

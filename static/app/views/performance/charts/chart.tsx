@@ -25,6 +25,7 @@ type Props = {
   grid?: AreaChart['props']['grid'];
   disableMultiAxis?: boolean;
   disableXAxis?: boolean;
+  chartColors?: string[];
   loading: boolean;
 };
 
@@ -72,12 +73,13 @@ class Chart extends Component<Props> {
       grid,
       disableMultiAxis,
       disableXAxis,
+      chartColors,
     } = this.props;
 
     if (!data || data.length <= 0) {
       return null;
     }
-    const colors = theme.charts.getColorPalette(4);
+    const colors = chartColors ?? theme.charts.getColorPalette(4);
 
     const durationOnly = data.every(
       value => aggregateOutputType(value.seriesName) === 'duration'

@@ -17,9 +17,9 @@ import {GenericPerformanceWidgetDataType} from './types';
 type Props = {
   index: number;
   organization: Organization;
-  isNewType?: boolean;
   defaultChartSetting: performanceWidgetSetting;
   chartHeight: number;
+  chartColor?: string;
 } & ChartRowProps;
 
 type ForwardedProps = Omit<
@@ -34,14 +34,20 @@ export enum performanceWidgetSetting {
   FCP_HISTOGRAM = 'fcp_histogram',
   FID_HISTOGRAM = 'fid_histogram',
   TPM_AREA = 'tpm_area',
+  FAILURE_RATE_AREA = 'failure_rate_area',
+  USER_MISERY_AREA = 'user_misery_area',
   WORST_LCP_VITALS = 'worst_lcp_vitals',
 }
 
-interface ChartSetting {
-  title: string;
-  titleTooltip: string;
-  chartFields: string[];
+interface BaseChartSetting {
   dataType: GenericPerformanceWidgetDataType;
+  title: string;
+
+  titleTooltip: string;
+  fields: string[];
+
+  // Area
+  chartColor?: string;
 }
 
 const getContainerLocalStorageKey = (index: number, height: number) =>
@@ -71,9 +77,9 @@ const _setChartSetting = (
   localStorage.setItem(key, setting);
 };
 
-const WIDGET_SETTING_OPTIONS: ({
+const WIDGET_SETTINGS: ({
   organization: Organization,
-}) => Record<performanceWidgetSetting, ChartSetting> = ({
+}) => Record<performanceWidgetSetting, BaseChartSetting> = ({
   organization,
 }: {
   organization: Organization;
@@ -81,31 +87,25 @@ const WIDGET_SETTING_OPTIONS: ({
   [performanceWidgetSetting.LCP_HISTOGRAM]: {
     title: t('LCP Distribution'),
     titleTooltip: getTermHelp(organization, PERFORMANCE_TERM.DURATION_DISTRIBUTION),
-    chartFields: ['measurements.lcp'],
+    fields: ['measurements.lcp'],
     dataType: GenericPerformanceWidgetDataType.histogram,
   },
   [performanceWidgetSetting.FCP_HISTOGRAM]: {
     title: t('FCP Distribution'),
     titleTooltip: getTermHelp(organization, PERFORMANCE_TERM.DURATION_DISTRIBUTION),
-    chartFields: ['measurements.fcp'],
+    fields: ['measurements.fcp'],
     dataType: GenericPerformanceWidgetDataType.histogram,
   },
   [performanceWidgetSetting.FID_HISTOGRAM]: {
     title: t('FID Distribution'),
     titleTooltip: getTermHelp(organization, PERFORMANCE_TERM.DURATION_DISTRIBUTION),
-    chartFields: ['measurements.fid'],
+    fields: ['measurements.fid'],
     dataType: GenericPerformanceWidgetDataType.histogram,
-  },
-  [performanceWidgetSetting.TPM_AREA]: {
-    title: t('Transactions Per Minute'),
-    titleTooltip: getTermHelp(organization, PERFORMANCE_TERM.TPM),
-    chartFields: ['tpm()'],
-    dataType: GenericPerformanceWidgetDataType.area,
   },
   [performanceWidgetSetting.WORST_LCP_VITALS]: {
     title: t('Worst LCP Web Vitals'),
     titleTooltip: getTermHelp(organization, PERFORMANCE_TERM.LCP),
-    chartFields: [
+    fields: [
       'count_if(measurements.lcp,greaterOrEquals,4000)',
       'count_if(measurements.lcp,greaterOrEquals,2500)',
       'count_if(measurements.lcp,greaterOrEquals,0)',
@@ -114,10 +114,28 @@ const WIDGET_SETTING_OPTIONS: ({
     ],
     dataType: GenericPerformanceWidgetDataType.vitals,
   },
+  [performanceWidgetSetting.TPM_AREA]: {
+    title: t('Transactions Per Minute'),
+    titleTooltip: getTermHelp(organization, PERFORMANCE_TERM.TPM),
+    fields: ['tpm()'],
+    dataType: GenericPerformanceWidgetDataType.area,
+  },
+  [performanceWidgetSetting.FAILURE_RATE_AREA]: {
+    title: t('Failure Rate'),
+    titleTooltip: getTermHelp(organization, PERFORMANCE_TERM.FAILURE_RATE),
+    fields: ['failure_rate()'],
+    dataType: GenericPerformanceWidgetDataType.area,
+  },
+  [performanceWidgetSetting.USER_MISERY_AREA]: {
+    title: t('User Misery'),
+    titleTooltip: getTermHelp(organization, PERFORMANCE_TERM.USER_MISERY),
+    fields: ['count_unique(user)'],
+    dataType: GenericPerformanceWidgetDataType.area,
+  },
 });
 
 const _WidgetContainer = (props: Props) => {
-  const {organization, index, chartHeight, isNewType, ...rest} = props;
+  const {organization, index, chartHeight, ...rest} = props;
   const _chartSetting = getChartSetting(index, chartHeight, rest.defaultChartSetting);
   const [chartSetting, setChartSettingState] = useState(_chartSetting);
 
@@ -127,21 +145,12 @@ const _WidgetContainer = (props: Props) => {
   };
   // const onFilterChange = () => {};
 
-  const chartSettingOptions = WIDGET_SETTING_OPTIONS({organization})[chartSetting];
-
-  // const queryProps: ForwardedProps = {
-  //   ...rest,
-  //   orgSlug: organization.slug,
-  // };
-
-  if (isNewType) {
+  const singleFieldAreaSettings = WIDGET_SETTINGS({organization})[chartSetting];
+  if (singleFieldAreaSettings) {
     return (
       <SingleFieldAreaWidget
         {...props}
-        {...chartSettingOptions}
-        title={t('Transactions Per Minute')}
-        titleTooltip={getTermHelp(organization, PERFORMANCE_TERM.TPM)}
-        field="tpm()"
+        {...singleFieldAreaSettings}
         setChartSetting={setChartSetting}
       />
     );
@@ -253,7 +262,7 @@ export const WidgetContainerActions = ({
 }) => {
   const menuOptions: React.ReactNode[] = [];
 
-  const settingsMap = WIDGET_SETTING_OPTIONS({organization});
+  const settingsMap = WIDGET_SETTINGS({organization});
   for (const _setting in performanceWidgetSetting) {
     const setting: performanceWidgetSetting = performanceWidgetSetting[
       _setting
