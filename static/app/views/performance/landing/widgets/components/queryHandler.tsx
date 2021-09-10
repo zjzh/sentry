@@ -1,6 +1,6 @@
 import {Fragment, useEffect} from 'react';
 
-function QueryHandler(props: QueryHandlerProps) {
+export function QueryHandler(props: QueryHandlerProps) {
   if (!props.queries.length) {
     return <div>{props.children}</div>;
   }

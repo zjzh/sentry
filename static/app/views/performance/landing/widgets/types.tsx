@@ -1,5 +1,6 @@
 import React, {FunctionComponent, ReactNode} from 'react';
 import {InjectedRouter} from 'react-router';
+import {Location} from 'history';
 
 import {RenderProps} from 'app/components/charts/eventsRequest';
 import {Organization} from 'app/types';
@@ -37,7 +38,9 @@ export type GenericPerformanceWidgetProps = {
   location: Location;
   eventView: EventView;
   organization: Organization;
-} & WidgetDataProps;
+};
+
+export type GenericPerformanceWithData = GenericPerformanceWidgetProps & WidgetDataProps;
 
 export type WidgetDataProps = {
   widgetData: WidgetData;
@@ -59,7 +62,7 @@ export type CommonPerformanceQueryData = {
   previousTimeseriesData?: Series[];
 };
 
-type AreaWidgetFunctionProps = AreaWidgetProps & {router: InjectedRouter};
+export type AreaWidgetFunctionProps = AreaWidgetProps & {router: InjectedRouter};
 
 export type QueryChildren = {
   children: (props: CommonPerformanceQueryData) => ReactNode;

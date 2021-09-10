@@ -1,24 +1,15 @@
 import {useState} from 'react';
 import styled from '@emotion/styled';
 
-import EventsRequest from 'app/components/charts/eventsRequest';
 import MenuItem from 'app/components/menuItem';
-import {getParams} from 'app/components/organizations/globalSelectionHeader/getParams';
 import {t} from 'app/locale';
 import {Organization} from 'app/types';
-import {getUtcToLocalDateObject} from 'app/utils/dates';
 import localStorage from 'app/utils/localStorage';
-import HistogramQuery from 'app/utils/performance/histogram/histogramQuery';
-import withApi from 'app/utils/withApi';
 import withOrganization from 'app/utils/withOrganization';
 import ContextMenu from 'app/views/dashboardsV2/contextMenu';
-import DurationChart from 'app/views/performance/charts/chart';
-import {_VitalChart} from 'app/views/performance/vitalDetail/vitalChart';
 
 import {getTermHelp, PERFORMANCE_TERM} from '../../data';
-import {Chart as _HistogramChart} from '../chart/histogramChart';
 
-import {GenericPerformanceWidget} from './genericPerformanceWidget';
 import {ChartRowProps} from './miniChartRow';
 import {SingleFieldAreaWidget} from './singleFieldAreaWidget';
 import {GenericPerformanceWidgetDataType} from './types';

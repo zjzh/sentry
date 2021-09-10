@@ -40,28 +40,6 @@ import {VitalBar} from '../vitalsCards';
 
 import {GenericPerformanceWidgetDataType} from './types';
 
-type HeaderProps = {
-  title: string;
-  titleTooltip: string;
-  subtitle?: JSX.Element;
-};
-
-type BaseProps = {
-  fields: string[];
-  chartHeight: number;
-  dataType: GenericPerformanceWidgetDataType;
-  containerType: PerformanceWidgetContainerTypes;
-  HeaderActions?: FunctionComponent<{
-    widgetData: WidgetData;
-    setChartSetting: (setting: any) => void;
-  }>;
-
-  location: Location;
-  eventView: EventView;
-  organization: Organization;
-} & HeaderProps &
-  WidgetDataProps;
-
 type HistogramWidgetProps = BaseProps & {
   dataType: GenericPerformanceWidgetDataType.histogram;
   Query: FunctionComponent<
@@ -189,24 +167,8 @@ const ListItemContainer = styled('div')`
   padding: ${space(1)} ${space(2)};
 `;
 
-const WidgetHeaderContainer = styled('div')`
-  display: flex;
-  justify-content: space-between;
-`;
-const HeaderActionsContainer = styled('div')``;
-
 type WidgetPropUnion = HistogramWidgetProps | AreaWidgetProps | VitalsWidgetProps;
 
-interface WidgetDataTypes extends CommonPerformanceQueryData {}
-// TODO(k-fish): Refine this.
-type WidgetData = {
-  [dataKey: string]: WidgetDataTypes;
-};
-
-export type WidgetDataProps = {
-  widgetData: WidgetData;
-  setWidgetDataForKey: (dataKey: string, result: WidgetDataTypes) => {};
-};
 export function GenericPerformanceWidget(props: WidgetPropUnion) {
   const [widgetData, setWidgetData] = useState<WidgetData>({});
 
@@ -240,45 +202,12 @@ export function GenericPerformanceWidget(props: WidgetPropUnion) {
   }
 }
 
-type AreaWidgetFunctionProps = AreaWidgetProps & {router: InjectedRouter};
-
 const defaultGrid = {
   left: space(0),
   right: space(0),
   top: space(2),
   bottom: space(0),
 };
-
-export function transformAreaResults(
-  widgetProps: AreaWidgetFunctionProps,
-  results: CommonPerformanceQueryData
-) {
-  const {router, fields: chartFields} = widgetProps;
-  const {start, end, utc, interval, statsPeriod} = getParams(widgetProps.location.query);
-
-  const loading = results.loading;
-  const errored = results.errored;
-  const data: Series[] = results.timeseriesData as Series[];
-  const previousData = results.previousTimeseriesData
-    ? results.previousTimeseriesData
-    : undefined;
-
-  const childData = {
-    loading,
-    errored,
-    data,
-    previousData,
-    utc: utc === 'true',
-    interval,
-    statsPeriod: statsPeriod ?? undefined,
-    start: start ?? '',
-    end: end ?? '',
-    router,
-    field: chartFields[0],
-  };
-
-  return childData;
-}
 
 function _AreaWidget(props: AreaWidgetFunctionProps) {
   const {Visualizations, chartHeight, containerType} = props;

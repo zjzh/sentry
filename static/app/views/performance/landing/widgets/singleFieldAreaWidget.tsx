@@ -10,8 +10,9 @@ import EventView from 'app/utils/discover/eventView';
 import withApi from 'app/utils/withApi';
 import DurationChart from 'app/views/performance/charts/chart';
 
-import {GenericPerformanceWidget, transformAreaResults} from './genericPerformanceWidget';
-import {GenericPerformanceWidgetDataType, WidgetDataProps} from './types';
+import {GenericPerformanceWidget} from './components/performanceWidget';
+import {transformEventsRequestToArea} from './transforms/transformEventsToArea';
+import {GenericPerformanceWidgetDataType} from './types';
 import {performanceWidgetSetting, WidgetContainerActions} from './widgetContainer';
 
 type Props = {
@@ -23,7 +24,7 @@ type Props = {
   location: Location;
   organization: Organization;
   setChartSetting: (setting: performanceWidgetSetting) => void;
-} & WidgetDataProps;
+};
 
 export function SingleFieldAreaWidget(props: Props) {
   const {interval, statsPeriod} = getParams(props.location.query);
@@ -54,7 +55,7 @@ export function SingleFieldAreaWidget(props: Props) {
               interval={interval ?? ''}
             />
           ),
-          transform: transformAreaResults,
+          transform: transformEventsRequestToArea,
         },
       }}
       Visualizations={{
