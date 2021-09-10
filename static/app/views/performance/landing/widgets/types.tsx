@@ -89,6 +89,7 @@ export type AreaWidgetProps = GenericPerformanceWidgetProps & {
       component: FunctionComponent<
         React.ComponentProps<typeof DurationChart> & {widgetData: WidgetData}
       >;
+      fields?: string;
       height: number; // Used to determine placeholder and loading sizes. Will also be passed to the component.
     };
   };

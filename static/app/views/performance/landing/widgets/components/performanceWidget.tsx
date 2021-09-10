@@ -81,6 +81,7 @@ function _AreaWidget(props: AreaWidgetFunctionProps & WidgetDataProps) {
               key={key}
               grid={defaultGrid}
               {...(props.widgetData[key] ?? {})}
+              queryFields={Visualization.fields}
               widgetData={props.widgetData}
               height={chartHeight}
             />
@@ -105,7 +106,7 @@ const DefaultErrorComponent = (props: {height: number}) => {
 const ContentContainer = styled('div')`
   padding-left: ${space(2)};
   padding-right: ${space(2)};
-  padding-bottom: ${space(2)};
+  padding-bottom: ${space(0)};
 `;
 GenericPerformanceWidget.defaultProps = {
   containerType: 'panel',

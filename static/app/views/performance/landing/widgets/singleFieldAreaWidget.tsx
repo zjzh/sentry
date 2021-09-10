@@ -54,8 +54,8 @@ export function SingleFieldAreaWidget(props: Props) {
               yAxis={props.fields[0]}
               limit={1}
               includePrevious
-              includeTransformedData
               partial
+              currentSeriesName={props.fields[0]}
               query={props.eventView.getQueryWithAdditionalConditions()}
               period={statsPeriod ?? undefined}
               interval={interval ?? ''}
@@ -70,6 +70,7 @@ export function SingleFieldAreaWidget(props: Props) {
             <DurationChart
               {...provided}
               disableMultiAxis
+              disableXAxis
               chartColors={props.chartColor ? [props.chartColor] : undefined}
             />
           ),
