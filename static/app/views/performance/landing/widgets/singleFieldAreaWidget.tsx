@@ -1,4 +1,5 @@
-import {InjectedRouter, withRouter} from 'react-router';
+import {Fragment} from 'react';
+import {withRouter} from 'react-router';
 import styled from '@emotion/styled';
 import {Location} from 'history';
 import omit from 'lodash/omit';
@@ -43,7 +44,12 @@ export function SingleFieldAreaWidget(props: Props) {
       dataType={GenericPerformanceWidgetDataType.area}
       fields={[...props.fields]}
       HeaderActions={provided => (
-        <WidgetContainerActions {...provided} setChartSetting={props.setChartSetting} />
+        <Fragment>
+          <HighlightNumber color={props.chartColor}>
+            {provided.widgetData.chart?.dataMean?.[0].label}
+          </HighlightNumber>
+          <WidgetContainerActions {...provided} setChartSetting={props.setChartSetting} />
+        </Fragment>
       )}
       Queries={{
         chart: {
@@ -54,6 +60,7 @@ export function SingleFieldAreaWidget(props: Props) {
               yAxis={props.fields[0]}
               limit={1}
               includePrevious
+              includeTransformedData
               partial
               currentSeriesName={props.fields[0]}
               query={props.eventView.getQueryWithAdditionalConditions()}
@@ -86,4 +93,9 @@ const DurationChart = withRouter(_DurationChart);
 const Subtitle = styled('span')`
   color: ${p => p.theme.gray300};
   font-size: ${p => p.theme.fontSizeMedium};
+`;
+
+const HighlightNumber = styled('div')<{color?: string}>`
+  color: ${p => p.color};
+  font-size: ${p => p.theme.fontSizeExtraLarge};
 `;

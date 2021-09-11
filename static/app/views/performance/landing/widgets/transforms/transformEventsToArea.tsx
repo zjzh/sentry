@@ -1,5 +1,9 @@
+import mean from 'lodash/mean';
+
 import {getParams} from 'app/components/organizations/globalSelectionHeader/getParams';
 import {Series} from 'app/types/echarts';
+import {axisLabelFormatter} from 'app/utils/discover/charts';
+import {aggregateOutputType} from 'app/utils/discover/fields';
 
 import {AreaWidgetFunctionProps, CommonPerformanceQueryData} from '../types';
 
@@ -17,11 +21,23 @@ export function transformEventsRequestToArea(
     ? results.previousTimeseriesData
     : undefined;
 
+  const dataMean = data?.map(series => {
+    const meanData = mean(series.data.map(({value}) => value));
+
+    return {
+      mean: meanData,
+      outputType: aggregateOutputType(series.seriesName),
+      label: axisLabelFormatter(meanData, series.seriesName),
+    };
+  });
+
   const childData = {
     loading,
     errored,
     data,
     previousData,
+    dataMean,
+
     utc: utc === 'true',
     interval,
     statsPeriod: statsPeriod ?? undefined,

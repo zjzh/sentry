@@ -2,6 +2,7 @@ import styled from '@emotion/styled';
 
 import {HeaderTitleLegend} from 'app/components/charts/styles';
 import QuestionTooltip from 'app/components/questionTooltip';
+import space from 'app/styles/space';
 
 import {GenericPerformanceWidgetProps, WidgetDataProps} from '../types';
 
@@ -40,4 +41,7 @@ const WidgetHeaderContainer = styled('div')`
   display: flex;
   justify-content: space-between;
 `;
-const HeaderActionsContainer = styled('div')``;
+const HeaderActionsContainer = styled('div')`
+  display: flex;
+  gap: ${space(1)};
+`;

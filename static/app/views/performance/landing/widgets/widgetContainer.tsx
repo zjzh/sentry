@@ -129,7 +129,7 @@ const WIDGET_SETTINGS: ({
   [performanceWidgetSetting.USER_MISERY_AREA]: {
     title: t('User Misery'),
     titleTooltip: getTermHelp(organization, PERFORMANCE_TERM.USER_MISERY),
-    fields: ['count_unique(user)'],
+    fields: [`user_misery(${organization.apdexThreshold})`],
     dataType: GenericPerformanceWidgetDataType.area,
   },
 });
