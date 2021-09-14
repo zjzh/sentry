@@ -24,6 +24,7 @@ import {
   TrendFunction,
   TrendFunctionField,
   TrendParameter,
+  TrendsData,
   TrendsTransaction,
   TrendView,
 } from './types';
@@ -328,6 +329,30 @@ export const replaceSeriesName = (seriesName: string) => {
 export const replaceSmoothedSeriesName = (seriesName: string) => {
   return `Smoothed ${['p50', 'p75'].find(aggregate => seriesName.includes(aggregate))}`;
 };
+
+export function getSelectedTransaction(
+  location: Location,
+  trendChangeType: TrendChangeType,
+  transactions?: NormalizedTrendsTransaction[]
+): NormalizedTrendsTransaction | undefined {
+  const queryKey = getSelectedQueryKey(trendChangeType);
+  const selectedTransactionName = decodeScalar(location.query[queryKey]);
+
+  if (!transactions) {
+    return undefined;
+  }
+
+  const selectedTransaction = transactions.find(
+    transaction =>
+      `${transaction.transaction}-${transaction.project}` === selectedTransactionName
+  );
+
+  if (selectedTransaction) {
+    return selectedTransaction;
+  }
+
+  return transactions.length > 0 ? transactions[0] : undefined;
+}
 
 export function transformEventStatsSmoothed(data?: Series[], seriesName?: string) {
   let minValue = Number.MAX_SAFE_INTEGER;

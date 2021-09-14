@@ -1,5 +1,4 @@
 import React, {FunctionComponent, ReactNode} from 'react';
-import {InjectedRouter} from 'react-router';
 import {Location} from 'history';
 
 import {RenderProps} from 'app/components/charts/eventsRequest';
@@ -18,6 +17,7 @@ export enum GenericPerformanceWidgetDataType {
   histogram = 'histogram',
   area = 'area',
   vitals = 'vitals',
+  trends = 'trends',
 }
 
 export type GenericPerformanceWidgetProps = {
@@ -90,6 +90,7 @@ export type AreaWidgetProps = GenericPerformanceWidgetProps & {
         React.ComponentProps<typeof DurationChart> & {widgetData: WidgetData}
       >;
       fields?: string;
+      noPadding?: boolean;
       height: number; // Used to determine placeholder and loading sizes. Will also be passed to the component.
     };
   };

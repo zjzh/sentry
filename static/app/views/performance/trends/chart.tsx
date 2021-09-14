@@ -228,7 +228,7 @@ function getIntervalLine(
   return additionalLineSeries;
 }
 
-class Chart extends Component<Props> {
+export class Chart extends Component<Props> {
   handleLegendSelectChanged = legendChange => {
     const {location, trendChangeType} = this.props;
     const {selected} = legendChange;

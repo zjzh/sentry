@@ -40,6 +40,6 @@ function QueryResultSaver(
   const {results, query} = props;
   useEffect(() => {
     props.setWidgetDataForKey(query.queryKey, query.transform(props.queryProps, results));
-  }, [results.data, results.loading, results.errored]);
+  }, [results.data, results.loading, results.errored, results.isLoading]);
   return <Fragment />;
 }

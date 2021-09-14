@@ -72,23 +72,24 @@ function _AreaWidget(props: AreaWidgetFunctionProps & WidgetDataProps) {
     <Container>
       <ContentContainer>
         <WidgetHeader {...props} />
-        <DataStateSwitch
-          {...childData}
-          hasData={!!(childData?.data && childData?.data.length)}
-          errorComponent={<DefaultErrorComponent height={chartHeight} />}
-          dataComponents={Object.entries(Visualizations).map(([key, Visualization]) => (
+      </ContentContainer>
+      <DataStateSwitch
+        {...childData}
+        hasData={!!(childData?.data && childData?.data.length) || childData?.hasData}
+        errorComponent={<DefaultErrorComponent height={chartHeight} />}
+        dataComponents={Object.entries(Visualizations).map(([key, Visualization]) => (
+          <ContentContainer key={key} noPadding={Visualization.noPadding}>
             <Visualization.component
-              key={key}
               grid={defaultGrid}
               {...(props.widgetData[key] ?? {})}
               queryFields={Visualization.fields}
               widgetData={props.widgetData}
               height={chartHeight}
             />
-          ))}
-          emptyComponent={<Placeholder height={`${chartHeight}px`} />}
-        />
-      </ContentContainer>
+          </ContentContainer>
+        ))}
+        emptyComponent={<Placeholder height={`${chartHeight}px`} />}
+      />
     </Container>
   );
 }
@@ -103,10 +104,10 @@ const DefaultErrorComponent = (props: {height: number}) => {
   );
 };
 
-const ContentContainer = styled('div')`
-  padding-left: ${space(2)};
-  padding-right: ${space(2)};
-  padding-bottom: ${space(0)};
+const ContentContainer = styled('div')<{noPadding?: boolean}>`
+  padding-left: ${p => (p.noPadding ? space(0) : space(2))};
+  padding-right: ${p => (p.noPadding ? space(0) : space(2))};
+  padding-bottom: ${p => (p.noPadding ? space(0) : space(0))};
 `;
 GenericPerformanceWidget.defaultProps = {
   containerType: 'panel',

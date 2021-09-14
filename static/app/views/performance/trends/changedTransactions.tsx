@@ -49,6 +49,7 @@ import {
   getCurrentTrendFunction,
   getCurrentTrendParameter,
   getSelectedQueryKey,
+  getSelectedTransaction,
   getTrendProjectId,
   modifyTrendView,
   normalizeTrends,
@@ -103,30 +104,6 @@ function getChartTitle(trendChangeType: TrendChangeType): string {
     default:
       throw new Error('No trend type passed');
   }
-}
-
-function getSelectedTransaction(
-  location: Location,
-  trendChangeType: TrendChangeType,
-  transactions?: NormalizedTrendsTransaction[]
-): NormalizedTrendsTransaction | undefined {
-  const queryKey = getSelectedQueryKey(trendChangeType);
-  const selectedTransactionName = decodeScalar(location.query[queryKey]);
-
-  if (!transactions) {
-    return undefined;
-  }
-
-  const selectedTransaction = transactions.find(
-    transaction =>
-      `${transaction.transaction}-${transaction.project}` === selectedTransactionName
-  );
-
-  if (selectedTransaction) {
-    return selectedTransaction;
-  }
-
-  return transactions.length > 0 ? transactions[0] : undefined;
 }
 
 function handleChangeSelected(location: Location, trendChangeType: TrendChangeType) {
@@ -341,7 +318,7 @@ type TrendsListItemProps = {
   handleSelectTransaction: (transaction: NormalizedTrendsTransaction) => void;
 };
 
-function TrendsListItem(props: TrendsListItemProps) {
+export function TrendsListItem(props: TrendsListItemProps) {
   const {
     transaction,
     transactions,

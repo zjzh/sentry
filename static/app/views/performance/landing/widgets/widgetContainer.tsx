@@ -9,9 +9,11 @@ import withOrganization from 'app/utils/withOrganization';
 import ContextMenu from 'app/views/dashboardsV2/contextMenu';
 
 import {getTermHelp, PERFORMANCE_TERM} from '../../data';
+import {TrendChangeType} from '../../trends/types';
 
 import {ChartRowProps} from './miniChartRow';
 import {SingleFieldAreaWidget} from './singleFieldAreaWidget';
+import {TrendsWidget} from './trendsWidget';
 import {GenericPerformanceWidgetDataType} from './types';
 
 type Props = {
@@ -37,6 +39,8 @@ export enum performanceWidgetSetting {
   FAILURE_RATE_AREA = 'failure_rate_area',
   USER_MISERY_AREA = 'user_misery_area',
   WORST_LCP_VITALS = 'worst_lcp_vitals',
+  MOST_IMPROVED = 'most_improved',
+  MOST_REGRESSED = 'most_regressed',
 }
 
 interface BaseChartSetting {
@@ -132,6 +136,24 @@ const WIDGET_SETTINGS: ({
     fields: [`user_misery(${organization.apdexThreshold})`],
     dataType: GenericPerformanceWidgetDataType.area,
   },
+  [performanceWidgetSetting.MOST_IMPROVED]: {
+    title: t('Most Improved'),
+    titleTooltip: t(
+      'This compares the baseline (%s) of the past with the present.',
+      'improved'
+    ),
+    fields: [],
+    dataType: GenericPerformanceWidgetDataType.trends,
+  },
+  [performanceWidgetSetting.MOST_REGRESSED]: {
+    title: t('Most Regressed'),
+    titleTooltip: t(
+      'This compares the baseline (%s) of the past with the present.',
+      'regressed'
+    ),
+    fields: [],
+    dataType: GenericPerformanceWidgetDataType.trends,
+  },
 });
 
 const _WidgetContainer = (props: Props) => {
@@ -145,12 +167,26 @@ const _WidgetContainer = (props: Props) => {
   };
   // const onFilterChange = () => {};
 
-  const singleFieldAreaSettings = WIDGET_SETTINGS({organization})[chartSetting];
-  if (singleFieldAreaSettings) {
+  const chartSettings = WIDGET_SETTINGS({organization})[chartSetting];
+  if (chartSettings) {
+    if (chartSettings.dataType === GenericPerformanceWidgetDataType.trends) {
+      return (
+        <TrendsWidget
+          {...props}
+          {...chartSettings}
+          trendChangeType={
+            chartSetting === performanceWidgetSetting.MOST_IMPROVED
+              ? TrendChangeType.IMPROVED
+              : TrendChangeType.REGRESSION
+          }
+          setChartSetting={setChartSetting}
+        />
+      );
+    }
     return (
       <SingleFieldAreaWidget
         {...props}
-        {...singleFieldAreaSettings}
+        {...chartSettings}
         setChartSetting={setChartSetting}
       />
     );

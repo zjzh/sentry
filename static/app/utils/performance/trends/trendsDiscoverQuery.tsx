@@ -25,7 +25,7 @@ export type TrendsRequest = {
 
 type RequestProps = DiscoverQueryProps & TrendsRequest;
 
-type ChildrenProps = Omit<GenericChildrenProps<TrendsData>, 'tableData'> & {
+export type ChildrenProps = Omit<GenericChildrenProps<TrendsData>, 'tableData'> & {
   trendsData: TrendsData | null;
 };
 
@@ -50,7 +50,7 @@ export function getTrendsRequestPayload(props: RequestProps) {
     trendFunction.field,
     trendParameter.column
   );
-  apiPayload.trendType = eventView?.trendType;
+  apiPayload.trendType = eventView?.trendType || props.trendChangeType;
   apiPayload.interval = eventView?.interval;
   apiPayload.middle = eventView?.middle;
   return apiPayload;
