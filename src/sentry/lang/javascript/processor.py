@@ -825,8 +825,19 @@ class JavaScriptStacktraceProcessor(StacktraceProcessor):
 
         with sentry_sdk.start_span(op="JavaScriptStacktraceProcessor.preprocess_step.get_release"):
             self.release = self.get_release(create=True)
-            if self.data.get("dist") and self.release:
-                self.dist = self.release.get_dist(self.data["dist"])
+            dist_name = self.data.get("dist")
+            if dist_name and self.release:
+                from sentry.models import Distribution
+
+                try:
+                    self.dist = Distribution.objects.get(name=dist_name, release=self.release)
+                except Distribution.DoesNotExist:
+                    logger.debug(
+                        "Event %r has dist %r, which does not exist in the database",
+                        self.data["event_id"],
+                        dist_name,
+                    )
+                    return False
 
         with sentry_sdk.start_span(
             op="JavaScriptStacktraceProcessor.preprocess_step.populate_source_cache"
