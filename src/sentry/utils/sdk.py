@@ -68,7 +68,9 @@ SAMPLED_URL_NAMES = {
     "sentry-auth-sso": settings.SAMPLED_DEFAULT_RATE,
     "sentry-logout": 0.1,
     "sentry-register": settings.SAMPLED_DEFAULT_RATE,
-    "sentry-2fa-dialog": settings.SAMPLED_DEFAULT_RATE,
+    "sentry-auth-organization-saml-acs": settings.SAMPLED_DEFAULT_RATE,
+    "sentry-auth-organization-saml-sls": settings.SAMPLED_DEFAULT_RATE,
+    "sentry-auth-organization-saml-metadata": settings.SAMPLED_DEFAULT_RATE,
 }
 if settings.ADDITIONAL_SAMPLED_URLS:
     SAMPLED_URL_NAMES.update(settings.ADDITIONAL_SAMPLED_URLS)
