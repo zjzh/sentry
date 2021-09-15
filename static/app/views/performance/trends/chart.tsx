@@ -53,6 +53,7 @@ type Props = WithRouterProps &
     isLoading: boolean;
     statsData: TrendsStats;
     projects: Project[];
+    grid?: LineChart['props']['grid'];
   };
 
 function transformEventStats(data: EventsStatsData, seriesName?: string): Series[] {
@@ -263,6 +264,7 @@ export class Chart extends Component<Props> {
       isLoading,
       location,
       projects,
+      grid,
     } = props;
     const lineColor = trendToColor[trendChangeType || ''];
 
@@ -398,12 +400,14 @@ export class Chart extends Component<Props> {
                         toolBox={{
                           show: false,
                         }}
-                        grid={{
-                          left: '10px',
-                          right: '10px',
-                          top: '40px',
-                          bottom: '0px',
-                        }}
+                        grid={
+                          grid ?? {
+                            left: '10px',
+                            right: '10px',
+                            top: '40px',
+                            bottom: '0px',
+                          }
+                        }
                       />
                     ),
                     fixed: 'Duration Chart',

@@ -109,6 +109,7 @@ export function TrendsWidget(props: Props) {
               {...rest}
             />
           ),
+          bottomPadding: true,
           height: 160,
         },
         table: {

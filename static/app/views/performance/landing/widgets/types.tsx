@@ -91,6 +91,7 @@ export type AreaWidgetProps = GenericPerformanceWidgetProps & {
       >;
       fields?: string;
       noPadding?: boolean;
+      bottomPadding?: boolean;
       height: number; // Used to determine placeholder and loading sizes. Will also be passed to the component.
     };
   };

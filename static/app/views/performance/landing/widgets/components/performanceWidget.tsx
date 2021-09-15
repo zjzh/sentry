@@ -78,7 +78,11 @@ function _AreaWidget(props: AreaWidgetFunctionProps & WidgetDataProps) {
         hasData={!!(childData?.data && childData?.data.length) || childData?.hasData}
         errorComponent={<DefaultErrorComponent height={chartHeight} />}
         dataComponents={Object.entries(Visualizations).map(([key, Visualization]) => (
-          <ContentContainer key={key} noPadding={Visualization.noPadding}>
+          <ContentContainer
+            key={key}
+            noPadding={Visualization.noPadding}
+            bottomPadding={Visualization.bottomPadding}
+          >
             <Visualization.component
               grid={defaultGrid}
               {...(props.widgetData[key] ?? {})}
@@ -104,10 +108,10 @@ const DefaultErrorComponent = (props: {height: number}) => {
   );
 };
 
-const ContentContainer = styled('div')<{noPadding?: boolean}>`
+const ContentContainer = styled('div')<{noPadding?: boolean; bottomPadding?: boolean}>`
   padding-left: ${p => (p.noPadding ? space(0) : space(2))};
   padding-right: ${p => (p.noPadding ? space(0) : space(2))};
-  padding-bottom: ${p => (p.noPadding ? space(0) : space(0))};
+  padding-bottom: ${p => (p.bottomPadding ? space(1) : space(0))};
 `;
 GenericPerformanceWidget.defaultProps = {
   containerType: 'panel',
