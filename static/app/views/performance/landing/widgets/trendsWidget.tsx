@@ -72,7 +72,6 @@ export function TrendsWidget(props: Props) {
       {...rest}
       subtitle={<Subtitle>{t('Trending Transactions')}</Subtitle>}
       dataType={GenericPerformanceWidgetDataType.area}
-      fields={[...rest.fields]}
       HeaderActions={provided => (
         <Fragment>
           <WidgetContainerActions
@@ -83,6 +82,7 @@ export function TrendsWidget(props: Props) {
       )}
       Queries={{
         chart: {
+          fields: [...rest.fields],
           component: provided => (
             <TrendsDiscoverQuery
               {...provided}

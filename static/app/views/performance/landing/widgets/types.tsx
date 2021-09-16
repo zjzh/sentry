@@ -49,15 +49,22 @@ export interface WidgetDataConstraint {
 export type QueryChildren = {
   children: (props: any) => ReactNode; // TODO(k-fish): Fix any type.
 };
-export type QueryFC = FunctionComponent<QueryChildren>;
+export type QueryFC = FunctionComponent<
+  QueryChildren & {fields?: string | string[]; yAxis?: string | string[]}
+>;
 
 export type QueryDefinition<
   T extends WidgetDataConstraint,
   S extends WidgetDataResult | undefined
 > = {
   component: QueryFC;
+  fields: string | string[];
   enabled?: (data: T) => boolean;
-  transform: (props: AreaWidgetFunctionProps<T>, results: any) => S; // TODO(k-fish): Fix any type.
+  transform: (
+    props: AreaWidgetFunctionProps<T>,
+    results: any,
+    queryDefinition: QueryDefinitionWithKey<T>
+  ) => S; // TODO(k-fish): Fix any type.
 };
 export type Queries<T extends WidgetDataConstraint> = Record<
   string,

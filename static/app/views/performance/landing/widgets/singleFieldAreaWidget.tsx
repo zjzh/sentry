@@ -50,7 +50,6 @@ export function SingleFieldAreaWidget(props: Props) {
       {...props}
       subtitle={<Subtitle>{t('Compared to last %s ', statsPeriod)}</Subtitle>}
       dataType={GenericPerformanceWidgetDataType.area}
-      fields={[...props.fields]}
       HeaderActions={provided => (
         <Fragment>
           <HighlightNumber color={props.chartColor}>
@@ -64,11 +63,11 @@ export function SingleFieldAreaWidget(props: Props) {
       )}
       Queries={{
         chart: {
+          fields: props.fields[0],
           component: provided => (
             <EventsRequest
               {...provided}
               {...queryProps}
-              yAxis={props.fields[0]}
               limit={1}
               includePrevious
               includeTransformedData

@@ -16,7 +16,7 @@ export function QueryHandler<T extends WidgetDataConstraint>(
     return <QueryHandler {...props} queries={remainingQueries} />;
   }
   return (
-    <query.component>
+    <query.component fields={query.fields} yAxis={query.fields}>
       {results => {
         return (
           <Fragment>
@@ -36,7 +36,7 @@ function QueryResultSaver<T extends WidgetDataConstraint>(
   } & QueryHandlerProps<T>
 ) {
   const {results, query} = props;
-  const transformed = query.transform(props.queryProps, results);
+  const transformed = query.transform(props.queryProps, results, props.query);
 
   useEffect(() => {
     props.setWidgetDataForKey(query.queryKey, transformed);
