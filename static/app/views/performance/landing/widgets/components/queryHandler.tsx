@@ -1,11 +1,6 @@
 import {Fragment, useEffect} from 'react';
 
-import {
-  QueryDefinitionWithKey,
-  QueryHandlerProps,
-  WidgetDataConstraint,
-  WidgetDataResult,
-} from '../types';
+import {QueryDefinitionWithKey, QueryHandlerProps, WidgetDataConstraint} from '../types';
 
 /*
   Component to handle switching component-style queries over to state. This will temporarily make things easier to switch away from waterfall style api fetches.

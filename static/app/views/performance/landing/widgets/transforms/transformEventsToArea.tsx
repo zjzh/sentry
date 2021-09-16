@@ -41,7 +41,7 @@ export function transformEventsRequestToArea<T extends WidgetDataConstraint>(
     isErrored: errored,
     hasData: defined(data) && !!data[0].data.length,
     data,
-    previousData: previousData && previousData.length ? previousData[0] : previousData,
+    previousData: previousData && previousData.length ? previousData[0] : undefined,
     dataMean,
 
     utc: utc === 'true',
