@@ -5,6 +5,7 @@ import MenuItem from 'app/components/menuItem';
 import {t} from 'app/locale';
 import {Organization} from 'app/types';
 import localStorage from 'app/utils/localStorage';
+import {useOrganization} from 'app/utils/useOrganization';
 import withOrganization from 'app/utils/withOrganization';
 import ContextMenu from 'app/views/dashboardsV2/contextMenu';
 
@@ -14,12 +15,12 @@ import {TrendChangeType} from '../../trends/types';
 import {ChartRowProps} from './miniChartRow';
 import {SingleFieldAreaWidget} from './singleFieldAreaWidget';
 import {TrendsWidget} from './trendsWidget';
-import {GenericPerformanceWidgetDataType} from './types';
+import {GenericPerformanceWidgetDataType, PerformanceWidgetSetting} from './types';
 
 type Props = {
   index: number;
   organization: Organization;
-  defaultChartSetting: performanceWidgetSetting;
+  defaultChartSetting: PerformanceWidgetSetting;
   chartHeight: number;
   chartColor?: string;
 } & ChartRowProps;
@@ -30,18 +31,6 @@ type ForwardedProps = Omit<
 > & {
   orgSlug: string;
 };
-
-export enum performanceWidgetSetting {
-  LCP_HISTOGRAM = 'lcp_histogram',
-  FCP_HISTOGRAM = 'fcp_histogram',
-  FID_HISTOGRAM = 'fid_histogram',
-  TPM_AREA = 'tpm_area',
-  FAILURE_RATE_AREA = 'failure_rate_area',
-  USER_MISERY_AREA = 'user_misery_area',
-  WORST_LCP_VITALS = 'worst_lcp_vitals',
-  MOST_IMPROVED = 'most_improved',
-  MOST_REGRESSED = 'most_regressed',
-}
 
 interface BaseChartSetting {
   dataType: GenericPerformanceWidgetDataType;
@@ -59,15 +48,15 @@ const getContainerLocalStorageKey = (index: number, height: number) =>
 const getChartSetting = (
   index: number,
   height: number,
-  defaultType: performanceWidgetSetting
-): performanceWidgetSetting => {
+  defaultType: PerformanceWidgetSetting
+): PerformanceWidgetSetting => {
   const key = getContainerLocalStorageKey(index, height);
   const value = localStorage.getItem(key);
   if (
     value &&
-    Object.values(performanceWidgetSetting).includes(value as performanceWidgetSetting)
+    Object.values(PerformanceWidgetSetting).includes(value as PerformanceWidgetSetting)
   ) {
-    const _value: performanceWidgetSetting = value as performanceWidgetSetting;
+    const _value: PerformanceWidgetSetting = value as PerformanceWidgetSetting;
     return _value;
   }
   return defaultType;
@@ -75,7 +64,7 @@ const getChartSetting = (
 const _setChartSetting = (
   index: number,
   height: number,
-  setting: performanceWidgetSetting
+  setting: PerformanceWidgetSetting
 ) => {
   const key = getContainerLocalStorageKey(index, height);
   localStorage.setItem(key, setting);
@@ -83,30 +72,30 @@ const _setChartSetting = (
 
 const WIDGET_SETTINGS: ({
   organization: Organization,
-}) => Record<performanceWidgetSetting, BaseChartSetting> = ({
+}) => Record<PerformanceWidgetSetting, BaseChartSetting> = ({
   organization,
 }: {
   organization: Organization;
 }) => ({
-  [performanceWidgetSetting.LCP_HISTOGRAM]: {
+  [PerformanceWidgetSetting.LCP_HISTOGRAM]: {
     title: t('LCP Distribution'),
     titleTooltip: getTermHelp(organization, PERFORMANCE_TERM.DURATION_DISTRIBUTION),
     fields: ['measurements.lcp'],
     dataType: GenericPerformanceWidgetDataType.histogram,
   },
-  [performanceWidgetSetting.FCP_HISTOGRAM]: {
+  [PerformanceWidgetSetting.FCP_HISTOGRAM]: {
     title: t('FCP Distribution'),
     titleTooltip: getTermHelp(organization, PERFORMANCE_TERM.DURATION_DISTRIBUTION),
     fields: ['measurements.fcp'],
     dataType: GenericPerformanceWidgetDataType.histogram,
   },
-  [performanceWidgetSetting.FID_HISTOGRAM]: {
+  [PerformanceWidgetSetting.FID_HISTOGRAM]: {
     title: t('FID Distribution'),
     titleTooltip: getTermHelp(organization, PERFORMANCE_TERM.DURATION_DISTRIBUTION),
     fields: ['measurements.fid'],
     dataType: GenericPerformanceWidgetDataType.histogram,
   },
-  [performanceWidgetSetting.WORST_LCP_VITALS]: {
+  [PerformanceWidgetSetting.WORST_LCP_VITALS]: {
     title: t('Worst LCP Web Vitals'),
     titleTooltip: getTermHelp(organization, PERFORMANCE_TERM.LCP),
     fields: [
@@ -118,25 +107,25 @@ const WIDGET_SETTINGS: ({
     ],
     dataType: GenericPerformanceWidgetDataType.vitals,
   },
-  [performanceWidgetSetting.TPM_AREA]: {
+  [PerformanceWidgetSetting.TPM_AREA]: {
     title: t('Transactions Per Minute'),
     titleTooltip: getTermHelp(organization, PERFORMANCE_TERM.TPM),
     fields: ['tpm()'],
     dataType: GenericPerformanceWidgetDataType.area,
   },
-  [performanceWidgetSetting.FAILURE_RATE_AREA]: {
+  [PerformanceWidgetSetting.FAILURE_RATE_AREA]: {
     title: t('Failure Rate'),
     titleTooltip: getTermHelp(organization, PERFORMANCE_TERM.FAILURE_RATE),
     fields: ['failure_rate()'],
     dataType: GenericPerformanceWidgetDataType.area,
   },
-  [performanceWidgetSetting.USER_MISERY_AREA]: {
+  [PerformanceWidgetSetting.USER_MISERY_AREA]: {
     title: t('User Misery'),
     titleTooltip: getTermHelp(organization, PERFORMANCE_TERM.USER_MISERY),
     fields: [`user_misery(${organization.apdexThreshold})`],
     dataType: GenericPerformanceWidgetDataType.area,
   },
-  [performanceWidgetSetting.MOST_IMPROVED]: {
+  [PerformanceWidgetSetting.MOST_IMPROVED]: {
     title: t('Most Improved'),
     titleTooltip: t(
       'This compares the baseline (%s) of the past with the present.',
@@ -145,7 +134,7 @@ const WIDGET_SETTINGS: ({
     fields: [],
     dataType: GenericPerformanceWidgetDataType.trends,
   },
-  [performanceWidgetSetting.MOST_REGRESSED]: {
+  [PerformanceWidgetSetting.MOST_REGRESSED]: {
     title: t('Most Regressed'),
     titleTooltip: t(
       'This compares the baseline (%s) of the past with the present.',
@@ -161,7 +150,7 @@ const _WidgetContainer = (props: Props) => {
   const _chartSetting = getChartSetting(index, chartHeight, rest.defaultChartSetting);
   const [chartSetting, setChartSettingState] = useState(_chartSetting);
 
-  const setChartSetting = (setting: performanceWidgetSetting) => {
+  const setChartSetting = (setting: PerformanceWidgetSetting) => {
     _setChartSetting(index, chartHeight, setting);
     setChartSettingState(setting);
   };
@@ -175,7 +164,7 @@ const _WidgetContainer = (props: Props) => {
           {...props}
           {...chartSettings}
           trendChangeType={
-            chartSetting === performanceWidgetSetting.MOST_IMPROVED
+            chartSetting === PerformanceWidgetSetting.MOST_IMPROVED
               ? TrendChangeType.IMPROVED
               : TrendChangeType.REGRESSION
           }
@@ -289,20 +278,19 @@ const _WidgetContainer = (props: Props) => {
 // const WrappedEventsRequest = withApi(EventsRequest);
 
 export const WidgetContainerActions = ({
-  organization,
   setChartSetting,
 }: {
   loading: boolean;
-  organization: Organization;
-  setChartSetting: (setting: performanceWidgetSetting) => void;
+  setChartSetting: (setting: PerformanceWidgetSetting) => void;
 }) => {
+  const organization = useOrganization();
   const menuOptions: React.ReactNode[] = [];
 
   const settingsMap = WIDGET_SETTINGS({organization});
-  for (const _setting in performanceWidgetSetting) {
-    const setting: performanceWidgetSetting = performanceWidgetSetting[
+  for (const _setting in PerformanceWidgetSetting) {
+    const setting: PerformanceWidgetSetting = PerformanceWidgetSetting[
       _setting
-    ] as performanceWidgetSetting;
+    ] as PerformanceWidgetSetting;
 
     const options = settingsMap[setting];
     menuOptions.push(

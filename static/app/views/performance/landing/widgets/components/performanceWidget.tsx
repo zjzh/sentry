@@ -10,25 +10,27 @@ import getPerformanceWidgetContainer from 'app/views/performance/landing/widgets
 
 import {
   AreaWidgetFunctionProps,
-  AreaWidgetProps,
   GenericPerformanceWidgetDataType,
-  WidgetData,
+  WidgetDataConstraint,
   WidgetDataProps,
-  WidgetDataTypes,
+  WidgetDataResult,
+  WidgetPropUnion,
 } from '../types';
 
 import {DataStateSwitch} from './dataStateSwitch';
 import {QueryHandler} from './queryHandler';
 import {WidgetHeader} from './widgetHeader';
 
-type WidgetPropUnion = AreaWidgetProps;
+// Generic performance widget for type T, which defines all the data contained in the widget.
+export function GenericPerformanceWidget<T extends WidgetDataConstraint>(
+  props: WidgetPropUnion<T>
+) {
+  const [widgetData, setWidgetData] = useState<T>({} as T);
 
-export function GenericPerformanceWidget(props: WidgetPropUnion) {
-  const [widgetData, setWidgetData] = useState<WidgetData>({});
-
-  const setWidgetDataForKey = (dataKey: string, result: WidgetDataTypes) => {
-    const newData: WidgetData = {...widgetData, [dataKey]: result};
-    setWidgetData(newData);
+  const setWidgetDataForKey = (dataKey: string, result?: WidgetDataResult) => {
+    if (result) {
+      setWidgetData({...widgetData, [dataKey]: result});
+    }
   };
   const widgetProps = {widgetData, setWidgetDataForKey};
 
@@ -36,6 +38,7 @@ export function GenericPerformanceWidget(props: WidgetPropUnion) {
     case GenericPerformanceWidgetDataType.area:
       return (
         <QueryHandler
+          {...props}
           widgetData={widgetData}
           setWidgetDataForKey={setWidgetDataForKey}
           queryProps={props}
@@ -44,7 +47,7 @@ export function GenericPerformanceWidget(props: WidgetPropUnion) {
             queryKey: key,
           }))}
         >
-          <_AreaWidget {...props} {...widgetProps} />
+          <_DataDisplay<T> {...props} {...widgetProps} />
         </QueryHandler>
       );
     default:
@@ -59,46 +62,54 @@ const defaultGrid = {
   bottom: space(0),
 };
 
-function _AreaWidget(props: AreaWidgetFunctionProps & WidgetDataProps) {
+function _DataDisplay<T extends WidgetDataConstraint>(
+  props: AreaWidgetFunctionProps<T> & WidgetDataProps<T>
+) {
   const {Visualizations, chartHeight, containerType} = props;
 
   const Container = getPerformanceWidgetContainer({
     containerType,
   });
 
-  const childData = props.widgetData[Object.keys(Visualizations)[0]];
+  const hasData = Object.values(props.widgetData).every(d => !d || d.hasData);
+  const isLoading = Object.values(props.widgetData).some(d => !d || d.isLoading);
+  const isErrored = Object.values(props.widgetData).some(d => d && d.isErrored);
 
   return (
     <Container>
       <ContentContainer>
-        <WidgetHeader {...props} />
+        <WidgetHeader<T> {...props} />
       </ContentContainer>
       <DataStateSwitch
-        {...childData}
-        hasData={!!(childData?.data && childData?.data.length) || childData?.hasData}
+        isLoading={isLoading}
+        isErrored={isErrored}
+        hasData={hasData}
         errorComponent={<DefaultErrorComponent height={chartHeight} />}
-        dataComponents={Object.entries(Visualizations).map(([key, Visualization]) => (
-          <ContentContainer
-            key={key}
-            noPadding={Visualization.noPadding}
-            bottomPadding={Visualization.bottomPadding}
-          >
-            <Visualization.component
-              grid={defaultGrid}
-              {...(props.widgetData[key] ?? {})}
-              queryFields={Visualization.fields}
-              widgetData={props.widgetData}
-              height={chartHeight}
-            />
-          </ContentContainer>
-        ))}
+        dataComponents={Object.entries(Visualizations)
+          .filter(([key]) => props.widgetData[key])
+          .map(([key, Visualization]) => (
+            <ContentContainer
+              key={key}
+              noPadding={Visualization.noPadding}
+              bottomPadding={Visualization.bottomPadding}
+            >
+              <Visualization.component
+                {...props}
+                grid={defaultGrid}
+                {...(props.widgetData[key] ?? {})}
+                queryFields={Visualization.fields}
+                widgetData={props.widgetData}
+                height={chartHeight}
+              />
+            </ContentContainer>
+          ))}
         emptyComponent={<Placeholder height={`${chartHeight}px`} />}
       />
     </Container>
   );
 }
 
-export const AreaWidget = withRouter(_AreaWidget);
+export const DataDisplay = withRouter(_DataDisplay);
 
 const DefaultErrorComponent = (props: {height: number}) => {
   return (

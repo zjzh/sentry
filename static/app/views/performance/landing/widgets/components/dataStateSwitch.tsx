@@ -1,8 +1,8 @@
 import {Fragment} from 'react';
 
 export function DataStateSwitch(props: {
-  loading: boolean;
-  errored: boolean;
+  isLoading: boolean;
+  isErrored: boolean;
   hasData: boolean;
 
   loadingComponent?: JSX.Element;
@@ -10,10 +10,10 @@ export function DataStateSwitch(props: {
   dataComponents: JSX.Element[];
   emptyComponent: JSX.Element;
 }): JSX.Element {
-  if (props.loading && props.loadingComponent) {
+  if (props.isLoading && props.loadingComponent) {
     return props.loadingComponent;
   }
-  if (props.errored) {
+  if (props.isErrored) {
     return props.errorComponent;
   }
   if (!props.hasData) {

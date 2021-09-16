@@ -7,7 +7,8 @@ import EventView from 'app/utils/discover/eventView';
 
 import {PerformanceLayoutBodyRow} from '../../layouts';
 
-import WidgetContainer, {performanceWidgetSetting} from './widgetContainer';
+import {PerformanceWidgetSetting} from './types';
+import WidgetContainer from './widgetContainer';
 
 export type ChartRowProps = {
   eventView: EventView;
@@ -27,7 +28,7 @@ export const MiniChartRow = (props: ChartRowProps) => {
           index={index}
           chartHeight={160}
           chartColor={palette[index]}
-          defaultChartSetting={performanceWidgetSetting.LCP_HISTOGRAM}
+          defaultChartSetting={PerformanceWidgetSetting.LCP_HISTOGRAM}
         />
       ))}
     </StyledRow>
@@ -43,7 +44,7 @@ export const DoubleChartRow = (props: ChartRowProps) => {
           key={index}
           index={index}
           chartHeight={300}
-          defaultChartSetting={performanceWidgetSetting.LCP_HISTOGRAM}
+          defaultChartSetting={PerformanceWidgetSetting.LCP_HISTOGRAM}
         />
       ))}
     </StyledRow>

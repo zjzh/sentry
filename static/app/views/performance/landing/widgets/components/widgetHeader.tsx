@@ -4,9 +4,15 @@ import {HeaderTitleLegend} from 'app/components/charts/styles';
 import QuestionTooltip from 'app/components/questionTooltip';
 import space from 'app/styles/space';
 
-import {GenericPerformanceWidgetProps, WidgetDataProps} from '../types';
+import {
+  GenericPerformanceWidgetProps,
+  WidgetDataConstraint,
+  WidgetDataProps,
+} from '../types';
 
-export function WidgetHeader(props: GenericPerformanceWidgetProps & WidgetDataProps) {
+export function WidgetHeader<T extends WidgetDataConstraint>(
+  props: GenericPerformanceWidgetProps<T> & WidgetDataProps<T>
+) {
   const {title, titleTooltip, subtitle, HeaderActions} = props;
   return (
     <WidgetHeaderContainer>

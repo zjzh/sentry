@@ -6,7 +6,6 @@ import {Location} from 'history';
 import omit from 'lodash/omit';
 
 import _EventsRequest from 'app/components/charts/eventsRequest';
-import {getParams} from 'app/components/organizations/globalSelectionHeader/getParams';
 import {t} from 'app/locale';
 import {Organization} from 'app/types';
 import EventView from 'app/utils/discover/eventView';
@@ -18,16 +17,16 @@ import _DurationChart from 'app/views/performance/charts/chart';
 import {TrendsListItem} from '../../trends/changedTransactions';
 import {Chart} from '../../trends/chart';
 import {TrendChangeType} from '../../trends/types';
-import {
-  getCurrentTrendFunction,
-  getCurrentTrendParameter,
-  getSelectedTransaction,
-} from '../../trends/utils';
+import {getCurrentTrendFunction, getSelectedTransaction} from '../../trends/utils';
 
 import {GenericPerformanceWidget} from './components/performanceWidget';
 import {transformTrendsDiscover} from './transforms/transformTrendsDiscover';
-import {GenericPerformanceWidgetDataType} from './types';
-import {performanceWidgetSetting, WidgetContainerActions} from './widgetContainer';
+import {
+  GenericPerformanceWidgetDataType,
+  PerformanceWidgetSetting,
+  WidgetDataResult,
+} from './types';
+import {WidgetContainerActions} from './widgetContainer';
 
 type Props = {
   title: string;
@@ -41,12 +40,15 @@ type Props = {
 
   trendChangeType: TrendChangeType;
 
-  setChartSetting: (setting: performanceWidgetSetting) => void;
+  setChartSetting: (setting: PerformanceWidgetSetting) => void;
+};
+
+type TrendsWidgetDataType = {
+  chart: WidgetDataResult & ReturnType<typeof transformTrendsDiscover>;
 };
 
 export function TrendsWidget(props: Props) {
-  const {eventView: _eventView, location, fields, organization, trendChangeType} = props;
-  const {interval, statsPeriod} = getParams(location.query);
+  const {eventView: _eventView, location, organization, trendChangeType} = props;
   const eventView = _eventView.clone();
   eventView.fields = [{field: 'transaction'}, {field: 'project'}];
   eventView.sorts = [
@@ -64,17 +66,19 @@ export function TrendsWidget(props: Props) {
   eventView.additionalConditions.removeFilter('transaction.op'); // Get rid of pageload for testing.
 
   const trendFunction = getCurrentTrendFunction(location);
-  const trendParameter = getCurrentTrendParameter(location);
 
   return (
-    <GenericPerformanceWidget
+    <GenericPerformanceWidget<TrendsWidgetDataType>
       {...rest}
       subtitle={<Subtitle>{t('Trending Transactions')}</Subtitle>}
       dataType={GenericPerformanceWidgetDataType.area}
       fields={[...rest.fields]}
       HeaderActions={provided => (
         <Fragment>
-          <WidgetContainerActions {...provided} setChartSetting={props.setChartSetting} />
+          <WidgetContainerActions
+            {...provided.widgetData.chart}
+            setChartSetting={props.setChartSetting}
+          />
         </Fragment>
       )}
       Queries={{
@@ -90,11 +94,13 @@ export function TrendsWidget(props: Props) {
           transform: transformTrendsDiscover,
         },
       }}
-      Visualizations={{
-        chart: {
+      Visualizations={[
+        {
           component: provided => (
             <TrendsChart
               {...provided}
+              isLoading={provided.widgetData.chart.isLoading}
+              statsData={provided.widgetData.chart.statsData}
               query={eventView.query}
               project={eventView.project}
               environment={eventView.environment}
@@ -104,7 +110,7 @@ export function TrendsWidget(props: Props) {
               transaction={getSelectedTransaction(
                 location,
                 trendChangeType,
-                provided.events
+                provided.widgetData.chart.events
               )}
               {...rest}
             />
@@ -112,7 +118,7 @@ export function TrendsWidget(props: Props) {
           bottomPadding: true,
           height: 160,
         },
-        table: {
+        {
           noPadding: true,
           component: provided => {
             // const transaction = getSelectedTransaction(
@@ -120,7 +126,7 @@ export function TrendsWidget(props: Props) {
             //   trendChangeType,
             //   provided.events
             // );
-            const transactionsList = provided.widgetData.chart.transactionsList;
+            const transactionsList = provided.widgetData.chart?.transactionsList;
 
             return (
               <Fragment>
@@ -136,7 +142,7 @@ export function TrendsWidget(props: Props) {
                     trendChangeType={trendChangeType}
                     transactions={transactionsList}
                     location={location}
-                    statsData={provided.statsData}
+                    statsData={provided.widgetData.chart.statsData}
                     handleSelectTransaction={() => {}}
                   />
                 ))}
@@ -145,21 +151,14 @@ export function TrendsWidget(props: Props) {
           },
           height: 160,
         },
-      }}
+      ]}
     />
   );
 }
 
-const TrendsChart = withTheme(Chart);
+const TrendsChart = withProjects(withRouter(withApi(withTheme(Chart))));
 const ListItem = withProjects(withApi(TrendsListItem));
-const EventsRequest = withApi(_EventsRequest);
-const DurationChart = withRouter(_DurationChart);
 const Subtitle = styled('span')`
   color: ${p => p.theme.gray300};
   font-size: ${p => p.theme.fontSizeMedium};
-`;
-
-const HighlightNumber = styled('div')<{color?: string}>`
-  color: ${p => p.color};
-  font-size: ${p => p.theme.fontSizeExtraLarge};
 `;

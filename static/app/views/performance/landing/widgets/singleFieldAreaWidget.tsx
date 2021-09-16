@@ -14,8 +14,12 @@ import _DurationChart from 'app/views/performance/charts/chart';
 
 import {GenericPerformanceWidget} from './components/performanceWidget';
 import {transformEventsRequestToArea} from './transforms/transformEventsToArea';
-import {GenericPerformanceWidgetDataType} from './types';
-import {performanceWidgetSetting, WidgetContainerActions} from './widgetContainer';
+import {
+  GenericPerformanceWidgetDataType,
+  PerformanceWidgetSetting,
+  WidgetDataResult,
+} from './types';
+import {WidgetContainerActions} from './widgetContainer';
 
 type Props = {
   title: string;
@@ -26,7 +30,11 @@ type Props = {
   eventView: EventView;
   location: Location;
   organization: Organization;
-  setChartSetting: (setting: performanceWidgetSetting) => void;
+  setChartSetting: (setting: PerformanceWidgetSetting) => void;
+};
+
+type AreaDataType = {
+  chart: WidgetDataResult & ReturnType<typeof transformEventsRequestToArea>;
 };
 
 export function SingleFieldAreaWidget(props: Props) {
@@ -38,7 +46,7 @@ export function SingleFieldAreaWidget(props: Props) {
   }
 
   return (
-    <GenericPerformanceWidget
+    <GenericPerformanceWidget<AreaDataType>
       {...props}
       subtitle={<Subtitle>{t('Compared to last %s ', statsPeriod)}</Subtitle>}
       dataType={GenericPerformanceWidgetDataType.area}
@@ -48,7 +56,10 @@ export function SingleFieldAreaWidget(props: Props) {
           <HighlightNumber color={props.chartColor}>
             {provided.widgetData.chart?.dataMean?.[0].label}
           </HighlightNumber>
-          <WidgetContainerActions {...provided} setChartSetting={props.setChartSetting} />
+          <WidgetContainerActions
+            {...provided.widgetData.chart}
+            setChartSetting={props.setChartSetting}
+          />
         </Fragment>
       )}
       Queries={{
@@ -71,8 +82,8 @@ export function SingleFieldAreaWidget(props: Props) {
           transform: transformEventsRequestToArea,
         },
       }}
-      Visualizations={{
-        chart: {
+      Visualizations={[
+        {
           component: provided => (
             <DurationChart
               {...provided}
@@ -83,7 +94,7 @@ export function SingleFieldAreaWidget(props: Props) {
           ),
           height: 160,
         },
-      }}
+      ]}
     />
   );
 }

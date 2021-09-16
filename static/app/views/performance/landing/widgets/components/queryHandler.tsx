@@ -1,15 +1,18 @@
 import {Fragment, useEffect} from 'react';
 
 import {
-  CommonPerformanceQueryData,
   QueryDefinitionWithKey,
   QueryHandlerProps,
+  WidgetDataConstraint,
+  WidgetDataResult,
 } from '../types';
 
 /*
-  Component to handle switching component-style queries over to state. This will temporarily make things easier to switch away from waterfall style api fetches, and has a similar syntax to react-query.
+  Component to handle switching component-style queries over to state. This will temporarily make things easier to switch away from waterfall style api fetches.
 */
-export function QueryHandler(props: QueryHandlerProps) {
+export function QueryHandler<T extends WidgetDataConstraint>(
+  props: QueryHandlerProps<T>
+) {
   if (!props.queries.length) {
     return <div>{props.children}</div>;
   }
@@ -22,8 +25,8 @@ export function QueryHandler(props: QueryHandlerProps) {
       {results => {
         return (
           <Fragment>
-            <QueryResultSaver results={results} {...props} query={query} />
-            <QueryHandler {...props} queries={remainingQueries} />
+            <QueryResultSaver<T> results={results} {...props} query={query} />
+            <QueryHandler<T> {...props} queries={remainingQueries} />
           </Fragment>
         );
       }}
@@ -31,15 +34,20 @@ export function QueryHandler(props: QueryHandlerProps) {
   );
 }
 
-function QueryResultSaver(
+function QueryResultSaver<T extends WidgetDataConstraint>(
   props: {
-    results: CommonPerformanceQueryData;
-    query: QueryDefinitionWithKey;
-  } & QueryHandlerProps
+    results: WidgetDataResult | undefined;
+    query: QueryDefinitionWithKey<T>;
+  } & QueryHandlerProps<T>
 ) {
   const {results, query} = props;
-  useEffect(() => {
-    props.setWidgetDataForKey(query.queryKey, query.transform(props.queryProps, results));
-  }, [results.data, results.loading, results.errored, results.isLoading]);
+  if (results) {
+    useEffect(() => {
+      props.setWidgetDataForKey(
+        query.queryKey,
+        query.transform(props.queryProps, results)
+      );
+    }, [results.hasData, results.isLoading, results.isErrored]);
+  }
   return <Fragment />;
 }

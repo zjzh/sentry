@@ -20,31 +20,98 @@ export enum GenericPerformanceWidgetDataType {
   trends = 'trends',
 }
 
-export type GenericPerformanceWidgetProps = {
+export enum VisualizationDataState {
+  ERROR = 'error',
+  LOADING = 'loading',
+  EMPTY = 'empty',
+  DATA = 'data',
+}
+
+export enum PerformanceWidgetSetting {
+  LCP_HISTOGRAM = 'lcp_histogram',
+  FCP_HISTOGRAM = 'fcp_histogram',
+  FID_HISTOGRAM = 'fid_histogram',
+  TPM_AREA = 'tpm_area',
+  FAILURE_RATE_AREA = 'failure_rate_area',
+  USER_MISERY_AREA = 'user_misery_area',
+  WORST_LCP_VITALS = 'worst_lcp_vitals',
+  MOST_IMPROVED = 'most_improved',
+  MOST_REGRESSED = 'most_regressed',
+}
+export interface WidgetDataResult {
+  isLoading: boolean;
+  isErrored: boolean;
+  hasData: boolean;
+}
+export interface WidgetDataConstraint {
+  [dataKey: string]: WidgetDataResult | undefined;
+}
+
+export type QueryChildren = {
+  children: (props: any) => ReactNode; // TODO(k-fish): Fix any type.
+};
+export type QueryFC = FunctionComponent<QueryChildren>;
+
+export type QueryDefinition<
+  T extends WidgetDataConstraint,
+  S extends WidgetDataResult | undefined
+> = {
+  component: QueryFC;
+  enabled?: (data: T) => boolean;
+  transform: (props: AreaWidgetFunctionProps<T>, results: any) => S; // TODO(k-fish): Fix any type.
+};
+export type Queries<T extends WidgetDataConstraint> = Record<
+  string,
+  QueryDefinition<T, T[string]>
+>;
+
+type Visualization<T> = {
+  component: FunctionComponent<
+    React.ComponentProps<typeof DurationChart> & {widgetData: T; queryFields?: string}
+  >;
+  dataState?: (data: T) => VisualizationDataState;
+  fields?: string;
+  noPadding?: boolean;
+  bottomPadding?: boolean;
+  queryFields?: string[];
+  height: number; // Used to determine placeholder and loading sizes. Will also be passed to the component.
+};
+
+type Visualizations<T extends WidgetDataConstraint> = Visualization<T>[];
+
+type HeaderActions<T> = FunctionComponent<{
+  widgetData: T;
+  setChartSetting: (setting: PerformanceWidgetSetting) => void;
+}>;
+
+export type GenericPerformanceWidgetProps<T extends WidgetDataConstraint> = {
   // Header;
   title: string;
   titleTooltip: string;
   subtitle?: JSX.Element;
+  setChartSetting: (setting: PerformanceWidgetSetting) => void;
 
   fields: string[];
   chartHeight: number;
   dataType: GenericPerformanceWidgetDataType;
   containerType: PerformanceWidgetContainerTypes;
-  HeaderActions?: FunctionComponent<{
-    widgetData: WidgetData;
-    setChartSetting: (setting: any) => {};
-  }>;
 
   location: Location;
   eventView: EventView;
   organization: Organization;
+
+  // Components
+  HeaderActions?: HeaderActions<T>;
+  Queries: Queries<T>;
+  Visualizations: Visualizations<T>;
 };
 
-export type GenericPerformanceWithData = GenericPerformanceWidgetProps & WidgetDataProps;
+export type GenericPerformanceWithData<T extends WidgetDataConstraint> =
+  GenericPerformanceWidgetProps<T> & WidgetDataProps<T>;
 
-export type WidgetDataProps = {
-  widgetData: WidgetData;
-  setWidgetDataForKey: (dataKey: string, result: WidgetDataTypes) => void;
+export type WidgetDataProps<T> = {
+  widgetData: T;
+  setWidgetDataForKey: (dataKey: string, result?: WidgetDataResult) => void;
 };
 
 export type HistogramQueryChildrenProps = HistogramChildrenProps;
@@ -62,40 +129,12 @@ export type CommonPerformanceQueryData = {
   previousTimeseriesData?: Series[];
 };
 
-export type AreaWidgetFunctionProps = AreaWidgetProps;
+export type AreaWidgetFunctionProps<T extends WidgetDataConstraint> = AreaWidgetProps<T>;
 
-export type QueryChildren = {
-  children: (props: CommonPerformanceQueryData) => ReactNode;
-};
-export type QueryFC = FunctionComponent<QueryChildren>;
-
-export type QueryDefinition = {
-  component: QueryFC;
-  enabled?: (data: WidgetData) => boolean;
-  transform: (
-    props: AreaWidgetFunctionProps,
-    results: CommonPerformanceQueryData
-  ) => CommonPerformanceQueryData;
-};
-export type Queries = {
-  [dataKey: string]: QueryDefinition;
-};
-
-export type AreaWidgetProps = GenericPerformanceWidgetProps & {
-  dataType: GenericPerformanceWidgetDataType.area;
-  Queries: Queries;
-  Visualizations: {
-    [dataKey: string]: {
-      component: FunctionComponent<
-        React.ComponentProps<typeof DurationChart> & {widgetData: WidgetData}
-      >;
-      fields?: string;
-      noPadding?: boolean;
-      bottomPadding?: boolean;
-      height: number; // Used to determine placeholder and loading sizes. Will also be passed to the component.
-    };
+export type AreaWidgetProps<T extends WidgetDataConstraint> =
+  GenericPerformanceWidgetProps<T> & {
+    dataType: GenericPerformanceWidgetDataType.area;
   };
-};
 
 export interface WidgetDataTypes extends CommonPerformanceQueryData {}
 // TODO(k-fish): Refine this.
@@ -103,9 +142,15 @@ export type WidgetData = {
   [dataKey: string]: WidgetDataTypes;
 };
 
-export type QueryDefinitionWithKey = QueryDefinition & {queryKey: string};
-export type QueryHandlerProps = {
-  queries: QueryDefinitionWithKey[];
+export type QueryDefinitionWithKey<T extends WidgetDataConstraint> = QueryDefinition<
+  T,
+  T[string]
+> & {queryKey: string};
+
+export type QueryHandlerProps<T extends WidgetDataConstraint> = {
+  queries: QueryDefinitionWithKey<T>[];
   children: ReactNode;
-  queryProps: AreaWidgetFunctionProps;
-} & WidgetDataProps;
+  queryProps: WidgetPropUnion<T>;
+} & WidgetDataProps<T>;
+
+export type WidgetPropUnion<T extends WidgetDataConstraint> = AreaWidgetProps<T>;

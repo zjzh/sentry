@@ -2,13 +2,18 @@ import mean from 'lodash/mean';
 
 import {getParams} from 'app/components/organizations/globalSelectionHeader/getParams';
 import {Series} from 'app/types/echarts';
+import {defined} from 'app/utils';
 import {axisLabelFormatter} from 'app/utils/discover/charts';
 import {aggregateOutputType} from 'app/utils/discover/fields';
 
-import {AreaWidgetFunctionProps, CommonPerformanceQueryData} from '../types';
+import {
+  CommonPerformanceQueryData,
+  WidgetDataConstraint,
+  WidgetPropUnion,
+} from '../types';
 
-export function transformEventsRequestToArea(
-  widgetProps: AreaWidgetFunctionProps,
+export function transformEventsRequestToArea<T extends WidgetDataConstraint>(
+  widgetProps: WidgetPropUnion<T>,
   results: CommonPerformanceQueryData
 ) {
   const {fields: chartFields} = widgetProps;
@@ -34,6 +39,9 @@ export function transformEventsRequestToArea(
   const childData = {
     loading,
     errored,
+    isLoading: loading,
+    isErrored: errored,
+    hasData: defined(data) && !!data[0].data.length,
     data,
     previousData,
     dataMean,
