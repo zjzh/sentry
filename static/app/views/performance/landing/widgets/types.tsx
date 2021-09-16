@@ -4,7 +4,6 @@ import {Location} from 'history';
 import BaseChart from 'app/components/charts/baseChart';
 import {RenderProps} from 'app/components/charts/eventsRequest';
 import {Organization} from 'app/types';
-import {Series} from 'app/types/echarts';
 import EventView from 'app/utils/discover/eventView';
 import {
   HistogramChildren,
@@ -122,28 +121,12 @@ export type HistogramQueryChildren = HistogramChildren;
 
 export type EventsRequestChildrenProps = RenderProps;
 
-export type CommonPerformanceQueryData = {
-  data: any;
-  loading: boolean;
-  // reloading: boolean;
-  errored: boolean;
-
-  timeseriesData?: Series[];
-  previousTimeseriesData?: Series[];
-};
-
 export type AreaWidgetFunctionProps<T extends WidgetDataConstraint> = AreaWidgetProps<T>;
 
 export type AreaWidgetProps<T extends WidgetDataConstraint> =
   GenericPerformanceWidgetProps<T> & {
     dataType: GenericPerformanceWidgetDataType.area;
   };
-
-export interface WidgetDataTypes extends CommonPerformanceQueryData {}
-// TODO(k-fish): Refine this.
-export type WidgetData = {
-  [dataKey: string]: WidgetDataTypes;
-};
 
 export type QueryDefinitionWithKey<T extends WidgetDataConstraint> = QueryDefinition<
   T,
