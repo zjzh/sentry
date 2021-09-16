@@ -22,9 +22,7 @@ export function transformEventsRequestToArea<T extends WidgetDataConstraint>(
   const loading = results.loading;
   const errored = results.errored;
   const data: Series[] = results.timeseriesData as Series[];
-  const previousData = results.previousTimeseriesData
-    ? results.previousTimeseriesData
-    : undefined;
+  const previousData = results.previousTimeseriesData as Series[];
 
   const dataMean = data?.map(series => {
     const meanData = mean(series.data.map(({value}) => value));
@@ -43,7 +41,7 @@ export function transformEventsRequestToArea<T extends WidgetDataConstraint>(
     isErrored: errored,
     hasData: defined(data) && !!data[0].data.length,
     data,
-    previousData,
+    previousData: previousData && previousData.length ? previousData[0] : previousData,
     dataMean,
 
     utc: utc === 'true',

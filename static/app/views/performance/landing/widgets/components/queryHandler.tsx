@@ -36,18 +36,15 @@ export function QueryHandler<T extends WidgetDataConstraint>(
 
 function QueryResultSaver<T extends WidgetDataConstraint>(
   props: {
-    results: WidgetDataResult | undefined;
+    results: any; // TODO(k-fish): Fix this any.
     query: QueryDefinitionWithKey<T>;
   } & QueryHandlerProps<T>
 ) {
   const {results, query} = props;
-  if (results) {
-    useEffect(() => {
-      props.setWidgetDataForKey(
-        query.queryKey,
-        query.transform(props.queryProps, results)
-      );
-    }, [results.hasData, results.isLoading, results.isErrored]);
-  }
+  const transformed = query.transform(props.queryProps, results);
+
+  useEffect(() => {
+    props.setWidgetDataForKey(query.queryKey, transformed);
+  }, [transformed?.hasData, transformed?.isLoading, transformed?.isErrored]);
   return <Fragment />;
 }

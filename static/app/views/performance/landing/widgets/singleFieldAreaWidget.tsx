@@ -86,7 +86,7 @@ export function SingleFieldAreaWidget(props: Props) {
         {
           component: provided => (
             <DurationChart
-              {...provided}
+              {...provided.widgetData.chart}
               disableMultiAxis
               disableXAxis
               chartColors={props.chartColor ? [props.chartColor] : undefined}

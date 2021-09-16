@@ -1,6 +1,7 @@
-import React, {FunctionComponent, ReactNode} from 'react';
+import {FunctionComponent, ReactNode} from 'react';
 import {Location} from 'history';
 
+import BaseChart from 'app/components/charts/baseChart';
 import {RenderProps} from 'app/components/charts/eventsRequest';
 import {Organization} from 'app/types';
 import {Series} from 'app/types/echarts';
@@ -9,7 +10,6 @@ import {
   HistogramChildren,
   HistogramChildrenProps,
 } from 'app/utils/performance/histogram/histogramQuery';
-import DurationChart from 'app/views/performance/charts/chart';
 
 import {PerformanceWidgetContainerTypes} from './components/performanceWidgetContainer';
 
@@ -66,9 +66,12 @@ export type Queries<T extends WidgetDataConstraint> = Record<
 >;
 
 type Visualization<T> = {
-  component: FunctionComponent<
-    React.ComponentProps<typeof DurationChart> & {widgetData: T; queryFields?: string}
-  >;
+  component: FunctionComponent<{
+    widgetData: T;
+    queryFields?: string;
+    grid?: React.ComponentProps<typeof BaseChart>['grid'];
+    height?: number;
+  }>;
   dataState?: (data: T) => VisualizationDataState;
   fields?: string;
   noPadding?: boolean;
@@ -77,7 +80,7 @@ type Visualization<T> = {
   height: number; // Used to determine placeholder and loading sizes. Will also be passed to the component.
 };
 
-type Visualizations<T extends WidgetDataConstraint> = Visualization<T>[];
+type Visualizations<T extends WidgetDataConstraint> = Readonly<Visualization<T>[]>; // Readonly because of index being used for React key.
 
 type HeaderActions<T> = FunctionComponent<{
   widgetData: T;

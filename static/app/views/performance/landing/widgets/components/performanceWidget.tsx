@@ -71,9 +71,13 @@ function _DataDisplay<T extends WidgetDataConstraint>(
     containerType,
   });
 
-  const hasData = Object.values(props.widgetData).every(d => !d || d.hasData);
-  const isLoading = Object.values(props.widgetData).some(d => !d || d.isLoading);
-  const isErrored = Object.values(props.widgetData).some(d => d && d.isErrored);
+  const missingDataKeys = !Object.values(props.widgetData).length;
+  const hasData =
+    !missingDataKeys && Object.values(props.widgetData).every(d => !d || d.hasData);
+  const isLoading =
+    !missingDataKeys && Object.values(props.widgetData).some(d => !d || d.isLoading);
+  const isErrored =
+    !missingDataKeys && Object.values(props.widgetData).some(d => d && d.isErrored);
 
   return (
     <Container>
@@ -85,24 +89,21 @@ function _DataDisplay<T extends WidgetDataConstraint>(
         isErrored={isErrored}
         hasData={hasData}
         errorComponent={<DefaultErrorComponent height={chartHeight} />}
-        dataComponents={Object.entries(Visualizations)
-          .filter(([key]) => props.widgetData[key])
-          .map(([key, Visualization]) => (
-            <ContentContainer
-              key={key}
-              noPadding={Visualization.noPadding}
-              bottomPadding={Visualization.bottomPadding}
-            >
-              <Visualization.component
-                {...props}
-                grid={defaultGrid}
-                {...(props.widgetData[key] ?? {})}
-                queryFields={Visualization.fields}
-                widgetData={props.widgetData}
-                height={chartHeight}
-              />
-            </ContentContainer>
-          ))}
+        dataComponents={Visualizations.map((Visualization, index) => (
+          <ContentContainer
+            key={index}
+            noPadding={Visualization.noPadding}
+            bottomPadding={Visualization.bottomPadding}
+          >
+            <Visualization.component
+              {...props}
+              grid={defaultGrid}
+              queryFields={Visualization.fields}
+              widgetData={props.widgetData}
+              height={chartHeight}
+            />
+          </ContentContainer>
+        ))}
         emptyComponent={<Placeholder height={`${chartHeight}px`} />}
       />
     </Container>
