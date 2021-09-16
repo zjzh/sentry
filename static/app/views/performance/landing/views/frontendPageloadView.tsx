@@ -1,7 +1,7 @@
 import {usePageError} from '../../contexts/pageError';
 import Table from '../../table';
 import {FRONTEND_PAGELOAD_COLUMN_TITLES} from '../data';
-import {DoubleChartRow, MiniChartRow} from '../widgets/miniChartRow';
+import {DoubleChartRow, MiniChartRow} from '../widgets/components/miniChartRow';
 
 import {BasePerformanceViewProps} from './types';
 

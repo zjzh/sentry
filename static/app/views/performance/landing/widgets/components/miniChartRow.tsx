@@ -5,9 +5,9 @@ import {Location} from 'history';
 import space from 'app/styles/space';
 import EventView from 'app/utils/discover/eventView';
 
-import {PerformanceLayoutBodyRow} from '../../layouts';
+import {PerformanceLayoutBodyRow} from '../../../layouts';
+import {PerformanceWidgetSetting} from '../types';
 
-import {PerformanceWidgetSetting} from './types';
 import WidgetContainer from './widgetContainer';
 
 export type ChartRowProps = {

@@ -12,14 +12,14 @@ import EventView from 'app/utils/discover/eventView';
 import withApi from 'app/utils/withApi';
 import _DurationChart from 'app/views/performance/charts/chart';
 
-import {GenericPerformanceWidget} from './components/performanceWidget';
-import {transformEventsRequestToArea} from './transforms/transformEventsToArea';
+import {GenericPerformanceWidget} from '../components/performanceWidget';
+import {WidgetContainerActions} from '../components/widgetContainer';
+import {transformEventsRequestToArea} from '../transforms/transformEventsToArea';
 import {
   GenericPerformanceWidgetDataType,
   PerformanceWidgetSetting,
   WidgetDataResult,
-} from './types';
-import {WidgetContainerActions} from './widgetContainer';
+} from '../types';
 
 type Props = {
   title: string;

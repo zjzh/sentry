@@ -9,13 +9,13 @@ import {useOrganization} from 'app/utils/useOrganization';
 import withOrganization from 'app/utils/withOrganization';
 import ContextMenu from 'app/views/dashboardsV2/contextMenu';
 
-import {getTermHelp, PERFORMANCE_TERM} from '../../data';
-import {TrendChangeType} from '../../trends/types';
+import {getTermHelp, PERFORMANCE_TERM} from '../../../data';
+import {TrendChangeType} from '../../../trends/types';
+import {GenericPerformanceWidgetDataType, PerformanceWidgetSetting} from '../types';
+import {SingleFieldAreaWidget} from '../widgets/singleFieldAreaWidget';
+import {TrendsWidget} from '../widgets/trendsWidget';
 
 import {ChartRowProps} from './miniChartRow';
-import {SingleFieldAreaWidget} from './singleFieldAreaWidget';
-import {TrendsWidget} from './trendsWidget';
-import {GenericPerformanceWidgetDataType, PerformanceWidgetSetting} from './types';
 
 type Props = {
   index: number;

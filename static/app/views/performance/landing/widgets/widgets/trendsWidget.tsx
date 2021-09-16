@@ -14,19 +14,18 @@ import withApi from 'app/utils/withApi';
 import withProjects from 'app/utils/withProjects';
 import _DurationChart from 'app/views/performance/charts/chart';
 
-import {TrendsListItem} from '../../trends/changedTransactions';
-import {Chart} from '../../trends/chart';
-import {TrendChangeType} from '../../trends/types';
-import {getCurrentTrendFunction, getSelectedTransaction} from '../../trends/utils';
-
-import {GenericPerformanceWidget} from './components/performanceWidget';
-import {transformTrendsDiscover} from './transforms/transformTrendsDiscover';
+import {TrendsListItem} from '../../../trends/changedTransactions';
+import {Chart} from '../../../trends/chart';
+import {TrendChangeType} from '../../../trends/types';
+import {getCurrentTrendFunction, getSelectedTransaction} from '../../../trends/utils';
+import {GenericPerformanceWidget} from '../components/performanceWidget';
+import {WidgetContainerActions} from '../components/widgetContainer';
+import {transformTrendsDiscover} from '../transforms/transformTrendsDiscover';
 import {
   GenericPerformanceWidgetDataType,
   PerformanceWidgetSetting,
   WidgetDataResult,
-} from './types';
-import {WidgetContainerActions} from './widgetContainer';
+} from '../types';
 
 type Props = {
   title: string;
