@@ -24,7 +24,6 @@ import {
   TrendFunction,
   TrendFunctionField,
   TrendParameter,
-  TrendsData,
   TrendsTransaction,
   TrendView,
 } from './types';

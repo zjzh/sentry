@@ -1,17 +1,6 @@
 import {createContext, useContext, useState} from 'react';
 
-<<<<<<< HEAD:static/app/views/performance/contexts/operationBreakdownFilter.tsx
-// Make sure to update other instances like trends column fields, discover field types.
-export enum SpanOperationBreakdownFilter {
-  None = 'none',
-  Http = 'http',
-  Db = 'db',
-  Browser = 'browser',
-  Resource = 'resource',
-}
-=======
 import {SpanOperationBreakdownFilter} from 'app/views/performance/transactionSummary/filter';
->>>>>>> origin/master:static/app/utils/performance/contexts/operationBreakdownFilter.tsx
 
 const OpBreakdownFilterContext = createContext<{
   opBreakdownFilter: SpanOperationBreakdownFilter;

@@ -142,7 +142,7 @@ export type QueryDefinitionWithKey<T extends WidgetDataConstraint> = QueryDefini
 
 export type QueryHandlerProps<T extends WidgetDataConstraint> = {
   queries: QueryDefinitionWithKey<T>[];
-  children: ReactNode;
+  children?: ReactNode;
   queryProps: WidgetPropUnion<T>;
 } & WidgetDataProps<T>;
 

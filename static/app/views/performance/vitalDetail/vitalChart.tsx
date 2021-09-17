@@ -377,7 +377,6 @@ function __VitalChart(props: _VitalChartProps) {
     //   }),
     // },
   ];
-  const _vitalNameFix = WebVital.LCP;
 
   const chartOptions = {
     grid: {

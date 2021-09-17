@@ -1,4 +1,4 @@
-import {useState} from 'react';
+import {Fragment, useState} from 'react';
 import {withRouter} from 'react-router';
 import styled from '@emotion/styled';
 
@@ -37,18 +37,19 @@ export function GenericPerformanceWidget<T extends WidgetDataConstraint>(
   switch (props.dataType) {
     case GenericPerformanceWidgetDataType.area:
       return (
-        <QueryHandler
-          {...props}
-          widgetData={widgetData}
-          setWidgetDataForKey={setWidgetDataForKey}
-          queryProps={props}
-          queries={Object.entries(props.Queries).map(([key, definition]) => ({
-            ...definition,
-            queryKey: key,
-          }))}
-        >
+        <Fragment>
+          <QueryHandler
+            {...props}
+            widgetData={widgetData}
+            setWidgetDataForKey={setWidgetDataForKey}
+            queryProps={props}
+            queries={Object.entries(props.Queries).map(([key, definition]) => ({
+              ...definition,
+              queryKey: key,
+            }))}
+          />
           <_DataDisplay<T> {...props} {...widgetProps} />
-        </QueryHandler>
+        </Fragment>
       );
     default:
       throw new Error(`Missing support for data type: '${props.dataType}'`);

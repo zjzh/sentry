@@ -25,13 +25,6 @@ type Props = {
   chartColor?: string;
 } & ChartRowProps;
 
-type ForwardedProps = Omit<
-  Props,
-  'organization' | 'chartSetting' | 'index' | 'chartHeight'
-> & {
-  orgSlug: string;
-};
-
 interface BaseChartSetting {
   dataType: GenericPerformanceWidgetDataType;
   title: string;
