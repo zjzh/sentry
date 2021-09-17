@@ -1333,8 +1333,21 @@ SENTRY_TSDB_OPTIONS = {}
 SENTRY_NEWSLETTER = "sentry.newsletter.base.Newsletter"
 SENTRY_NEWSLETTER_OPTIONS = {}
 
-SENTRY_EVENTSTREAM = "sentry.eventstream.snuba.SnubaEventStream"
-SENTRY_EVENTSTREAM_OPTIONS = {}
+# NOTE: Working here (Abhijit Gupta)
+
+KAFKA_CLUSTERS = {
+    "default": {
+        "common": {"bootstrap.servers": "127.0.0.1:9092"},
+        "producers": {
+            "compression.type": "lz4",
+            "message.max.bytes": 50000000,  # 50MB, default is 1MB
+        },
+        "consumers": {},
+    }
+}
+
+SENTRY_EVENTSTREAM = "sentry.eventstream.kafka.KafkaEventStream"
+SENTRY_EVENTSTREAM_OPTIONS = {"producer_configuration": KAFKA_CLUSTERS["default"]}
 
 # rollups must be ordered from highest granularity to lowest
 SENTRY_TSDB_ROLLUPS = (
@@ -2136,17 +2149,6 @@ INVALID_EMAIL_ADDRESS_PATTERN = re.compile(r"\@qq\.com$", re.I)
 # This is customizable for sentry.io, but generally should only be additive
 # (currently the values not used anymore so this is more for documentation purposes)
 SENTRY_USER_PERMISSIONS = ("broadcasts.admin",)
-
-KAFKA_CLUSTERS = {
-    "default": {
-        "common": {"bootstrap.servers": "127.0.0.1:9092"},
-        "producers": {
-            "compression.type": "lz4",
-            "message.max.bytes": 50000000,  # 50MB, default is 1MB
-        },
-        "consumers": {},
-    }
-}
 
 KAFKA_EVENTS = "events"
 KAFKA_OUTCOMES = "outcomes"
