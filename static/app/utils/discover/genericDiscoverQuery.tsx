@@ -65,7 +65,7 @@ export type DiscoverQueryProps = BaseDiscoverQueryProps & {
 type InnerRequestProps<P> = DiscoverQueryProps & P;
 type OuterRequestProps<P> = DiscoverQueryPropsWithContext & P;
 
-export type ReactChildrenProps<T> = {
+export type ReactProps<T> = {
   children?: (props: GenericChildrenProps<T>) => React.ReactNode;
 };
 
@@ -239,7 +239,7 @@ class _GenericDiscoverQuery<T, P> extends React.Component<Props<T, P>, State<T>>
       tableData,
       pageLinks,
     };
-    const children: ReactChildrenProps<T>['children'] = this.props.children; // Explicitly setting type due to issues with generics and React's children
+    const children: ReactProps<T>['children'] = this.props.children; // Explicitly setting type due to issues with generics and React's children
     return children?.(childrenProps);
   }
 }
