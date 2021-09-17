@@ -120,10 +120,6 @@ default_manager.add("organizations:performance-chart-interpolation", Organizatio
 default_manager.add("organizations:performance-suspect-spans-ingestion", OrganizationFeature)
 default_manager.add("organizations:performance-suspect-spans-view", OrganizationFeature, True)
 default_manager.add("organizations:performance-view", OrganizationFeature)
-default_manager.add("organizations:project-transaction-threshold", OrganizationFeature, True)
-default_manager.add(
-    "organizations:project-transaction-threshold-override", OrganizationFeature, True
-)
 default_manager.add("organizations:prompt-dashboards", OrganizationFeature)
 default_manager.add("organizations:prompt-additional-volume", OrganizationFeature)
 default_manager.add("organizations:prompt-additional-volume-on-demand", OrganizationFeature)
@@ -147,6 +143,7 @@ default_manager.add("organizations:sso-migration", OrganizationFeature)
 default_manager.add("organizations:sso-rippling", OrganizationFeature)
 default_manager.add("organizations:sso-saml2", OrganizationFeature)
 default_manager.add("organizations:sso-scim", OrganizationFeature, True)
+default_manager.add("organizations:team-insights", OrganizationFeature, True)
 default_manager.add("organizations:symbol-sources", OrganizationFeature)
 default_manager.add("organizations:transaction-comparison", OrganizationFeature, True)
 default_manager.add("organizations:transaction-events", OrganizationFeature, True)

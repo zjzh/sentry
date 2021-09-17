@@ -65,7 +65,7 @@ export const TRENDS_FUNCTIONS: TrendFunction[] = [
   },
 ];
 
-const TRENDS_PARAMETERS: TrendParameter[] = [
+export const TRENDS_PARAMETERS: TrendParameter[] = [
   {
     label: 'Duration',
     column: TrendColumnField.DURATION,
@@ -86,10 +86,6 @@ const TRENDS_PARAMETERS: TrendParameter[] = [
     label: 'CLS',
     column: TrendColumnField.CLS,
   },
-];
-
-// TODO(perf): Merge with above after ops breakdown feature is mainlined.
-const SPANS_TRENDS_PARAMETERS: TrendParameter[] = [
   {
     label: 'Spans (http)',
     column: TrendColumnField.SPANS_HTTP,
@@ -107,12 +103,6 @@ const SPANS_TRENDS_PARAMETERS: TrendParameter[] = [
     column: TrendColumnField.SPANS_RESOURCE,
   },
 ];
-
-export function getTrendsParameters({canSeeSpanOpTrends} = {canSeeSpanOpTrends: false}) {
-  return canSeeSpanOpTrends
-    ? [...TRENDS_PARAMETERS, ...SPANS_TRENDS_PARAMETERS]
-    : [...TRENDS_PARAMETERS];
-}
 
 export const trendToColor = {
   [TrendChangeType.IMPROVED]: {
