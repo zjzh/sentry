@@ -12,13 +12,6 @@ import {
 
 import {PerformanceWidgetContainerTypes} from './components/performanceWidgetContainer';
 
-export enum GenericPerformanceWidgetDataType {
-  histogram = 'histogram',
-  area = 'area',
-  vitals = 'vitals',
-  trends = 'trends',
-}
-
 export enum VisualizationDataState {
   ERROR = 'error',
   LOADING = 'loading',
@@ -26,17 +19,13 @@ export enum VisualizationDataState {
   DATA = 'data',
 }
 
-export enum PerformanceWidgetSetting {
-  LCP_HISTOGRAM = 'lcp_histogram',
-  FCP_HISTOGRAM = 'fcp_histogram',
-  FID_HISTOGRAM = 'fid_histogram',
-  TPM_AREA = 'tpm_area',
-  FAILURE_RATE_AREA = 'failure_rate_area',
-  USER_MISERY_AREA = 'user_misery_area',
-  WORST_LCP_VITALS = 'worst_lcp_vitals',
-  MOST_IMPROVED = 'most_improved',
-  MOST_REGRESSED = 'most_regressed',
+export enum GenericPerformanceWidgetDataType {
+  histogram = 'histogram',
+  area = 'area',
+  vitals = 'vitals',
+  trends = 'trends',
 }
+
 export interface WidgetDataResult {
   isLoading: boolean;
   isErrored: boolean;
@@ -61,7 +50,7 @@ export type QueryDefinition<
   fields: string | string[];
   enabled?: (data: T) => boolean;
   transform: (
-    props: AreaWidgetFunctionProps<T>,
+    props: GenericPerformanceWidgetProps<T>,
     results: any,
     queryDefinition: QueryDefinitionWithKey<T>
   ) => S; // TODO(k-fish): Fix any type.
@@ -90,7 +79,6 @@ type Visualizations<T extends WidgetDataConstraint> = Readonly<Visualization<T>[
 
 type HeaderActions<T> = FunctionComponent<{
   widgetData: T;
-  setChartSetting: (setting: PerformanceWidgetSetting) => void;
 }>;
 
 export type GenericPerformanceWidgetProps<T extends WidgetDataConstraint> = {
@@ -98,11 +86,9 @@ export type GenericPerformanceWidgetProps<T extends WidgetDataConstraint> = {
   title: string;
   titleTooltip: string;
   subtitle?: JSX.Element;
-  setChartSetting: (setting: PerformanceWidgetSetting) => void;
 
   fields: string[];
   chartHeight: number;
-  dataType: GenericPerformanceWidgetDataType;
   containerType: PerformanceWidgetContainerTypes;
 
   location: Location;
@@ -128,13 +114,6 @@ export type HistogramQueryChildren = HistogramChildren;
 
 export type EventsRequestChildrenProps = RenderProps;
 
-export type AreaWidgetFunctionProps<T extends WidgetDataConstraint> = AreaWidgetProps<T>;
-
-export type AreaWidgetProps<T extends WidgetDataConstraint> =
-  GenericPerformanceWidgetProps<T> & {
-    dataType: GenericPerformanceWidgetDataType.area;
-  };
-
 export type QueryDefinitionWithKey<T extends WidgetDataConstraint> = QueryDefinition<
   T,
   T[string]
@@ -146,4 +125,5 @@ export type QueryHandlerProps<T extends WidgetDataConstraint> = {
   queryProps: WidgetPropUnion<T>;
 } & WidgetDataProps<T>;
 
-export type WidgetPropUnion<T extends WidgetDataConstraint> = AreaWidgetProps<T>;
+export type WidgetPropUnion<T extends WidgetDataConstraint> =
+  GenericPerformanceWidgetProps<T>;

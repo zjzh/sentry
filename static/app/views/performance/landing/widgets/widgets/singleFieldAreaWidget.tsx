@@ -1,4 +1,4 @@
-import {Fragment} from 'react';
+import {Fragment, FunctionComponent} from 'react';
 import {withRouter} from 'react-router';
 import styled from '@emotion/styled';
 import {Location} from 'history';
@@ -13,13 +13,8 @@ import withApi from 'app/utils/withApi';
 import _DurationChart from 'app/views/performance/charts/chart';
 
 import {GenericPerformanceWidget} from '../components/performanceWidget';
-import {WidgetContainerActions} from '../components/widgetContainer';
 import {transformEventsRequestToArea} from '../transforms/transformEventsToArea';
-import {
-  GenericPerformanceWidgetDataType,
-  PerformanceWidgetSetting,
-  WidgetDataResult,
-} from '../types';
+import {WidgetDataResult} from '../types';
 
 type Props = {
   title: string;
@@ -30,7 +25,8 @@ type Props = {
   eventView: EventView;
   location: Location;
   organization: Organization;
-  setChartSetting: (setting: PerformanceWidgetSetting) => void;
+
+  ContainerActions: FunctionComponent<{isLoading: boolean}>;
 };
 
 type AreaDataType = {
@@ -38,6 +34,7 @@ type AreaDataType = {
 };
 
 export function SingleFieldAreaWidget(props: Props) {
+  const {ContainerActions} = props;
   const {interval, statsPeriod} = getParams(props.location.query);
   const queryProps = {...omit(props, 'field'), orgSlug: props.organization.slug};
 
@@ -49,16 +46,12 @@ export function SingleFieldAreaWidget(props: Props) {
     <GenericPerformanceWidget<AreaDataType>
       {...props}
       subtitle={<Subtitle>{t('Compared to last %s ', statsPeriod)}</Subtitle>}
-      dataType={GenericPerformanceWidgetDataType.area}
       HeaderActions={provided => (
         <Fragment>
           <HighlightNumber color={props.chartColor}>
             {provided.widgetData.chart?.dataMean?.[0].label}
           </HighlightNumber>
-          <WidgetContainerActions
-            {...provided.widgetData.chart}
-            setChartSetting={props.setChartSetting}
-          />
+          <ContainerActions {...provided.widgetData.chart} />
         </Fragment>
       )}
       Queries={{
@@ -66,8 +59,8 @@ export function SingleFieldAreaWidget(props: Props) {
           fields: props.fields[0],
           component: provided => (
             <EventsRequest
-              {...provided}
               {...queryProps}
+              {...provided}
               limit={1}
               includePrevious
               includeTransformedData

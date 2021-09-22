@@ -8,8 +8,9 @@ import {QueryDefinitionWithKey, QueryHandlerProps, WidgetDataConstraint} from '.
 export function QueryHandler<T extends WidgetDataConstraint>(
   props: QueryHandlerProps<T>
 ) {
+  const children = props.children ?? <Fragment />;
   if (!props.queries.length) {
-    return <div>{props.children}</div>;
+    return <Fragment>{children}</Fragment>;
   }
   const [query, ...remainingQueries] = props.queries;
   if (typeof query.enabled !== 'undefined' && !query.enabled) {

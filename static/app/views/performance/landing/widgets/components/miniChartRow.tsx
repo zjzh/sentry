@@ -6,7 +6,7 @@ import space from 'app/styles/space';
 import EventView from 'app/utils/discover/eventView';
 
 import {PerformanceLayoutBodyRow} from '../../../layouts';
-import {PerformanceWidgetSetting} from '../types';
+import {PerformanceWidgetSetting} from '../widgetDefinitions';
 
 import WidgetContainer from './widgetContainer';
 

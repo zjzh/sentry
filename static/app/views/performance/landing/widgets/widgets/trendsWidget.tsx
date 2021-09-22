@@ -1,4 +1,4 @@
-import {Fragment} from 'react';
+import {Fragment, FunctionComponent} from 'react';
 import {withRouter} from 'react-router';
 import {withTheme} from '@emotion/react';
 import styled from '@emotion/styled';
@@ -19,13 +19,8 @@ import {Chart} from '../../../trends/chart';
 import {TrendChangeType} from '../../../trends/types';
 import {getCurrentTrendFunction, getSelectedTransaction} from '../../../trends/utils';
 import {GenericPerformanceWidget} from '../components/performanceWidget';
-import {WidgetContainerActions} from '../components/widgetContainer';
 import {transformTrendsDiscover} from '../transforms/transformTrendsDiscover';
-import {
-  GenericPerformanceWidgetDataType,
-  PerformanceWidgetSetting,
-  WidgetDataResult,
-} from '../types';
+import {WidgetDataResult} from '../types';
 
 type Props = {
   title: string;
@@ -39,7 +34,7 @@ type Props = {
 
   trendChangeType: TrendChangeType;
 
-  setChartSetting: (setting: PerformanceWidgetSetting) => void;
+  ContainerActions: FunctionComponent<{isLoading: boolean}>;
 };
 
 type TrendsWidgetDataType = {
@@ -47,7 +42,13 @@ type TrendsWidgetDataType = {
 };
 
 export function TrendsWidget(props: Props) {
-  const {eventView: _eventView, location, organization, trendChangeType} = props;
+  const {
+    eventView: _eventView,
+    location,
+    organization,
+    trendChangeType,
+    ContainerActions,
+  } = props;
   const eventView = _eventView.clone();
   eventView.fields = [{field: 'transaction'}, {field: 'project'}];
   eventView.sorts = [
@@ -70,22 +71,14 @@ export function TrendsWidget(props: Props) {
     <GenericPerformanceWidget<TrendsWidgetDataType>
       {...rest}
       subtitle={<Subtitle>{t('Trending Transactions')}</Subtitle>}
-      dataType={GenericPerformanceWidgetDataType.area}
-      HeaderActions={provided => (
-        <Fragment>
-          <WidgetContainerActions
-            {...provided.widgetData.chart}
-            setChartSetting={props.setChartSetting}
-          />
-        </Fragment>
-      )}
+      HeaderActions={provided => <ContainerActions {...provided.widgetData.chart} />}
       Queries={{
         chart: {
           fields: [...rest.fields],
           component: provided => (
             <TrendsDiscoverQuery
-              {...provided}
               {...queryProps}
+              {...provided}
               trendChangeType={props.trendChangeType}
               limit={3}
             />

@@ -1,4 +1,4 @@
-import {Fragment, useState} from 'react';
+import {Fragment, useMemo, useState} from 'react';
 import {withRouter} from 'react-router';
 import styled from '@emotion/styled';
 
@@ -9,8 +9,7 @@ import space from 'app/styles/space';
 import getPerformanceWidgetContainer from 'app/views/performance/landing/widgets/components/performanceWidgetContainer';
 
 import {
-  AreaWidgetFunctionProps,
-  GenericPerformanceWidgetDataType,
+  GenericPerformanceWidgetProps,
   WidgetDataConstraint,
   WidgetDataProps,
   WidgetDataResult,
@@ -34,37 +33,32 @@ export function GenericPerformanceWidget<T extends WidgetDataConstraint>(
   };
   const widgetProps = {widgetData, setWidgetDataForKey};
 
-  switch (props.dataType) {
-    case GenericPerformanceWidgetDataType.area:
-      return (
-        <Fragment>
-          <QueryHandler
-            {...props}
-            widgetData={widgetData}
-            setWidgetDataForKey={setWidgetDataForKey}
-            queryProps={props}
-            queries={Object.entries(props.Queries).map(([key, definition]) => ({
-              ...definition,
-              queryKey: key,
-            }))}
-          />
-          <_DataDisplay<T> {...props} {...widgetProps} />
-        </Fragment>
-      );
-    default:
-      throw new Error(`Missing support for data type: '${props.dataType}'`);
-  }
+  const queries = useMemo(() => {
+    return Object.entries([...props.Queries]).map(([key, definition]) => ({
+      ...definition,
+      queryKey: key,
+    }));
+  }, [props.Queries.length]);
+  // const queries = Object.entries(props.Queries).map(([key, definition]) => ({
+  //   ...definition,
+  //   queryKey: key,
+  // }));
+
+  return (
+    <Fragment>
+      <QueryHandler
+        widgetData={widgetData}
+        setWidgetDataForKey={setWidgetDataForKey}
+        queryProps={props}
+        queries={queries}
+      />
+      <_DataDisplay<T> {...props} {...widgetProps} />
+    </Fragment>
+  );
 }
 
-const defaultGrid = {
-  left: space(0),
-  right: space(0),
-  top: space(2),
-  bottom: space(0),
-};
-
 function _DataDisplay<T extends WidgetDataConstraint>(
-  props: AreaWidgetFunctionProps<T> & WidgetDataProps<T>
+  props: GenericPerformanceWidgetProps<T> & WidgetDataProps<T>
 ) {
   const {Visualizations, chartHeight, containerType} = props;
 
@@ -119,6 +113,13 @@ const DefaultErrorComponent = (props: {height: number}) => {
       <IconWarning color="gray300" size="lg" />
     </ErrorPanel>
   );
+};
+
+const defaultGrid = {
+  left: space(0),
+  right: space(0),
+  top: space(2),
+  bottom: space(0),
 };
 
 const ContentContainer = styled('div')<{noPadding?: boolean; bottomPadding?: boolean}>`

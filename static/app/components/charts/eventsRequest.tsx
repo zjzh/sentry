@@ -458,6 +458,10 @@ class EventsRequest extends React.PureComponent<EventsRequestProps, EventsReques
       timeframe,
     } = this.processData(timeseriesData);
 
+    if (!children) {
+      return null;
+    }
+
     return children({
       loading,
       reloading,
