@@ -34,15 +34,11 @@ export function GenericPerformanceWidget<T extends WidgetDataConstraint>(
   const widgetProps = {widgetData, setWidgetDataForKey};
 
   const queries = useMemo(() => {
-    return Object.entries([...props.Queries]).map(([key, definition]) => ({
+    return Object.entries(props.Queries).map(([key, definition]) => ({
       ...definition,
       queryKey: key,
     }));
-  }, [props.Queries.length]);
-  // const queries = Object.entries(props.Queries).map(([key, definition]) => ({
-  //   ...definition,
-  //   queryKey: key,
-  // }));
+  }, [props.Queries]);
 
   return (
     <Fragment>
