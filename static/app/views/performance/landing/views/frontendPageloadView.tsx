@@ -1,4 +1,5 @@
-import {usePageError} from '../../contexts/pageError';
+import {usePageError} from 'app/utils/performance/contexts/pageError';
+
 import Table from '../../table';
 import {FRONTEND_PAGELOAD_COLUMN_TITLES} from '../data';
 import {DoubleChartRow, MiniChartRow} from '../widgets/components/miniChartRow';
@@ -15,7 +16,6 @@ export function FrontendPageloadView(props: BasePerformanceViewProps) {
         {...props}
         columnTitles={FRONTEND_PAGELOAD_COLUMN_TITLES}
         setError={usePageError().setPageError}
-        summaryConditions={props.eventView.getQueryWithAdditionalConditions()}
       />
     </div>
   );

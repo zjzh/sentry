@@ -1,4 +1,5 @@
-import {usePageError} from '../../contexts/pageError';
+import {usePageError} from 'app/utils/performance/contexts/pageError';
+
 import Table from '../../table';
 import {BACKEND_COLUMN_TITLES} from '../data';
 
@@ -11,7 +12,6 @@ export function BackendView(props: BasePerformanceViewProps) {
         {...props}
         columnTitles={BACKEND_COLUMN_TITLES}
         setError={usePageError().setPageError}
-        summaryConditions={props.eventView.getQueryWithAdditionalConditions()}
       />
     </div>
   );

@@ -25,7 +25,7 @@ export const PageErrorProvider = ({children}: {children: React.ReactNode}) => {
   );
 };
 
-export const ErrorAlert = () => {
+export const PageErrorAlert = () => {
   const {pageError} = useContext(pageErrorContext);
   if (!pageError) {
     return null;
