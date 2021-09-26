@@ -1,5 +1,7 @@
 import {Fragment, useEffect} from 'react';
 
+import {getUtcToLocalDateObject} from 'app/utils/dates';
+
 import {QueryDefinitionWithKey, QueryHandlerProps, WidgetDataConstraint} from '../types';
 
 /*
@@ -16,8 +18,27 @@ export function QueryHandler<T extends WidgetDataConstraint>(
   if (typeof query.enabled !== 'undefined' && !query.enabled) {
     return <QueryHandler {...props} queries={remainingQueries} />;
   }
+
+  const globalSelection = props.queryProps.eventView.getGlobalSelection();
+  const start = globalSelection.datetime.start
+    ? getUtcToLocalDateObject(globalSelection.datetime.start)
+    : null;
+
+  const end = globalSelection.datetime.end
+    ? getUtcToLocalDateObject(globalSelection.datetime.end)
+    : null;
+
   return (
-    <query.component fields={query.fields} yAxis={query.fields}>
+    <query.component
+      fields={query.fields}
+      yAxis={query.fields}
+      start={start}
+      end={end}
+      period={globalSelection.datetime.period}
+      project={globalSelection.projects}
+      environment={globalSelection.environments}
+      organization={props.queryProps.organization}
+    >
       {results => {
         return (
           <Fragment>

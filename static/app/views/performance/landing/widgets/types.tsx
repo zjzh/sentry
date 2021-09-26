@@ -4,7 +4,7 @@ import {Location} from 'history';
 import {Client} from 'app/api';
 import BaseChart from 'app/components/charts/baseChart';
 import {RenderProps} from 'app/components/charts/eventsRequest';
-import {Organization} from 'app/types';
+import {DateString, Organization} from 'app/types';
 import EventView from 'app/utils/discover/eventView';
 import {
   HistogramChildren,
@@ -40,7 +40,17 @@ export type QueryChildren = {
   children: (props: any) => ReactNode; // TODO(k-fish): Fix any type.
 };
 export type QueryFC = FunctionComponent<
-  QueryChildren & {fields?: string | string[]; yAxis?: string | string[]}
+  QueryChildren & {
+    fields?: string | string[];
+    yAxis?: string | string[];
+    period?: string;
+    start?: DateString;
+    end?: DateString;
+    project?: Readonly<number[]>;
+    environment?: Readonly<string[]>;
+    team?: Readonly<string | string[]>;
+    organization?: Organization;
+  }
 >;
 
 export type QueryDefinition<

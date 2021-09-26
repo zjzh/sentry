@@ -34,24 +34,18 @@ type AreaDataType = {
 
 export function SingleFieldAreaWidget(props: Props) {
   const {ContainerActions} = props;
-  const {interval, statsPeriod} = getParams(props.location.query);
+  const {statsPeriod} = getParams(props.location.query);
 
   if (props.fields.length !== 1) {
     throw new Error(`Single field area can only accept a single field (${props.fields})`);
   }
 
   const Queries = useMemo(() => {
-    const queryProps = {
-      orgSlug: props.organization.slug,
-      organization: props.organization,
-    };
-
     return {
       chart: {
         fields: props.fields[0],
         component: provided => (
           <EventsRequest
-            {...queryProps}
             {...provided}
             limit={1}
             includePrevious
@@ -59,8 +53,6 @@ export function SingleFieldAreaWidget(props: Props) {
             partial
             currentSeriesName={props.fields[0]}
             query={props.eventView.getQueryWithAdditionalConditions()}
-            period={statsPeriod ?? undefined}
-            interval={interval ?? ''}
           />
         ),
         transform: transformEventsRequestToArea,
