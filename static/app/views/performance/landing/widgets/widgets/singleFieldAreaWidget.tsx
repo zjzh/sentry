@@ -1,4 +1,4 @@
-import {Fragment, FunctionComponent} from 'react';
+import {Fragment, FunctionComponent, useMemo} from 'react';
 import {withRouter} from 'react-router';
 import styled from '@emotion/styled';
 import {Location} from 'history';
@@ -35,11 +35,38 @@ type AreaDataType = {
 export function SingleFieldAreaWidget(props: Props) {
   const {ContainerActions} = props;
   const {interval, statsPeriod} = getParams(props.location.query);
-  const queryProps = {orgSlug: props.organization.slug, organization: props.organization};
 
   if (props.fields.length !== 1) {
     throw new Error(`Single field area can only accept a single field (${props.fields})`);
   }
+
+  const Queries = useMemo(() => {
+    const queryProps = {
+      orgSlug: props.organization.slug,
+      organization: props.organization,
+    };
+
+    return {
+      chart: {
+        fields: props.fields[0],
+        component: provided => (
+          <EventsRequest
+            {...queryProps}
+            {...provided}
+            limit={1}
+            includePrevious
+            includeTransformedData
+            partial
+            currentSeriesName={props.fields[0]}
+            query={props.eventView.getQueryWithAdditionalConditions()}
+            period={statsPeriod ?? undefined}
+            interval={interval ?? ''}
+          />
+        ),
+        transform: transformEventsRequestToArea,
+      },
+    };
+  }, [props.eventView, props.fields, props.organization.slug]);
 
   return (
     <GenericPerformanceWidget<AreaDataType>
@@ -53,26 +80,7 @@ export function SingleFieldAreaWidget(props: Props) {
           <ContainerActions {...provided.widgetData.chart} />
         </Fragment>
       )}
-      Queries={{
-        chart: {
-          fields: props.fields[0],
-          component: provided => (
-            <EventsRequest
-              {...queryProps}
-              {...provided}
-              limit={1}
-              includePrevious
-              includeTransformedData
-              partial
-              currentSeriesName={props.fields[0]}
-              query={props.eventView.getQueryWithAdditionalConditions()}
-              period={statsPeriod ?? undefined}
-              interval={interval ?? ''}
-            />
-          ),
-          transform: transformEventsRequestToArea,
-        },
-      }}
+      Queries={Queries}
       Visualizations={[
         {
           component: provided => (

@@ -1,4 +1,4 @@
-import {Fragment, FunctionComponent} from 'react';
+import {Fragment, FunctionComponent, useMemo} from 'react';
 import {withRouter} from 'react-router';
 import {withTheme} from '@emotion/react';
 import styled from '@emotion/styled';
@@ -67,25 +67,29 @@ export function TrendsWidget(props: Props) {
 
   const trendFunction = getCurrentTrendFunction(location);
 
+  const Queries = useMemo(() => {
+    return {
+      chart: {
+        fields: [...rest.fields],
+        component: provided => (
+          <TrendsDiscoverQuery
+            {...queryProps}
+            {...provided}
+            trendChangeType={props.trendChangeType}
+            limit={3}
+          />
+        ),
+        transform: transformTrendsDiscover,
+      },
+    };
+  }, [rest.fields, props.trendChangeType]);
+
   return (
     <GenericPerformanceWidget<TrendsWidgetDataType>
       {...rest}
       subtitle={<Subtitle>{t('Trending Transactions')}</Subtitle>}
       HeaderActions={provided => <ContainerActions {...provided.widgetData.chart} />}
-      Queries={{
-        chart: {
-          fields: [...rest.fields],
-          component: provided => (
-            <TrendsDiscoverQuery
-              {...queryProps}
-              {...provided}
-              trendChangeType={props.trendChangeType}
-              limit={3}
-            />
-          ),
-          transform: transformTrendsDiscover,
-        },
-      }}
+      Queries={Queries}
       Visualizations={[
         {
           component: provided => (
