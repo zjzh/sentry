@@ -14,12 +14,19 @@ export type ChartRowProps = {
   eventView: EventView;
   location: Location;
   allowedCharts: PerformanceWidgetSetting[];
+  chartHeight: number;
+  numberCharts: number;
 };
 
-export const MiniChartRow = (props: ChartRowProps) => {
-  const charts = 3;
+const ChartRow = (props: ChartRowProps) => {
+  const charts = props.numberCharts;
   const theme = useTheme();
   const palette = theme.charts.getColorPalette(charts);
+
+  if (props.allowedCharts.length < charts) {
+    throw new Error('Not enough allowed chart types to show row.');
+  }
+
   return (
     <StyledRow minSize={200}>
       {new Array(charts).fill(0).map((_, index) => (
@@ -27,29 +34,27 @@ export const MiniChartRow = (props: ChartRowProps) => {
           {...props}
           key={index}
           index={index}
-          chartHeight={160}
+          chartHeight={props.chartHeight}
           chartColor={palette[index]}
-          defaultChartSetting={PerformanceWidgetSetting.LCP_HISTOGRAM}
+          defaultChartSetting={props.allowedCharts[index]}
         />
       ))}
     </StyledRow>
   );
 };
 
-export const DoubleChartRow = (props: ChartRowProps) => {
-  return (
-    <StyledRow minSize={200}>
-      {new Array(2).fill(0).map((_, index) => (
-        <WidgetContainer
-          {...props}
-          key={index}
-          index={index}
-          chartHeight={300}
-          defaultChartSetting={PerformanceWidgetSetting.LCP_HISTOGRAM}
-        />
-      ))}
-    </StyledRow>
-  );
+export const MiniChartRow = (props: ChartRowProps) => <ChartRow {...props} />;
+
+MiniChartRow.defaultProps = {
+  numberCharts: 3,
+  chartHeight: 160,
+};
+
+export const DoubleChartRow = (props: ChartRowProps) => <ChartRow {...props} />;
+
+DoubleChartRow.defaultProps = {
+  numberCharts: 2,
+  chartHeight: 300,
 };
 
 const StyledRow = styled(PerformanceLayoutBodyRow)`

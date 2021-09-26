@@ -25,6 +25,7 @@ export function AllTransactionsView(props: BasePerformanceViewProps) {
           PerformanceWidgetSetting.TPM_AREA,
         ]}
       />
+      {/* Existing chart network call: https://sentry.io/api/0/organizations/sentry/events-stats/?interval=5m&partial=1&project=11276&query=transaction.duration%3A%3C15m%20event.type%3Atransaction&statsPeriod=24h&yAxis=apdex%28%29&yAxis=tpm%28%29 */}
       <Table {...props} setError={usePageError().setPageError} />
     </div>
   );
