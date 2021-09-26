@@ -13,6 +13,7 @@ import WidgetContainer from './widgetContainer';
 export type ChartRowProps = {
   eventView: EventView;
   location: Location;
+  allowedCharts: PerformanceWidgetSetting[];
 };
 
 export const MiniChartRow = (props: ChartRowProps) => {

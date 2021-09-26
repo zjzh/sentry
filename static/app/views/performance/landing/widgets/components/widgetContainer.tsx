@@ -21,6 +21,7 @@ type Props = {
   index: number;
   organization: Organization;
   defaultChartSetting: PerformanceWidgetSetting;
+  allowedCharts: PerformanceWidgetSetting[];
   chartHeight: number;
   chartColor?: string;
 } & ChartRowProps;
@@ -67,7 +68,11 @@ const _WidgetContainer = (props: Props) => {
   const widgetProps = {
     ...WIDGET_DEFINITIONS({organization})[chartSetting],
     ContainerActions: containerProps => (
-      <WidgetContainerActions {...containerProps} setChartSetting={setChartSetting} />
+      <WidgetContainerActions
+        {...containerProps}
+        allowedCharts={props.allowedCharts}
+        setChartSetting={setChartSetting}
+      />
     ),
   };
 
@@ -93,22 +98,20 @@ const _WidgetContainer = (props: Props) => {
 
 export const WidgetContainerActions = ({
   setChartSetting,
+  allowedCharts,
 }: {
   loading: boolean;
   setChartSetting: (setting: PerformanceWidgetSetting) => void;
+  allowedCharts: PerformanceWidgetSetting[];
 }) => {
   const organization = useOrganization();
   const menuOptions: React.ReactNode[] = [];
 
   const settingsMap = WIDGET_DEFINITIONS({organization});
-  for (const _setting in PerformanceWidgetSetting) {
-    const setting: PerformanceWidgetSetting = PerformanceWidgetSetting[
-      _setting
-    ] as PerformanceWidgetSetting;
-
+  for (const setting of allowedCharts) {
     const options = settingsMap[setting];
     menuOptions.push(
-      <MenuItem key={_setting} onClick={() => setChartSetting(setting)}>
+      <MenuItem key={setting} onClick={() => setChartSetting(setting)}>
         {t(options.title)}
       </MenuItem>
     );
