@@ -95,7 +95,6 @@ function _DataDisplay<T extends WidgetDataConstraint>(
             bottomPadding={Visualization.bottomPadding}
           >
             <Visualization.component
-              {...props}
               grid={defaultGrid}
               queryFields={Visualization.fields}
               widgetData={props.widgetData}
