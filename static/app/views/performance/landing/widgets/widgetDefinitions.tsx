@@ -118,7 +118,7 @@ export const WIDGET_DEFINITIONS: ({
   [PerformanceWidgetSetting.USER_MISERY_AREA]: {
     title: t('User Misery'),
     titleTooltip: getTermHelp(organization, PERFORMANCE_TERM.USER_MISERY),
-    fields: [`user_misery(${organization.apdexThreshold})`], // TODO(k-fish): Check threshold is correct vs existing landing
+    fields: [`user_misery(${organization.apdexThreshold ?? ''})`], // TODO(k-fish): Check threshold is correct vs existing landing
     dataType: GenericPerformanceWidgetDataType.area,
     chartColor: WIDGET_PALETTE[0],
   },

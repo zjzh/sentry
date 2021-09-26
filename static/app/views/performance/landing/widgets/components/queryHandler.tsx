@@ -5,7 +5,7 @@ import {getUtcToLocalDateObject} from 'app/utils/dates';
 import {QueryDefinitionWithKey, QueryHandlerProps, WidgetDataConstraint} from '../types';
 
 /*
-  Component to handle switching component-style queries over to state. This will temporarily make things easier to switch away from waterfall style api components.
+  Component to handle switching component-style queries over to state. This should be temporary to make it easier to switch away from waterfall style api components.
 */
 export function QueryHandler<T extends WidgetDataConstraint>(
   props: QueryHandlerProps<T>

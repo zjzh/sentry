@@ -100,6 +100,40 @@ describe('Performance > Widgets > WidgetContainer', function () {
     );
   });
 
+  it('User misery Widget', async function () {
+    const data = initializeData();
+
+    const wrapper = mountWithTheme(
+      <WrappedComponent
+        data={data}
+        defaultChartSetting={PerformanceWidgetSetting.USER_MISERY_AREA}
+      />,
+      data.routerContext
+    );
+    await tick();
+    wrapper.update();
+
+    expect(wrapper.find('div[data-test-id="performance-widget-title"]').text()).toEqual(
+      'User Misery'
+    );
+    expect(eventStatsMock).toHaveBeenCalledTimes(1);
+    expect(eventStatsMock).toHaveBeenNthCalledWith(
+      1,
+      expect.anything(),
+      expect.objectContaining({
+        query: expect.objectContaining({
+          environment: [],
+          interval: '1d',
+          partial: '1',
+          project: [],
+          query: '',
+          statsPeriod: '28d',
+          yAxis: 'user_misery()',
+        }),
+      })
+    );
+  });
+
   it('Able to change widget type from menu', async function () {
     const data = initializeData();
 
