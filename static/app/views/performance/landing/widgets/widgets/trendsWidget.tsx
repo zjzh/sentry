@@ -50,7 +50,8 @@ export function TrendsWidget(props: Props) {
     ContainerActions,
   } = props;
   const eventView = _eventView.clone();
-  eventView.fields = [{field: 'transaction'}, {field: 'project'}];
+  const fields = [{field: 'transaction'}, {field: 'project'}];
+  eventView.fields = fields;
   eventView.sorts = [
     {
       kind: trendChangeType === TrendChangeType.IMPROVED ? 'asc' : 'desc',
@@ -58,7 +59,6 @@ export function TrendsWidget(props: Props) {
     },
   ];
   const rest = {eventView, ...omit(props, 'eventView')};
-  const queryProps = {...omit(rest, 'field'), orgSlug: organization.slug};
   eventView.additionalConditions.addFilterValues('tpm()', ['>0.01']);
   eventView.additionalConditions.addFilterValues('count_percentage()', ['>0.25', '<4']);
   eventView.additionalConditions.addFilterValues('trend_percentage()', ['>0%']);
@@ -68,13 +68,16 @@ export function TrendsWidget(props: Props) {
   const trendFunction = getCurrentTrendFunction(location);
 
   const Queries = useMemo(() => {
+    const queryProps = {...omit(rest, 'fields'), orgSlug: organization.slug};
     return {
       chart: {
-        fields: [...rest.fields],
+        fields: ['transaction', 'project'],
         component: provided => (
           <TrendsDiscoverQuery
             {...queryProps}
             {...provided}
+            eventView={eventView}
+            location={props.location}
             trendChangeType={props.trendChangeType}
             limit={3}
           />
@@ -82,7 +85,7 @@ export function TrendsWidget(props: Props) {
         transform: transformTrendsDiscover,
       },
     };
-  }, [rest.fields, props.trendChangeType]);
+  }, [fields, eventView, props.trendChangeType]);
 
   return (
     <GenericPerformanceWidget<TrendsWidgetDataType>
@@ -95,6 +98,7 @@ export function TrendsWidget(props: Props) {
           component: provided => (
             <TrendsChart
               {...provided}
+              {...rest}
               isLoading={provided.widgetData.chart.isLoading}
               statsData={provided.widgetData.chart.statsData}
               query={eventView.query}
@@ -108,7 +112,6 @@ export function TrendsWidget(props: Props) {
                 trendChangeType,
                 provided.widgetData.chart.events
               )}
-              {...rest}
             />
           ),
           bottomPadding: true,
