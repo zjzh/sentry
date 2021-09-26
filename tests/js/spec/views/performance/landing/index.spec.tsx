@@ -1,48 +1,10 @@
 import {mountWithTheme} from 'sentry-test/enzyme';
-import {initializeOrg} from 'sentry-test/initializeOrg';
+import {initializeData} from 'sentry-test/performance/initializePerformanceData';
 
-import {Project} from 'app/types';
 import EventView from 'app/utils/discover/eventView';
 import {OrganizationContext} from 'app/views/organizationContext';
 import {PerformanceLanding} from 'app/views/performance/landing';
 import {LandingDisplayField} from 'app/views/performance/landing/utils';
-
-function initializeData(settings?: {
-  query?: {};
-  features?: string[];
-  projects?: Project[];
-  project?: Project;
-}) {
-  // @ts-expect-error
-  const _defaultProject = TestStubs.Project();
-  const _settings = {
-    query: {},
-    features: [],
-    projects: [_defaultProject],
-    project: _defaultProject,
-    ...settings,
-  };
-  const {query, features} = _settings;
-
-  // @ts-expect-error
-  const projects = [TestStubs.Project()];
-  const [project] = projects;
-
-  // @ts-expect-error
-  const organization = TestStubs.Organization({
-    features,
-    projects,
-  });
-  const router = {
-    location: {
-      query: {
-        ...query,
-      },
-    },
-  };
-  const initialData = initializeOrg({organization, projects, project, router});
-  return initialData;
-}
 
 const WrappedComponent = ({data}) => {
   const eventView = EventView.fromLocation(data.router.location);

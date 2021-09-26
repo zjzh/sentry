@@ -24,6 +24,7 @@ type Props = {
   allowedCharts: PerformanceWidgetSetting[];
   chartHeight: number;
   chartColor?: string;
+  forceDefaultChartSetting?: boolean; // Used for testing.
 } & ChartRowProps;
 
 // Use local storage for chart settings for now.
@@ -33,8 +34,12 @@ const getContainerLocalStorageKey = (index: number, height: number) =>
 const getChartSetting = (
   index: number,
   height: number,
-  defaultType: PerformanceWidgetSetting
+  defaultType: PerformanceWidgetSetting,
+  forceDefaultChartSetting?: boolean // Used for testing.
 ): PerformanceWidgetSetting => {
+  if (forceDefaultChartSetting) {
+    return defaultType;
+  }
   const key = getContainerLocalStorageKey(index, height);
   const value = localStorage.getItem(key);
   if (
@@ -57,11 +62,18 @@ const _setChartSetting = (
 
 const _WidgetContainer = (props: Props) => {
   const {organization, index, chartHeight, ...rest} = props;
-  const _chartSetting = getChartSetting(index, chartHeight, rest.defaultChartSetting);
+  const _chartSetting = getChartSetting(
+    index,
+    chartHeight,
+    rest.defaultChartSetting,
+    rest.forceDefaultChartSetting
+  );
   const [chartSetting, setChartSettingState] = useState(_chartSetting);
 
   const setChartSetting = (setting: PerformanceWidgetSetting) => {
-    _setChartSetting(index, chartHeight, setting);
+    if (!props.forceDefaultChartSetting) {
+      _setChartSetting(index, chartHeight, setting);
+    }
     setChartSettingState(setting);
   };
 
@@ -111,7 +123,11 @@ export const WidgetContainerActions = ({
   for (const setting of allowedCharts) {
     const options = settingsMap[setting];
     menuOptions.push(
-      <MenuItem key={setting} onClick={() => setChartSetting(setting)}>
+      <MenuItem
+        key={setting}
+        onClick={() => setChartSetting(setting)}
+        data-test-id="performance-widget-menu-item"
+      >
         {t(options.title)}
       </MenuItem>
     );
