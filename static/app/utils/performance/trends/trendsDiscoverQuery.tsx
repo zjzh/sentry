@@ -25,7 +25,7 @@ export type TrendsRequest = {
 
 type RequestProps = DiscoverQueryProps & TrendsRequest;
 
-type ChildrenProps = Omit<GenericChildrenProps<TrendsData>, 'tableData'> & {
+export type ChildrenProps = Omit<GenericChildrenProps<TrendsData>, 'tableData'> & {
   trendsData: TrendsData | null;
 };
 
@@ -50,7 +50,7 @@ export function getTrendsRequestPayload(props: RequestProps) {
     trendFunction.field,
     trendParameter.column
   );
-  apiPayload.trendType = eventView?.trendType;
+  apiPayload.trendType = eventView?.trendType || props.trendChangeType;
   apiPayload.interval = eventView?.interval;
   apiPayload.middle = eventView?.middle;
   return apiPayload;
@@ -59,9 +59,9 @@ export function getTrendsRequestPayload(props: RequestProps) {
 function TrendsDiscoverQuery(props: Props) {
   return (
     <GenericDiscoverQuery<TrendsData, TrendsRequest>
+      {...props}
       route="events-trends-stats"
       getRequestPayload={getTrendsRequestPayload}
-      {...props}
     >
       {({tableData, ...rest}) => {
         return props.children({trendsData: tableData, ...rest});
@@ -73,9 +73,9 @@ function TrendsDiscoverQuery(props: Props) {
 function EventsDiscoverQuery(props: EventProps) {
   return (
     <GenericDiscoverQuery<TrendsDataEvents, TrendsRequest>
+      {...props}
       route="events-trends"
       getRequestPayload={getTrendsRequestPayload}
-      {...props}
     >
       {({tableData, ...rest}) => {
         return props.children({trendsData: tableData, ...rest});

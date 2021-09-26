@@ -53,6 +53,7 @@ type Props = WithRouterProps &
     isLoading: boolean;
     statsData: TrendsStats;
     projects: Project[];
+    grid?: LineChart['props']['grid'];
   };
 
 function transformEventStats(data: EventsStatsData, seriesName?: string): Series[] {
@@ -228,7 +229,7 @@ function getIntervalLine(
   return additionalLineSeries;
 }
 
-class Chart extends Component<Props> {
+export class Chart extends Component<Props> {
   handleLegendSelectChanged = legendChange => {
     const {location, trendChangeType} = this.props;
     const {selected} = legendChange;
@@ -263,6 +264,7 @@ class Chart extends Component<Props> {
       isLoading,
       location,
       projects,
+      grid,
     } = props;
     const lineColor = trendToColor[trendChangeType || ''];
 
@@ -398,12 +400,14 @@ class Chart extends Component<Props> {
                         toolBox={{
                           show: false,
                         }}
-                        grid={{
-                          left: '10px',
-                          right: '10px',
-                          top: '40px',
-                          bottom: '0px',
-                        }}
+                        grid={
+                          grid ?? {
+                            left: '10px',
+                            right: '10px',
+                            top: '40px',
+                            bottom: '0px',
+                          }
+                        }
                       />
                     ),
                     fixed: 'Duration Chart',

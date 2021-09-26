@@ -15,6 +15,7 @@ import {Theme} from 'app/utils/theme';
 type Props = {
   theme: Theme;
   data: Series[];
+  previousData?: Series;
   router: InjectedRouter;
   statsPeriod: string | undefined;
   start: DateString;
@@ -23,6 +24,8 @@ type Props = {
   height?: number;
   grid?: AreaChart['props']['grid'];
   disableMultiAxis?: boolean;
+  disableXAxis?: boolean;
+  chartColors?: string[];
   loading: boolean;
 };
 
@@ -59,6 +62,7 @@ class Chart extends Component<Props> {
     const {
       theme,
       data,
+      previousData,
       router,
       statsPeriod,
       start,
@@ -68,12 +72,14 @@ class Chart extends Component<Props> {
       height,
       grid,
       disableMultiAxis,
+      disableXAxis,
+      chartColors,
     } = this.props;
 
     if (!data || data.length <= 0) {
       return null;
     }
-    const colors = theme.charts.getColorPalette(4);
+    const colors = chartColors ?? theme.charts.getColorPalette(4);
 
     const durationOnly = data.every(
       value => aggregateOutputType(value.seriesName) === 'duration'
@@ -182,6 +188,11 @@ class Chart extends Component<Props> {
       xAxisIndex: i,
     }));
 
+    if (disableMultiAxis && previousData) {
+      // Previous series doesn't currently work with multi-axis
+      // series.push({...previousData, yAxisIndex: 0, xAxisIndex: 0});
+    }
+
     return (
       <ChartZoom
         router={router}
@@ -196,6 +207,8 @@ class Chart extends Component<Props> {
             height={height}
             {...zoomRenderProps}
             series={series}
+            previousPeriod={previousData ? [previousData] : undefined}
+            xAxis={disableXAxis ? {show: false} : undefined}
             {...areaChartProps}
           />
         )}
