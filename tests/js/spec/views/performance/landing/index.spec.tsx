@@ -56,6 +56,12 @@ describe('Performance > Landing > Index', function () {
       url: `/organizations/org-slug/events-stats/`,
       body: [],
     });
+    // @ts-expect-error
+    MockApiClient.addMockResponse({
+      method: 'GET',
+      url: `/organizations/org-slug/events-trends-stats/`,
+      body: [],
+    });
   });
 
   afterEach(function () {
