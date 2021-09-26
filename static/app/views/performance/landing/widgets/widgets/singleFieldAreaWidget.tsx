@@ -2,7 +2,6 @@ import {Fragment, FunctionComponent} from 'react';
 import {withRouter} from 'react-router';
 import styled from '@emotion/styled';
 import {Location} from 'history';
-import omit from 'lodash/omit';
 
 import _EventsRequest from 'app/components/charts/eventsRequest';
 import {getParams} from 'app/components/organizations/globalSelectionHeader/getParams';
@@ -36,7 +35,7 @@ type AreaDataType = {
 export function SingleFieldAreaWidget(props: Props) {
   const {ContainerActions} = props;
   const {interval, statsPeriod} = getParams(props.location.query);
-  const queryProps = {...omit(props, 'field'), orgSlug: props.organization.slug};
+  const queryProps = {orgSlug: props.organization.slug, organization: props.organization};
 
   if (props.fields.length !== 1) {
     throw new Error(`Single field area can only accept a single field (${props.fields})`);

@@ -1,6 +1,7 @@
 import {FunctionComponent, ReactNode} from 'react';
 import {Location} from 'history';
 
+import {Client} from 'app/api';
 import BaseChart from 'app/components/charts/baseChart';
 import {RenderProps} from 'app/components/charts/eventsRequest';
 import {Organization} from 'app/types';
@@ -120,10 +121,11 @@ export type QueryDefinitionWithKey<T extends WidgetDataConstraint> = QueryDefini
 > & {queryKey: string};
 
 export type QueryHandlerProps<T extends WidgetDataConstraint> = {
+  api: Client;
   queries: QueryDefinitionWithKey<T>[];
   children?: ReactNode;
   queryProps: WidgetPropUnion<T>;
-} & WidgetDataProps<T>;
+} & Omit<WidgetDataProps<T>, 'widgetData'>;
 
 export type WidgetPropUnion<T extends WidgetDataConstraint> =
   GenericPerformanceWidgetProps<T>;

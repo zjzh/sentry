@@ -1,4 +1,4 @@
-import {Fragment, useMemo, useState} from 'react';
+import {Fragment, useCallback, useState} from 'react';
 import {withRouter} from 'react-router';
 import styled from '@emotion/styled';
 
@@ -6,6 +6,7 @@ import ErrorPanel from 'app/components/charts/errorPanel';
 import Placeholder from 'app/components/placeholder';
 import {IconWarning} from 'app/icons/iconWarning';
 import space from 'app/styles/space';
+import useApi from 'app/utils/useApi';
 import getPerformanceWidgetContainer from 'app/views/performance/landing/widgets/components/performanceWidgetContainer';
 
 import {
@@ -20,33 +21,36 @@ import {DataStateSwitch} from './dataStateSwitch';
 import {QueryHandler} from './queryHandler';
 import {WidgetHeader} from './widgetHeader';
 
-// Generic performance widget for type T, which defines all the data contained in the widget.
+// Generic performance widget for type T, where T defines all the data contained in the widget.
 export function GenericPerformanceWidget<T extends WidgetDataConstraint>(
   props: WidgetPropUnion<T>
 ) {
   const [widgetData, setWidgetData] = useState<T>({} as T);
 
-  const setWidgetDataForKey = (dataKey: string, result?: WidgetDataResult) => {
-    if (result) {
-      setWidgetData({...widgetData, [dataKey]: result});
-    }
-  };
+  const setWidgetDataForKey = useCallback(
+    (dataKey: string, result?: WidgetDataResult) => {
+      if (result) {
+        setWidgetData({...widgetData, [dataKey]: result});
+      }
+    },
+    [setWidgetData]
+  );
   const widgetProps = {widgetData, setWidgetDataForKey};
 
-  const queries = useMemo(() => {
-    return Object.entries(props.Queries).map(([key, definition]) => ({
-      ...definition,
-      queryKey: key,
-    }));
-  }, [props.Queries]);
+  const queries = Object.entries(props.Queries).map(([key, definition]) => ({
+    ...definition,
+    queryKey: key,
+  }));
+
+  const api = useApi();
 
   return (
     <Fragment>
       <QueryHandler
-        widgetData={widgetData}
         setWidgetDataForKey={setWidgetDataForKey}
         queryProps={props}
         queries={queries}
+        api={api}
       />
       <_DataDisplay<T> {...props} {...widgetProps} />
     </Fragment>
