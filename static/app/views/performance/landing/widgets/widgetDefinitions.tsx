@@ -1,3 +1,4 @@
+import CHART_PALETTE from 'app/constants/chartPalette';
 import {t} from 'app/locale';
 import {Organization} from 'app/types';
 
@@ -28,6 +29,7 @@ export enum PerformanceWidgetSetting {
   MOST_REGRESSED = 'most_regressed',
 }
 
+const WIDGET_PALETTE = CHART_PALETTE[5];
 export const WIDGET_DEFINITIONS: ({
   organization,
 }) => Record<PerformanceWidgetSetting, BaseChartSetting> = ({
@@ -40,18 +42,21 @@ export const WIDGET_DEFINITIONS: ({
     titleTooltip: getTermHelp(organization, PERFORMANCE_TERM.DURATION_DISTRIBUTION),
     fields: ['measurements.lcp'],
     dataType: GenericPerformanceWidgetDataType.histogram,
+    chartColor: WIDGET_PALETTE[5],
   },
   [PerformanceWidgetSetting.FCP_HISTOGRAM]: {
     title: t('FCP Distribution'),
     titleTooltip: getTermHelp(organization, PERFORMANCE_TERM.DURATION_DISTRIBUTION),
     fields: ['measurements.fcp'],
     dataType: GenericPerformanceWidgetDataType.histogram,
+    chartColor: WIDGET_PALETTE[5],
   },
   [PerformanceWidgetSetting.FID_HISTOGRAM]: {
     title: t('FID Distribution'),
     titleTooltip: getTermHelp(organization, PERFORMANCE_TERM.DURATION_DISTRIBUTION),
     fields: ['measurements.fid'],
     dataType: GenericPerformanceWidgetDataType.histogram,
+    chartColor: WIDGET_PALETTE[5],
   },
   [PerformanceWidgetSetting.WORST_LCP_VITALS]: {
     title: t('Worst LCP Web Vitals'),
@@ -70,18 +75,21 @@ export const WIDGET_DEFINITIONS: ({
     titleTooltip: getTermHelp(organization, PERFORMANCE_TERM.TPM),
     fields: ['tpm()'],
     dataType: GenericPerformanceWidgetDataType.area,
+    chartColor: WIDGET_PALETTE[1],
   },
   [PerformanceWidgetSetting.FAILURE_RATE_AREA]: {
     title: t('Failure Rate'),
     titleTooltip: getTermHelp(organization, PERFORMANCE_TERM.FAILURE_RATE),
     fields: ['failure_rate()'],
     dataType: GenericPerformanceWidgetDataType.area,
+    chartColor: WIDGET_PALETTE[2],
   },
   [PerformanceWidgetSetting.USER_MISERY_AREA]: {
     title: t('User Misery'),
     titleTooltip: getTermHelp(organization, PERFORMANCE_TERM.USER_MISERY),
-    fields: [`user_misery(${organization.apdexThreshold})`],
+    fields: [`user_misery(${organization.apdexThreshold})`], // TODO(k-fish): Check threshold is correct vs existing landing
     dataType: GenericPerformanceWidgetDataType.area,
+    chartColor: WIDGET_PALETTE[0],
   },
   [PerformanceWidgetSetting.MOST_IMPROVED]: {
     title: t('Most Improved'),
