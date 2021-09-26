@@ -17,7 +17,7 @@ export function WidgetHeader<T extends WidgetDataConstraint>(
   return (
     <WidgetHeaderContainer>
       <TitleContainer>
-        <StyledHeaderTitleLegend>
+        <StyledHeaderTitleLegend data-test-id="performance-widget-title">
           {title}
           <QuestionTooltip position="top" size="sm" title={titleTooltip} />
         </StyledHeaderTitleLegend>

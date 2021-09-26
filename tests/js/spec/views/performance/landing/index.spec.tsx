@@ -3,6 +3,7 @@ import {initializeOrg} from 'sentry-test/initializeOrg';
 
 import {Project} from 'app/types';
 import EventView from 'app/utils/discover/eventView';
+import {OrganizationContext} from 'app/views/organizationContext';
 import {PerformanceLanding} from 'app/views/performance/landing';
 import {LandingDisplayField} from 'app/views/performance/landing/utils';
 
@@ -45,21 +46,25 @@ function initializeData(settings?: {
 
 const WrappedComponent = ({data}) => {
   const eventView = EventView.fromLocation(data.router.location);
+
   return (
-    <PerformanceLanding
-      organization={data.organization}
-      location={data.router.location}
-      eventView={eventView}
-      projects={data.projects}
-      shouldShowOnboarding={false}
-      handleSearch={() => {}}
-      handleTrendsClick={() => {}}
-      setError={() => {}}
-    />
+    <OrganizationContext.Provider value={data.organization}>
+      <PerformanceLanding
+        organization={data.organization}
+        location={data.router.location}
+        eventView={eventView}
+        projects={data.projects}
+        shouldShowOnboarding={false}
+        handleSearch={() => {}}
+        handleTrendsClick={() => {}}
+        setError={() => {}}
+      />
+    </OrganizationContext.Provider>
   );
 };
 
 describe('Performance > Landing > Index', function () {
+  let eventStatsMock: any;
   beforeEach(function () {
     // @ts-expect-error
     MockApiClient.addMockResponse({
@@ -81,6 +86,12 @@ describe('Performance > Landing > Index', function () {
     MockApiClient.addMockResponse({
       method: 'GET',
       url: `/organizations/org-slug/legacy-key-transactions-count/`,
+      body: [],
+    });
+    // @ts-expect-error
+    eventStatsMock = MockApiClient.addMockResponse({
+      method: 'GET',
+      url: `/organizations/org-slug/events-stats/`,
       body: [],
     });
   });
@@ -174,5 +185,16 @@ describe('Performance > Landing > Index', function () {
     wrapper.update();
 
     expect(wrapper.find('Table').exists()).toBe(true);
+
+    expect(eventStatsMock).toHaveBeenCalledTimes(5); // Currently defaulting to 5 event stat charts on all transactions view.
+
+    const titles = wrapper.find('div[data-test-id="performance-widget-title"]');
+    expect(titles).toHaveLength(5);
+
+    expect(titles.at(0).text()).toEqual('User Misery');
+    expect(titles.at(1).text()).toEqual('Transactions Per Minute');
+    expect(titles.at(2).text()).toEqual('Failure Rate');
+    expect(titles.at(3).text()).toEqual('Transactions Per Minute');
+    expect(titles.at(4).text()).toEqual('Transactions Per Minute');
   });
 });

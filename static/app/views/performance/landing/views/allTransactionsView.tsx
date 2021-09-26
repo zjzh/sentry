@@ -24,9 +24,12 @@ export function AllTransactionsView(props: BasePerformanceViewProps) {
       <DoubleChartRow
         {...props}
         allowedCharts={[
+          PerformanceWidgetSetting.TPM_AREA,
+          // TODO(k-fish): Temporarily adding extra charts here while trends widgets are in progress.
+          PerformanceWidgetSetting.TPM_AREA,
+          PerformanceWidgetSetting.TPM_AREA,
           PerformanceWidgetSetting.MOST_IMPROVED,
           PerformanceWidgetSetting.MOST_REGRESSED,
-          PerformanceWidgetSetting.TPM_AREA,
         ]}
       />
       {/* Existing chart network call: https://sentry.io/api/0/organizations/sentry/events-stats/?interval=5m&partial=1&project=11276&query=transaction.duration%3A%3C15m%20event.type%3Atransaction&statsPeriod=24h&yAxis=apdex%28%29&yAxis=tpm%28%29 */}

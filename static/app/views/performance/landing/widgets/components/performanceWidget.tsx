@@ -75,7 +75,7 @@ function _DataDisplay<T extends WidgetDataConstraint>(
     !missingDataKeys && Object.values(props.widgetData).some(d => d && d.isErrored);
 
   return (
-    <Container>
+    <Container data-test-id="performance-widget-container">
       <ContentContainer>
         <WidgetHeader<T> {...props} />
       </ContentContainer>

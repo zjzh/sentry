@@ -1,4 +1,3 @@
-import {Fragment} from 'react';
 import styled from '@emotion/styled';
 
 import {Panel} from 'app/components/panels';
@@ -10,6 +9,7 @@ const StyledPanel = styled(Panel)`
   padding-top: ${space(2)};
   margin-bottom: 0;
 `;
+const Div = styled('div')``;
 
 const getPerformanceWidgetContainer = ({
   containerType,
@@ -19,9 +19,9 @@ const getPerformanceWidgetContainer = ({
   if (containerType === 'panel') {
     return StyledPanel;
   } else if (containerType === 'inline') {
-    return Fragment;
+    return Div;
   } else {
-    return Fragment;
+    return Div;
   }
 };
 

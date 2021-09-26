@@ -13,8 +13,7 @@ export interface BaseChartSetting {
   titleTooltip: string;
   fields: string[];
 
-  // Area
-  chartColor?: string;
+  chartColor?: string; // Optional. Will default to colors depending on placement in list or colors from the chart itself.
 }
 
 export enum PerformanceWidgetSetting {
