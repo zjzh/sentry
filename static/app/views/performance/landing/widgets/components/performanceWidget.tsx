@@ -1,4 +1,4 @@
-import {Fragment, useCallback, useMemo, useState} from 'react';
+import {Fragment, useCallback, useState} from 'react';
 import {withRouter} from 'react-router';
 import styled from '@emotion/styled';
 
@@ -37,14 +37,10 @@ export function GenericPerformanceWidget<T extends WidgetDataConstraint>(
   );
   const widgetProps = {widgetData, setWidgetDataForKey};
 
-  const queries = useMemo(
-    () =>
-      Object.entries(props.Queries).map(([key, definition]) => ({
-        ...definition,
-        queryKey: key,
-      })),
-    [props.Queries.length]
-  );
+  const queries = Object.entries(props.Queries).map(([key, definition]) => ({
+    ...definition,
+    queryKey: key,
+  }));
 
   const api = useApi();
 
