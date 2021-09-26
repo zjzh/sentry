@@ -12,9 +12,13 @@ export function AllTransactionsView(props: BasePerformanceViewProps) {
       <MiniChartRow
         {...props}
         allowedCharts={[
-          PerformanceWidgetSetting.TPM_AREA,
           PerformanceWidgetSetting.USER_MISERY_AREA,
+          PerformanceWidgetSetting.TPM_AREA,
           PerformanceWidgetSetting.FAILURE_RATE_AREA,
+          PerformanceWidgetSetting.APDEX_AREA,
+          PerformanceWidgetSetting.P50_DURATION_AREA,
+          PerformanceWidgetSetting.P95_DURATION_AREA,
+          PerformanceWidgetSetting.P99_DURATION_AREA,
         ]}
       />
       <DoubleChartRow

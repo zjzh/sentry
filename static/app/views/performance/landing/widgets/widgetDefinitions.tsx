@@ -21,6 +21,10 @@ export enum PerformanceWidgetSetting {
   LCP_HISTOGRAM = 'lcp_histogram',
   FCP_HISTOGRAM = 'fcp_histogram',
   FID_HISTOGRAM = 'fid_histogram',
+  APDEX_AREA = 'apdex_area',
+  P50_DURATION_AREA = 'p50_duration_area',
+  P95_DURATION_AREA = 'p95_duration_area',
+  P99_DURATION_AREA = 'p99_duration_area',
   TPM_AREA = 'tpm_area',
   FAILURE_RATE_AREA = 'failure_rate_area',
   USER_MISERY_AREA = 'user_misery_area',
@@ -76,6 +80,34 @@ export const WIDGET_DEFINITIONS: ({
     fields: ['tpm()'],
     dataType: GenericPerformanceWidgetDataType.area,
     chartColor: WIDGET_PALETTE[1],
+  },
+  [PerformanceWidgetSetting.APDEX_AREA]: {
+    title: t('Apdex'),
+    titleTooltip: getTermHelp(organization, PERFORMANCE_TERM.APDEX_NEW),
+    fields: ['apdex()'], // TODO(k-fish): Check apdex threshold against current landing
+    dataType: GenericPerformanceWidgetDataType.area,
+    chartColor: WIDGET_PALETTE[4],
+  },
+  [PerformanceWidgetSetting.P50_DURATION_AREA]: {
+    title: t('p50 Duration'),
+    titleTooltip: getTermHelp(organization, PERFORMANCE_TERM.P50),
+    fields: ['p50(transaction.duration)'], // TODO(k-fish): Check
+    dataType: GenericPerformanceWidgetDataType.area,
+    chartColor: WIDGET_PALETTE[3],
+  },
+  [PerformanceWidgetSetting.P95_DURATION_AREA]: {
+    title: t('p95 Duration'),
+    titleTooltip: getTermHelp(organization, PERFORMANCE_TERM.P95),
+    fields: ['p95(transaction.duration)'], // TODO(k-fish): Check
+    dataType: GenericPerformanceWidgetDataType.area,
+    chartColor: WIDGET_PALETTE[3],
+  },
+  [PerformanceWidgetSetting.P99_DURATION_AREA]: {
+    title: t('p99 Duration'),
+    titleTooltip: getTermHelp(organization, PERFORMANCE_TERM.P99),
+    fields: ['p99(transaction.duration)'], // TODO(k-fish): Check
+    dataType: GenericPerformanceWidgetDataType.area,
+    chartColor: WIDGET_PALETTE[3],
   },
   [PerformanceWidgetSetting.FAILURE_RATE_AREA]: {
     title: t('Failure Rate'),
