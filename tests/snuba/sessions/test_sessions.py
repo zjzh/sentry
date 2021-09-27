@@ -9,7 +9,6 @@ from sentry.releasehealth.metrics import MetricsReleaseHealthBackend
 from sentry.releasehealth.sessions import SessionsReleaseHealthBackend
 from sentry.snuba.sessions import (
     _make_stats,
-    get_adjacent_releases_based_on_adoption,
     get_oldest_health_data_for_releases,
     get_project_releases_by_stability,
     get_project_releases_count,
@@ -574,6 +573,8 @@ class SnubaSessionsTestMetrics(ReleaseHealthMetricsTestCase, SnubaSessionsTest):
 
 
 class SnubaReleaseDetailPaginationBaseTestClass:
+    backend = SessionsReleaseHealthBackend()
+
     @staticmethod
     def compare_releases_list_according_to_current_release_filters(
         project_id, org_id, release, environments, scope, releases_list, stats_period=None
@@ -588,7 +589,9 @@ class SnubaReleaseDetailPaginationBaseTestClass:
         if stats_period:
             adj_releases_filters.update({"stats_period": stats_period})
 
-        adjacent_releases = get_adjacent_releases_based_on_adoption(**adj_releases_filters)
+        adjacent_releases = SnubaReleaseDetailPaginationBaseTestClass.backend.get_adjacent_releases_based_on_adoption(
+            **adj_releases_filters
+        )
         assert adjacent_releases == releases_list
 
 

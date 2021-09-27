@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import Optional, Sequence, Set, Tuple
 
 from sentry.releasehealth.base import (
+    AdjacentReleases,
     CurrentAndPreviousCrashFreeRates,
     EnvironmentName,
     OrganizationId,
@@ -13,6 +14,7 @@ from sentry.releasehealth.base import (
 from sentry.snuba.sessions import (
     _check_has_health_data,
     _check_releases_have_health_data,
+    _get_adjacent_releases_based_on_adoption,
     _get_release_adoption,
     get_current_and_previous_crash_free_rates,
 )
@@ -70,4 +72,24 @@ class SessionsReleaseHealthBackend(ReleaseHealthBackend):
             release_versions,
             start,
             end,
+        )
+
+    def get_adjacent_releases_based_on_adoption(
+        self,
+        project_id: ProjectId,
+        org_id: OrganizationId,
+        release: ReleaseName,
+        scope: str,
+        limit: int = 20,
+        stats_period: Optional[str] = None,
+        environments: Optional[datetime] = None,
+    ) -> AdjacentReleases:
+        return _get_adjacent_releases_based_on_adoption(
+            project_id,
+            org_id,
+            release,
+            scope,
+            limit,
+            stats_period,
+            environments,
         )

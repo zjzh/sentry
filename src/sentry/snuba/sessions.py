@@ -731,7 +731,7 @@ def get_release_sessions_time_bounds(project_id, release, org_id, environments=N
     return release_sessions_time_bounds
 
 
-def get_adjacent_releases_based_on_adoption(
+def _get_adjacent_releases_based_on_adoption(
     project_id,
     org_id,
     release,

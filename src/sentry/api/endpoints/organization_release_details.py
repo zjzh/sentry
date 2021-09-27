@@ -2,7 +2,7 @@ from django.db.models import Q
 from rest_framework.exceptions import ParseError
 from rest_framework.response import Response
 
-from sentry import features
+from sentry import features, releasehealth
 from sentry.api.base import ReleaseAnalyticsMixin
 from sentry.api.bases.organization import OrganizationReleasesBaseEndpoint
 from sentry.api.endpoints.organization_releases import (
@@ -20,11 +20,7 @@ from sentry.api.serializers.rest_framework import (
 )
 from sentry.models import Activity, Project, Release, ReleaseCommitError, ReleaseStatus
 from sentry.models.release import UnsafeReleaseDeletion
-from sentry.snuba.sessions import (
-    STATS_PERIODS,
-    get_adjacent_releases_based_on_adoption,
-    get_release_sessions_time_bounds,
-)
+from sentry.snuba.sessions import STATS_PERIODS, get_release_sessions_time_bounds
 from sentry.utils.sdk import bind_organization_context, configure_scope
 
 
@@ -224,7 +220,7 @@ class OrganizationReleaseDetailsPaginationMixin:
             "users_24h",
         ):
             # Get primary results from snuba
-            prev_and_next_releases_list = get_adjacent_releases_based_on_adoption(
+            prev_and_next_releases_list = releasehealth.get_adjacent_releases_based_on_adoption(
                 project_id=filter_params["project_id"][0],
                 org_id=org.id,
                 release=release.version,

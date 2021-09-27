@@ -8,6 +8,7 @@ from snuba_sdk.query import SelectableExpression
 
 from sentry.models.project import Project
 from sentry.releasehealth.base import (
+    AdjacentReleases,
     CurrentAndPreviousCrashFreeRates,
     EnvironmentName,
     OrganizationId,
@@ -459,3 +460,16 @@ class MetricsReleaseHealthBackend(ReleaseHealthBackend):
             return reverse_tag_value(organization_id, row.get(release_column_name))  # type: ignore
 
         return {extract_row_info(row) for row in result["data"]}
+
+    def get_adjacent_releases_based_on_adoption(
+        self,
+        project_id: ProjectId,
+        org_id: OrganizationId,
+        release: ReleaseName,
+        scope: str,  # TODO (RaduW) do we need to be more specific ? is this an enum ?
+        limit: int = 20,
+        stats_period: Optional[str] = None,
+        environments: Optional[datetime] = None,
+    ) -> AdjacentReleases:
+
+        raise NotImplementedError()

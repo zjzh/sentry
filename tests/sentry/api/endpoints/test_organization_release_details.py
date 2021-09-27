@@ -435,7 +435,7 @@ class ReleaseDetailsTest(APITestCase):
         assert response.data["currentProjectMeta"]["prevReleaseVersion"] == "foobar@3.0.0"
 
     @patch(
-        "sentry.api.endpoints.organization_release_details.get_adjacent_releases_based_on_adoption"
+        "sentry.api.endpoints.organization_release_details.releasehealth.get_adjacent_releases_based_on_adoption"
     )
     def test_get_prev_and_next_releases_on_sessions_sort_with_status_filter_applied(
         self, get_adjacent_releases_based_on_adoption
@@ -493,7 +493,7 @@ class ReleaseDetailsTest(APITestCase):
         assert response.data["currentProjectMeta"]["nextReleaseVersion"] == "foobar@1.0.0"
 
     @patch(
-        "sentry.api.endpoints.organization_release_details.get_adjacent_releases_based_on_adoption"
+        "sentry.api.endpoints.organization_release_details.relasehealth.get_adjacent_releases_based_on_adoption"
     )
     def test_get_prev_and_next_releases_on_sessions_sort_with_query_filter_applied(
         self, get_adjacent_releases_based_on_adoption

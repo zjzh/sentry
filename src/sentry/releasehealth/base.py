@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Mapping, Optional, Sequence, Set, Tuple, TypeVar
+from typing import List, Mapping, Optional, Sequence, Set, Tuple, TypeVar
 
 from typing_extensions import TypedDict
 
@@ -14,10 +14,20 @@ ProjectRelease = Tuple[ProjectId, ReleaseName]
 
 ProjectOrRelease = TypeVar("ProjectOrRelease", ProjectId, ProjectRelease)
 
+# switch to Literal when we switch to Python 3.8
+ReleaseScope = str  # Literal["sessions", "users", "crash_free_sessions", "crash_free_users"]
+ReleaseScopeWithPeriod = str  # Union[ ReleaseScope, ReleaseScope_24h]
+StatsPeriod = str  # Literal["1h", "24h", "1d", "48h", "2d", "7d", "14d", "30d", "90d"]
+
 
 class CurrentAndPreviousCrashFreeRate(TypedDict):
     currentCrashFreeRate: Optional[float]
     previousCrashFreeRate: Optional[float]
+
+
+class AdjacentReleases(TypedDict):
+    next_releases_list: List[ReleaseName]
+    prev_releases_list: List[ReleaseName]
 
 
 CurrentAndPreviousCrashFreeRates = Mapping[ProjectId, CurrentAndPreviousCrashFreeRate]
@@ -133,8 +143,33 @@ class ReleaseHealthBackend(Service):  # type: ignore
         start: datetime,
         end: datetime,
     ) -> Set[ReleaseName]:
-
         """
         Returns a set of all release versions that have health data within a given period of time.
+        """
+        raise NotImplementedError()
+
+    def get_adjacent_releases_based_on_adoption(
+        self,
+        project_id: ProjectId,
+        org_id: OrganizationId,
+        release: ReleaseName,
+        scope: Optional[ReleaseScopeWithPeriod],
+        limit: int = 20,
+        stats_period: Optional[str] = None,
+        environments: Optional[datetime] = None,
+    ) -> AdjacentReleases:
+        """
+        Function that returns the releases adjacent (previous and next) to a specific release
+        according to a sort criteria
+        Inputs:
+            * project_id
+            * release
+            * org_id: Organisation Id
+            * scope: Sort order criteria -> sessions, users, crash_free_sessions, crash_free_users
+            * stats_period: duration
+            * environments
+        Return:
+            Dictionary with two keys "previous_release_version" and "next_release_version" that
+        correspond to when the previous release and the next release respectively
         """
         raise NotImplementedError()
