@@ -353,19 +353,6 @@ class IssueSyncMixin(IssueBasicMixin):
         should_resolve, _ = self.get_resolve_unresolve(data)
         return should_resolve
 
-    def update_group_status(self, groups, status, activity_type):
-        updated = (
-            Group.objects.filter(id__in=[g.id for g in groups])
-            .exclude(status=status)
-            .update(status=status)
-        )
-        if updated:
-            for group in groups:
-                activity = Activity.objects.create(
-                    project=group.project, group=group, type=activity_type
-                )
-                activity.send_notification()
-
     def sync_status_inbound(self, issue_key, data):
         if not self.should_sync("inbound_status"):
             return
@@ -382,36 +369,15 @@ class IssueSyncMixin(IssueBasicMixin):
             .select_related("project")
         )
 
-        groups_to_resolve = []
-        groups_to_unresolve = []
+        if not affected_groups:
+            return
 
-        should_resolve = self.should_resolve(data)
-        should_unresolve = self.should_unresolve(data)
-
-        for group in affected_groups:
-
-            # this probably shouldn't be possible unless there
-            # is a bug in one of those methods
-            if should_resolve is True and should_unresolve is True:
-                logger.warning(
-                    "sync-config-conflict",
-                    extra={
-                        "organization_id": group.project.organization_id,
-                        "integration_id": self.model.id,
-                        "provider": self.model.get_provider(),
-                    },
-                )
-                continue
-
-            if should_unresolve:
-                groups_to_unresolve.append(group)
-            elif should_resolve:
-                groups_to_resolve.append(group)
-
-        if groups_to_resolve:
-            self.update_group_status(groups_to_resolve, GroupStatus.RESOLVED, Activity.SET_RESOLVED)
-
-        if groups_to_unresolve:
-            self.update_group_status(
-                groups_to_unresolve, GroupStatus.UNRESOLVED, Activity.SET_UNRESOLVED
+        should_resolve, should_unresolve = self.get_resolve_unresolve(data)
+        if should_resolve:
+            Group.objects.update_group_status(
+                affected_groups, GroupStatus.RESOLVED, ActivityType.SET_RESOLVED
+            )
+        if should_unresolve:
+            Group.objects.update_group_status(
+                affected_groups, GroupStatus.UNRESOLVED, ActivityType.SET_UNRESOLVED
             )
