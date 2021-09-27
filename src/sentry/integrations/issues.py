@@ -3,9 +3,10 @@ from collections import defaultdict
 from typing import Any, Mapping, Tuple
 
 from sentry import features
-from sentry.models import Activity, ExternalIssue, Group, GroupLink, GroupStatus, Organization
+from sentry.models import ExternalIssue, Group, GroupLink, GroupStatus, Organization
 from sentry.models.useroption import UserOption
 from sentry.shared_integrations.exceptions import ApiError, IntegrationError
+from sentry.types.activity import ActivityType
 from sentry.utils.compat import filter
 from sentry.utils.http import absolute_uri
 from sentry.utils.safe import safe_execute
@@ -353,15 +354,18 @@ class IssueSyncMixin(IssueBasicMixin):
         should_resolve, _ = self.get_resolve_unresolve(data)
         return should_resolve
 
-    def sync_status_inbound(self, issue_key, data):
+    def should_sync_status_inbound(self) -> bool:
         if not self.should_sync("inbound_status"):
-            return
+            return False
 
         organization = Organization.objects.get(id=self.organization_id)
         has_issue_sync = features.has("organizations:integrations-issue-sync", organization)
 
-        if not has_issue_sync:
-            return
+        return has_issue_sync
+
+    def sync_status_inbound(self, issue_key: str, data: Mapping[str, Any]) -> None:
+        if not self.should_sync_status_inbound():
+            return None
 
         affected_groups = list(
             Group.objects.get_groups_by_external_issue(self.model, issue_key)
