@@ -634,6 +634,7 @@ CELERY_QUEUES = [
     Queue("reports.deliver", routing_key="reports.deliver"),
     Queue("reports.prepare", routing_key="reports.prepare"),
     Queue("search", routing_key="search"),
+    Queue("similarity.index", routing_key="similarity.index"),
     Queue("sleep", routing_key="sleep"),
     Queue("stats", routing_key="stats"),
     Queue("subscriptions", routing_key="subscriptions"),
@@ -889,6 +890,10 @@ SENTRY_FEATURES = {
     "organizations:app-store-connect-multiple": False,
     # Enable explicit use of AND and OR in search.
     "organizations:boolean-search": False,
+    # Enable the linked event feature in the issue details breadcrumb.
+    "organizations:breadcrumb-linked-event": False,
+    # Enable change alerts for an org
+    "organizations:change-alerts": False,
     # Enable unfurling charts using the Chartcuterie service
     "organizations:chart-unfurls": False,
     # Enable alerting based on crash free sessions/users
@@ -951,6 +956,8 @@ SENTRY_FEATURES = {
     "organizations:metrics-extraction": False,
     # Enable metric aggregate in metric alert rule builder
     "organizations:metric-alert-builder-aggregate": False,
+    # Enable migrating auth identities between providers automatically
+    "organizations:idp-automatic-migration": False,
     # Enable integration functionality to create and link groups to issues on
     # external services.
     "organizations:integrations-issue-basic": True,
@@ -1371,7 +1378,7 @@ SENTRY_METRICS_INDEXER = "sentry.sentry_metrics.indexer.mock.MockIndexer"
 SENTRY_METRICS_INDEXER_OPTIONS = {}
 
 # Release Health
-SENTRY_RELEASE_HEALTH = "sentry.releasehealth.sessions.SessionsReleaseHealthBackend"
+SENTRY_RELEASE_HEALTH = "sentry.release_health.sessions.SessionsReleaseHealthBackend"
 SENTRY_RELEASE_HEALTH_OPTIONS = {}
 
 # Render charts on the backend. This uses the Chartcuterie external service.
@@ -1821,7 +1828,7 @@ SENTRY_DEVSERVICES = {
     ),
     "bigtable": lambda settings, options: (
         {
-            "image": "mattrobenolt/cbtemulator:0.51.0",
+            "image": "us.gcr.io/sentryio/cbtemulator:23c02d92c7a1747068eb1fc57dddbad23907d614",
             "ports": {"8086/tcp": 8086},
             "only_if": "bigtable" in settings.SENTRY_NODESTORE,
         }
@@ -2167,6 +2174,8 @@ KAFKA_SUBSCRIPTION_RESULT_TOPICS = {
 KAFKA_INGEST_EVENTS = "ingest-events"
 KAFKA_INGEST_ATTACHMENTS = "ingest-attachments"
 KAFKA_INGEST_TRANSACTIONS = "ingest-transactions"
+KAFKA_INGEST_METRICS = "ingest-metrics"
+KAFKA_SNUBA_METRICS = "snuba-metrics"
 
 KAFKA_TOPICS = {
     KAFKA_EVENTS: {"cluster": "default", "topic": KAFKA_EVENTS},
@@ -2185,6 +2194,10 @@ KAFKA_TOPICS = {
     KAFKA_INGEST_ATTACHMENTS: {"cluster": "default", "topic": KAFKA_INGEST_ATTACHMENTS},
     # Topic for receiving transaction events (APM events) from Relay
     KAFKA_INGEST_TRANSACTIONS: {"cluster": "default", "topic": KAFKA_INGEST_TRANSACTIONS},
+    # Topic for receiving metrics from Relay
+    KAFKA_INGEST_METRICS: {"cluster": "default", "topic": KAFKA_INGEST_METRICS},
+    # Topic for indexer translated metrics
+    KAFKA_SNUBA_METRICS: {"cluster": "default", "topic": KAFKA_SNUBA_METRICS},
 }
 
 # If True, consumers will create the topics if they don't exist
@@ -2310,6 +2323,44 @@ SENTRY_REPROCESSING_ATTACHMENT_CHUNK_SIZE = 2 ** 20
 
 SENTRY_REPROCESSING_SYNC_REDIS_CLUSTER = "default"
 
+# Which backend to use for RealtimeMetricsStore.
+#
+# Currently, only redis is supported.
+SENTRY_REALTIME_METRICS_BACKEND = (
+    "sentry.processing.realtime_metrics.redis.RedisRealtimeMetricsStore"
+)
+SENTRY_REALTIME_METRICS_OPTIONS = {
+    # The redis cluster used for the realtime store redis backend.
+    "cluster": "default",
+    # The bucket size of the counter.
+    #
+    # The size (in seconds) of the buckets that events are sorted into.
+    "counter_bucket_size": 10,
+    # Number of seconds to keep symbolicate_event rates per project.
+    #
+    # symbolicate_event tasks report the rates of events per project to redis
+    # so that projects that exceed a reasonable rate can be sent to the low
+    # priority queue. This setting determines how long we keep these rates
+    # around.
+    # Note that the time is counted after the last time a counter is incremented.
+    "counter_ttl": timedelta(seconds=300),
+    # The bucket size of the histogram.
+    #
+    # The size (in seconds) of the buckets that events are sorted into.
+    "histogram_bucket_size": 10,
+    # Number of seconds to keep symbolicate_event durations per project.
+    #
+    # symbolicate_event tasks report the processing durations of events per project to redis
+    # so that projects that exceed a reasonable duration can be sent to the low
+    # priority queue. This setting determines how long we keep these duration values
+    # around.
+    # Note that the time is counted after the last time a counter is incremented.
+    "histogram_ttl": timedelta(seconds=900),
+}
+
+# XXX(meredith): Temporary metrics indexer
+SENTRY_METRICS_INDEXER_REDIS_CLUSTER = "default"
+
 # Timeout for the project counter statement execution.
 # In case of contention on the project counter, prevent workers saturation with
 # save_event tasks from single project.
@@ -2339,3 +2390,6 @@ DEMO_DATA_QUICK_GEN_PARAMS = {}
 
 # adds an extra JS to HTML template
 INJECTED_SCRIPT_ASSETS = []
+
+# Sentry post process forwarder use batching consumer
+SENTRY_POST_PROCESS_FORWARDER_BATCHING = False
