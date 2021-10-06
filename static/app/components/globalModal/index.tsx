@@ -1,4 +1,4 @@
-import * as React from 'react';
+import {Fragment, useCallback, useEffect, useRef} from 'react';
 import ReactDOM from 'react-dom';
 import {browserHistory} from 'react-router';
 import {css} from '@emotion/react';
@@ -9,6 +9,7 @@ import {AnimatePresence, motion} from 'framer-motion';
 import {closeModal as actionCloseModal} from 'app/actionCreators/modal';
 import {ROOT_ELEMENT} from 'app/constants';
 import ModalStore from 'app/stores/modalStore';
+import {useLegacyStore} from 'app/stores/useLegacyStore';
 import space from 'app/styles/space';
 import getModalPortal from 'app/utils/getModalPortal';
 import testableTransition from 'app/utils/testableTransition';
@@ -78,18 +79,6 @@ export type ModalTypes = {
 
 type Props = {
   /**
-   * Configuration of the modal
-   */
-  options: ModalOptions;
-  /**
-   * Is the modal visible
-   */
-  visible: boolean;
-  /**
-   * A function that returns a React Element
-   */
-  children?: null | ((renderProps: ModalRenderProps) => React.ReactNode);
-  /**
    * Note this is the callback for the main App container and NOT the calling
    * component. GlobalModal is never used directly, but is controlled via
    * stores. To access the onClose callback from the component, you must
@@ -98,8 +87,12 @@ type Props = {
   onClose?: () => void;
 };
 
-function GlobalModal({visible = false, options = {}, children, onClose}: Props) {
-  const closeModal = React.useCallback(() => {
+function GlobalModal({onClose}: Props) {
+  const {renderer, options} = useLegacyStore(ModalStore);
+
+  const visible = typeof renderer === 'function';
+
+  const closeModal = useCallback(() => {
     // Option close callback, from the thing which opened the modal
     options.onClose?.();
 
@@ -110,19 +103,19 @@ function GlobalModal({visible = false, options = {}, children, onClose}: Props) 
     onClose?.();
   }, [options]);
 
-  const handleEscapeClose = React.useCallback(
+  const handleEscapeClose = useCallback(
     (e: KeyboardEvent) => e.key === 'Escape' && closeModal(),
     [closeModal]
   );
 
   const portal = getModalPortal();
-  const focusTrap = React.useRef<FocusTrap>();
+  const focusTrap = useRef<FocusTrap>();
   // SentryApp might be missing on tests
   if (window.SentryApp) {
     window.SentryApp.modalFocusTrap = focusTrap;
   }
 
-  React.useEffect(() => {
+  useEffect(() => {
     focusTrap.current = createFocusTrap(portal, {
       preventScroll: true,
       escapeDeactivates: false,
@@ -130,7 +123,7 @@ function GlobalModal({visible = false, options = {}, children, onClose}: Props) 
     });
   }, [portal]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     const body = document.querySelector('body');
     const root = document.getElementById(ROOT_ELEMENT);
 
@@ -159,9 +152,9 @@ function GlobalModal({visible = false, options = {}, children, onClose}: Props) 
   }, [portal, handleEscapeClose, visible]);
 
   // Close the modal when the browser history changes
-  React.useEffect(() => browserHistory.listen(() => actionCloseModal()), []);
+  useEffect(() => browserHistory.listen(() => actionCloseModal()), []);
 
-  const renderedChild = children?.({
+  const renderedChild = renderer?.({
     CloseButton: makeCloseButton(closeModal),
     Header: makeClosableHeader(closeModal),
     Body: ModalBody,
@@ -176,12 +169,12 @@ function GlobalModal({visible = false, options = {}, children, onClose}: Props) 
   const allowClickClose = options.allowClickClose ?? true;
 
   // Only close when we directly click outside of the modal.
-  const containerRef = React.useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const clickClose = (e: React.MouseEvent) =>
     containerRef.current === e.target && allowClickClose && closeModal();
 
   return ReactDOM.createPortal(
-    <React.Fragment>
+    <Fragment>
       <Backdrop
         style={backdrop && visible ? {opacity: 0.5, pointerEvents: 'auto'} : {}}
       />
@@ -198,7 +191,7 @@ function GlobalModal({visible = false, options = {}, children, onClose}: Props) 
           )}
         </AnimatePresence>
       </Container>
-    </React.Fragment>,
+    </Fragment>,
     portal
   );
 }
@@ -254,34 +247,4 @@ const Content = styled('div')`
   box-shadow: ${p => p.theme.modalBoxShadow};
 `;
 
-type State = {
-  modalStore: ReturnType<typeof ModalStore.get>;
-};
-
-class GlobalModalContainer extends React.Component<Partial<Props>, State> {
-  state: State = {
-    modalStore: ModalStore.get(),
-  };
-
-  componentWillUnmount() {
-    this.unlistener?.();
-  }
-
-  unlistener = ModalStore.listen(
-    (modalStore: State['modalStore']) => this.setState({modalStore}),
-    undefined
-  );
-
-  render() {
-    const {modalStore} = this.state;
-    const visible = !!modalStore && typeof modalStore.renderer === 'function';
-
-    return (
-      <GlobalModal {...this.props} {...modalStore} visible={visible}>
-        {visible ? modalStore.renderer : null}
-      </GlobalModal>
-    );
-  }
-}
-
-export default GlobalModalContainer;
+export default GlobalModal;
