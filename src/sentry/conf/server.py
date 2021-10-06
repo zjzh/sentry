@@ -9,6 +9,7 @@ import socket
 import sys
 import tempfile
 from datetime import timedelta
+from platform import platform as pf
 from urllib.parse import urlparse
 
 from django.conf.global_settings import *  # NOQA
@@ -1683,6 +1684,8 @@ SENTRY_USE_CDC_DEV = False
 #         }
 #     )
 # }
+
+APPLE_ARM64 = pf().startswith("mac") and pf().endswith("arm64-arm-64bit")
 
 
 def build_cdc_postgres_init_db_volume(settings):
