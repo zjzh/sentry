@@ -41,10 +41,12 @@ class OrganizationEventsV2EndpointTest(APITestCase, SnubaTestCase):
         self.min_ago = iso_format(before_now(minutes=1))
         self.two_min_ago = iso_format(before_now(minutes=2))
         self.transaction_data = load_data("transaction", timestamp=before_now(minutes=1))
+        self.features = {}
 
     def do_request(self, query, features=None):
         if features is None:
             features = {"organizations:discover-basic": True}
+        features.update(self.features)
         self.login_as(user=self.user)
         url = reverse(
             "sentry-api-0-organization-eventsv2",
@@ -133,8 +135,10 @@ class OrganizationEventsV2EndpointTest(APITestCase, SnubaTestCase):
         )
 
     @mock.patch("sentry.snuba.discover.raw_query")
-    def test_handling_snuba_errors(self, mock_query):
+    @mock.patch("sentry.snuba.discover.raw_snql_query")
+    def test_handling_snuba_errors(self, mock_snql_query, mock_query):
         mock_query.side_effect = RateLimitExceeded("test")
+        mock_snql_query.side_effect = RateLimitExceeded("test")
 
         project = self.create_project()
 
@@ -148,6 +152,7 @@ class OrganizationEventsV2EndpointTest(APITestCase, SnubaTestCase):
         assert response.data["detail"] == TIMEOUT_ERROR_MESSAGE
 
         mock_query.side_effect = QueryExecutionError("test")
+        mock_snql_query.side_effect = QueryExecutionError("test")
 
         query = {"field": ["id", "timestamp"], "orderby": ["-timestamp", "-id"]}
         response = self.do_request(query)
@@ -155,6 +160,7 @@ class OrganizationEventsV2EndpointTest(APITestCase, SnubaTestCase):
         assert response.data["detail"] == "Internal error. Your query failed to run."
 
         mock_query.side_effect = QueryIllegalTypeOfArgument("test")
+        mock_snql_query.side_effect = QueryIllegalTypeOfArgument("test")
 
         query = {"field": ["id", "timestamp"], "orderby": ["-timestamp", "-id"]}
         response = self.do_request(query)
@@ -2220,6 +2226,7 @@ class OrganizationEventsV2EndpointTest(APITestCase, SnubaTestCase):
             assert response.status_code == 200, response.content
             data = response.data["data"]
             assert len(data) == 1
+            print(data)
             assert data[0]["id"] == event1.event_id
             assert data[0]["issue.id"] == event1.group_id
             if testdata[0] == "issue":
@@ -2747,7 +2754,7 @@ class OrganizationEventsV2EndpointTest(APITestCase, SnubaTestCase):
         assert meta["apdex_300"] == "number"
         assert meta["failure_rate"] == "percentage"
         assert meta["user_misery_300"] == "number"
-        assert meta["count_miserable_user_300"] == "number"
+        assert meta["count_miserable_user_300"] == "integer"
 
         data = response.data["data"]
         assert len(data) == 1
@@ -2800,10 +2807,10 @@ class OrganizationEventsV2EndpointTest(APITestCase, SnubaTestCase):
         assert meta["apdex"] == "number"
         assert meta["failure_rate"] == "percentage"
         assert meta["user_misery_300"] == "number"
-        assert meta["count_miserable_user_300"] == "number"
+        assert meta["count_miserable_user_300"] == "integer"
         assert meta["project_threshold_config"] == "string"
         assert meta["user_misery"] == "number"
-        assert meta["count_miserable_user"] == "number"
+        assert meta["count_miserable_user"] == "integer"
 
         data = response.data["data"]
         assert len(data) == 1
@@ -4473,3 +4480,9 @@ class OrganizationEventsV2EndpointTest(APITestCase, SnubaTestCase):
         assert meta["p75_measurements_stall_percentage"] == "percentage"
         assert meta["percentile_measurements_frames_slow_rate_0_5"] == "percentage"
         assert meta["percentile_measurements_stall_percentage_0_5"] == "percentage"
+
+
+class OrganizationEventsV2EndpointTestWithSnql(OrganizationEventsV2EndpointTest):
+    def setUp(self):
+        super().setUp()
+        self.features["organizations:discover-use-snql"] = True

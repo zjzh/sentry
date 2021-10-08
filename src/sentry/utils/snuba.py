@@ -15,6 +15,7 @@ from urllib.parse import urlparse
 
 import pytz
 import sentry_sdk
+import sqlparse
 import urllib3
 from dateutil.parser import parse as parse_datetime
 from django.conf import settings
@@ -781,7 +782,10 @@ def _bulk_snuba_query(
             if SNUBA_INFO:
                 if "sql" in body:
                     logger.info(
-                        "{}.sql: {}".format(headers.get("referer", "<unknown>"), body["sql"])
+                        "{}.sql:\n{}".format(
+                            headers.get("referer", "<unknown>"),
+                            sqlparse.format(body["sql"], reindent=True, keyword_case="upper"),
+                        )
                     )
                 if "error" in body:
                     logger.info(

@@ -18,6 +18,7 @@ class QueryBase:
         self.dataset = dataset
         self.params = params
         self.functions_acl = set() if functions_acl is None else functions_acl
+        self.auto_fields = False
 
         # Function is a subclass of CurriedFunction
         self.where: List[WhereType] = []
