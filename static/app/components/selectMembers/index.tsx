@@ -201,7 +201,7 @@ class SelectMembers extends React.Component<Props, State> {
           option: (provided, state: any) => ({
             ...provided,
             svg: {
-              color: state.isSelected && state.theme.white,
+              color: state.isSelected && state.theme.inverted,
             },
           }),
         }}

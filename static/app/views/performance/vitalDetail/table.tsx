@@ -420,7 +420,7 @@ const GoodTag = styled(Tag)`
     background-color: ${p => p.theme[vitalStateColors[VitalState.GOOD]]};
   }
   span {
-    color: ${p => p.theme.white};
+    color: ${p => p.theme.inverted};
   }
 `;
 
@@ -429,7 +429,7 @@ const MehTag = styled(Tag)`
     background-color: ${p => p.theme[vitalStateColors[VitalState.MEH]]};
   }
   span {
-    color: ${p => p.theme.white};
+    color: ${p => p.theme.inverted};
   }
 `;
 
@@ -438,7 +438,7 @@ const PoorTag = styled(Tag)`
     background-color: ${p => p.theme[vitalStateColors[VitalState.POOR]]};
   }
   span {
-    color: ${p => p.theme.white};
+    color: ${p => p.theme.inverted};
   }
 `;
 

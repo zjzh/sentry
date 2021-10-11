@@ -47,7 +47,7 @@ const unassignedSelectStyles: StylesConfig = {
   option: (provided, state) => ({
     ...provided,
     svg: {
-      color: state.isSelected && state.theme.white,
+      color: state.isSelected && state.theme.inverted,
     },
   }),
 };

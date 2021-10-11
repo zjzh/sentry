@@ -89,7 +89,7 @@ export default function DemoHeader() {
 // Note many of the colors don't come from the theme as they come from the marketing site
 const Wrapper = styled('div')<{collapsed: boolean}>`
   padding-right: ${space(3)};
-  background-color: ${p => p.theme.white};
+  background-color: ${p => p.theme.background};
   height: ${p => p.theme.demo.headerSize};
   display: flex;
   justify-content: space-between;

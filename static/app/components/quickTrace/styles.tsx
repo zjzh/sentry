@@ -25,7 +25,7 @@ export const QuickTraceContainer = styled('div')`
 
 const nodeColors = (theme: Theme) => ({
   error: {
-    color: theme.white,
+    color: theme.inverted,
     background: theme.red300,
     border: theme.red300,
   },

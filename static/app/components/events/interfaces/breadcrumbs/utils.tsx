@@ -103,7 +103,7 @@ function getCrumbDescriptionAndColor(
 
     case BreadcrumbType.WARNING:
       return {
-        color: 'orange400',
+        color: 'pink300',
         description: t('Warning'),
       };
     case BreadcrumbType.QUERY:

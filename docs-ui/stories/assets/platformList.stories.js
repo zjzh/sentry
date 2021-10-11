@@ -26,6 +26,6 @@ _PlatformList.args = {
 
 const Wrapper = styled('div')`
   padding: ${space(3)};
-  background: ${p => p.theme.white};
+  background: ${p => p.theme.background};
   display: flex;
 `;

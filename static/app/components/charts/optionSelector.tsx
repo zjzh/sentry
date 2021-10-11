@@ -121,7 +121,7 @@ const StyledTruncate = styled(Truncate)<{
     ${p =>
       p.isActive &&
       `
-      color: ${p.theme.white};
+      color: ${p.theme.inverted};
       background: ${p.theme.active};
       border: none;
     `}

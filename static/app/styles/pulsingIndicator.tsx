@@ -18,7 +18,7 @@ const pulsingIndicatorStyles = (p: {theme: Theme}) => css`
   height: 8px;
   width: 8px;
   border-radius: 50%;
-  background: ${p.theme.orange400};
+  background: ${p.theme.pink300};
   position: relative;
 
   &:before {

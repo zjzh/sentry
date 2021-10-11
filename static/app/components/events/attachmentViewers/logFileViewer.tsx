@@ -16,8 +16,8 @@ type Props = ViewerProps & AsyncComponent['props'];
 type State = AsyncComponent['state'];
 
 const COLORS = {
-  black: theme.black,
-  white: theme.white,
+  black: theme.gray500,
+  white: theme.inverted,
   redDim: theme.red200,
   red: theme.red300,
   greenDim: theme.green200,

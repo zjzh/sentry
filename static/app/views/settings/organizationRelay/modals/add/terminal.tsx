@@ -19,7 +19,7 @@ const Wrapper = styled('div')`
   background: ${p => p.theme.gray500};
   padding: ${space(1.5)} ${space(3)};
   font-family: ${p => p.theme.text.familyMono};
-  color: ${p => p.theme.white};
+  color: ${p => p.theme.inverted};
   border-radius: ${p => p.theme.borderRadius};
   display: grid;
   grid-template-columns: max-content 1fr;

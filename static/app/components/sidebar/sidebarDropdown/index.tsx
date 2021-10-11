@@ -186,9 +186,9 @@ const SidebarDropdown = ({
 export default withApi(withProjects(SidebarDropdown));
 
 const SentryLink = styled(Link)`
-  color: ${p => p.theme.white};
+  color: ${p => p.theme.inverted};
   &:hover {
-    color: ${p => p.theme.white};
+    color: ${p => p.theme.inverted};
   }
 `;
 
@@ -216,7 +216,7 @@ const OrgOrUserName = styled(TextOverflow)`
   font-size: ${p => p.theme.fontSizeLarge};
   line-height: 1.2;
   font-weight: bold;
-  color: ${p => p.theme.white};
+  color: ${p => p.theme.textColor};
   text-shadow: 0 0 6px rgba(255, 255, 255, 0);
   transition: 0.15s text-shadow linear;
 `;

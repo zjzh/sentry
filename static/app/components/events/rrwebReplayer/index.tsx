@@ -142,7 +142,7 @@ const RRWebReplayer = styled(BaseRRWebReplayer)`
   }
 
   .rr-controller__btns button.active {
-    color: ${p => p.theme.white};
+    color: ${p => p.theme.inverted};
     background: ${p => p.theme.active};
   }
 

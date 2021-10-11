@@ -243,7 +243,7 @@ const GuideContainer = styled('div')`
   line-height: 1.5;
   background-color: ${p => p.theme.purple300};
   border-color: ${p => p.theme.purple300};
-  color: ${p => p.theme.white};
+  color: ${p => p.theme.inverted};
 `;
 
 const GuideContent = styled('div')`
@@ -252,7 +252,7 @@ const GuideContent = styled('div')`
   grid-gap: ${space(1)};
 
   a {
-    color: ${p => p.theme.white};
+    color: ${p => p.theme.inverted};
     text-decoration: underline;
   }
 `;
@@ -283,9 +283,9 @@ const DismissButton = styled(StyledButton)`
   &:hover,
   &:focus,
   &:active {
-    color: ${p => p.theme.white};
+    color: ${p => p.theme.inverted};
   }
-  color: ${p => p.theme.white};
+  color: ${p => p.theme.inverted};
 `;
 
 const StepCount = styled('div')`

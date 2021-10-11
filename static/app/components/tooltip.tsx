@@ -325,7 +325,7 @@ const PositionWrapper = styled('div')`
 const TooltipContent = styled(motion.div)<Pick<Props, 'popperStyle'>>`
   will-change: transform, opacity;
   position: relative;
-  color: ${p => p.theme.white};
+  color: ${p => p.theme.inverted};
   background: #000;
   opacity: 0.9;
   padding: 5px 10px;

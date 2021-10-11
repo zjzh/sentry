@@ -296,7 +296,7 @@ const SpanBars = (props: {
           >
             <DurationPill
               durationDisplay={baselineDurationDisplay}
-              fontColors={{right: theme.gray500, inset: theme.white}}
+              fontColors={{right: theme.gray500, inset: theme.inverted}}
             >
               {getHumanDuration(getSpanDuration(baselineSpan))}
             </DurationPill>

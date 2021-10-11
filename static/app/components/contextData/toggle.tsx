@@ -46,7 +46,7 @@ export default Toggle;
 
 const IconWrapper = styled('div')<{isExpanded: boolean}>`
   border-radius: 2px;
-  background: ${p => p.theme.white};
+  background: ${p => p.theme.background};
   display: inline-flex;
   align-items: center;
   justify-content: center;

@@ -196,7 +196,7 @@ function getListItemStyles(props: MenuListItemProps & {theme: Theme}) {
   if (props.isActive) {
     return `
       ${common}
-      color: ${props.theme.white};
+      color: ${props.theme.inverted};
       background: ${props.theme.active};
 
       &:hover {

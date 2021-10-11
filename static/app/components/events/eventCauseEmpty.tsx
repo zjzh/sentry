@@ -251,7 +251,7 @@ const ButtonList = styled('div')`
 
 const DocsButton = styled(Button)`
   &:focus {
-    color: ${p => p.theme.white};
+    color: ${p => p.theme.inverted};
   }
 `;
 
@@ -283,7 +283,7 @@ const ExampleCommitPanel = styled(Panel)`
     padding: 4px 26px;
     line-height: 11px;
     font-size: 11px;
-    color: ${p => p.theme.white};
+    color: ${p => p.theme.inverted};
     transform: rotate(45deg);
   }
 `;

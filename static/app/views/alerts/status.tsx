@@ -23,7 +23,7 @@ const Status = ({className, incident, disableIconColor}: Props) => {
   const icon = isResolved ? (
     <IconCheckmark color={disableIconColor ? undefined : 'green300'} />
   ) : isWarning ? (
-    <IconWarning color={disableIconColor ? undefined : 'orange400'} />
+    <IconWarning color={disableIconColor ? undefined : 'pink300'} />
   ) : (
     <IconFire color={disableIconColor ? undefined : 'red300'} />
   );

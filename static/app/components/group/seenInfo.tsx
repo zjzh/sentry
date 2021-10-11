@@ -168,7 +168,7 @@ const StyledHovercard = styled(Hovercard)`
   background: ${p => p.theme.gray500};
   ${Header} {
     font-weight: normal;
-    color: ${p => p.theme.white};
+    color: ${p => p.theme.inverted};
     background: ${p => p.theme.gray500};
     border-bottom: 1px solid ${p => p.theme.gray400};
   }

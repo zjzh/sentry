@@ -106,7 +106,7 @@ const StyledList = styled(List)`
     padding-left: ${space(3)};
     word-break: break-all;
     :before {
-      border-color: ${p => p.theme.white};
+      border-color: ${p => p.theme.border};
       top: 6px;
     }
   }

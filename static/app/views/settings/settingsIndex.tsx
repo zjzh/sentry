@@ -162,7 +162,7 @@ class SettingsIndex extends React.Component<Props> {
             <GridPanel>
               <HomePanelHeader>
                 <ExternalHomeLink isCentered href={LINKS.DOCUMENTATION}>
-                  <HomeIcon color="orange400">
+                  <HomeIcon color="pink300">
                     <IconDocs size="lg" />
                   </HomeIcon>
                 </ExternalHomeLink>
@@ -295,7 +295,7 @@ const HomePanelBody = styled(PanelBody)`
 
 const HomeIcon = styled('div')<{color?: string}>`
   background: ${p => p.theme[p.color || 'gray300']};
-  color: ${p => p.theme.white};
+  color: ${p => p.theme.inverted};
   width: ${HOME_ICON_SIZE}px;
   height: ${HOME_ICON_SIZE}px;
   border-radius: ${HOME_ICON_SIZE}px;

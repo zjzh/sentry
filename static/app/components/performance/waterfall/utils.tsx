@@ -75,7 +75,7 @@ export const getDurationPillAlignment = ({
     default:
       return `
         right: ${space(0.75)};
-        color: ${spanBarHatch === true ? theme.gray300 : theme.white};
+        color: ${spanBarHatch === true ? theme.gray300 : theme.inverted};
       `;
   }
 };

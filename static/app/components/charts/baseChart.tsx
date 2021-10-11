@@ -442,7 +442,7 @@ const ChartContainer = styled('div')`
     color: ${p => p.theme.gray300};
     font-family: ${p => p.theme.text.family};
     font-variant-numeric: tabular-nums;
-    background: ${p => p.theme.gray500};
+    background: ${p => p.theme.surface300};
     padding: ${space(1)} ${space(2)};
     border-radius: ${p => p.theme.borderRadius} ${p => p.theme.borderRadius} 0 0;
   }
@@ -454,7 +454,7 @@ const ChartContainer = styled('div')`
   }
   .tooltip-label strong {
     font-weight: normal;
-    color: ${p => p.theme.white};
+    color: ${p => p.theme.inverted};
   }
   .tooltip-series > div {
     display: flex;
@@ -462,7 +462,7 @@ const ChartContainer = styled('div')`
     align-items: baseline;
   }
   .tooltip-date {
-    border-top: 1px solid ${p => p.theme.gray400};
+    border-top: 1px solid ${p => p.theme.gray100};
     text-align: center;
     position: relative;
     width: auto;
@@ -492,7 +492,7 @@ const ChartContainer = styled('div')`
 
   /* Tooltip description styling */
   .tooltip-description {
-    color: ${p => p.theme.white};
+    color: ${p => p.theme.inverted};
     border-radius: ${p => p.theme.borderRadius};
     background: #000;
     opacity: 0.9;

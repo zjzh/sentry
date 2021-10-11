@@ -288,10 +288,10 @@ const ExpandButtonWrapper = styled('div')`
   background-image: linear-gradient(
     180deg,
     hsla(0, 0%, 100%, 0.15) 0,
-    ${p => p.theme.white}
+    ${p => p.theme.background}
   );
   background-repeat: repeat-x;
-  border-bottom: ${space(1)} solid ${p => p.theme.white};
+  border-bottom: ${space(1)} solid ${p => p.theme.border};
   border-top: ${space(1)} solid transparent;
   border-bottom-right-radius: ${p => p.theme.borderRadius};
   @media (max-width: ${p => p.theme.breakpoints[1]}) {

@@ -183,7 +183,7 @@ const RuleReasonItem = styled('code')`
 
 const OwnershipTag = styled(({tagType, ...props}) => <div {...props}>{tagType}</div>)`
   background: ${p => tagColors[p.tagType.indexOf('tags') === -1 ? p.tagType : 'tag']};
-  color: ${p => p.theme.white};
+  color: ${p => p.theme.inverted};
   font-size: ${p => p.theme.fontSizeExtraSmall};
   padding: ${space(0.25)} ${space(0.5)};
   margin: ${space(0.25)} ${space(0.5)} ${space(0.25)} 0;

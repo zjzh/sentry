@@ -24,7 +24,7 @@ const styles = (theme: Theme) => css`
   #docs-root {
     display: flex;
     justify-content: center;
-    background: ${theme.white};
+    background: ${theme.background};
   }
   .sbdocs.sbdocs-wrapper {
     padding: calc(${space(4)} * 3) calc(${space(4)} * 2);

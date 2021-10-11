@@ -206,10 +206,10 @@ const StyledMenuItem = styled(MenuItem)<{isActive: boolean; isLast: boolean}>`
     p.isActive &&
     `
   ${SearchTitle}, ${SearchQuery}, ${SearchSort} {
-    color: ${p.theme.white};
+    color: ${p.theme.inverted};
   }
   ${SearchSort}:before {
-    color: ${p.theme.white};
+    color: ${p.theme.inverted};
   }
   &:hover {
     ${SearchTitle}, ${SearchQuery}, ${SearchSort} {

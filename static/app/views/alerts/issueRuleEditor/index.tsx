@@ -955,7 +955,7 @@ const Badge = styled('span')`
   background-color: ${p => p.theme.purple300};
   padding: 0 ${space(0.75)};
   border-radius: ${p => p.theme.borderRadius};
-  color: ${p => p.theme.white};
+  color: ${p => p.theme.inverted};
   text-transform: uppercase;
   text-align: center;
   font-size: ${p => p.theme.fontSizeMedium};

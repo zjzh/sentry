@@ -7,7 +7,7 @@ import theme from 'app/utils/theme';
 const defaultProps = {
   isLoading: false,
   isReloading: false,
-  maskBackgroundColor: theme.white,
+  maskBackgroundColor: theme.background,
 };
 
 type DefaultProps = Readonly<typeof defaultProps>;

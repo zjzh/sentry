@@ -140,11 +140,11 @@ const hoverCss = (p: {theme: Theme}) => css`
     stroke: ${p.theme.green200};
   }
   ${RingText} {
-    color: ${p.theme.white};
+    color: ${p.theme.inverted};
   }
 
   ${Heading} {
-    color: ${p.theme.white};
+    color: ${p.theme.inverted};
   }
   ${Remaining} {
     color: ${p.theme.gray200};

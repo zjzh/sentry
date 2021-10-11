@@ -283,7 +283,7 @@ const getCollapsedBadgeStyle = ({collapsed, theme}) => {
 const SidebarItemBadge = styled(({collapsed: _, ...props}) => <span {...props} />)`
   display: block;
   text-align: center;
-  color: ${p => p.theme.white};
+  color: ${p => p.theme.inverted};
   font-size: 12px;
   background: ${p => p.theme.red300};
   width: ${p => p.theme.sidebar.badgeSize};

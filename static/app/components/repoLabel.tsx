@@ -5,7 +5,7 @@ import overflowEllipsis from 'app/styles/overflowEllipsis';
 const RepoLabel = styled('span')`
   /* label mixin from bootstrap */
   font-weight: 700;
-  color: ${p => p.theme.white};
+  color: ${p => p.theme.inverted};
   text-align: center;
   white-space: nowrap;
   border-radius: 0.25em;

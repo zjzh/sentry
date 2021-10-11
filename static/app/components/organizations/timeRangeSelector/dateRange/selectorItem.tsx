@@ -26,7 +26,7 @@ const SelectorItem = styled(BaseSelectorItem)`
   align-items: center;
   flex: 1;
   background-color: ${p => (p.selected ? p.theme.active : 'transparent')};
-  color: ${p => (p.selected ? p.theme.white : p.theme.subText)};
+  color: ${p => (p.selected ? p.theme.inverted : p.theme.subText)};
   font-weight: ${p => (p.selected ? 'bold' : 'normal')};
   border-bottom: 1px solid ${p => (p.last ? 'transparent' : p.theme.innerBorder)};
 

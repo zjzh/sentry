@@ -98,7 +98,7 @@ const BannerWrapper = styled('div')<BannerWrapperProps>`
   box-shadow: ${p => p.theme.dropShadowLight};
   border-radius: ${p => p.theme.borderRadius};
   height: 180px;
-  color: ${p => p.theme.white};
+  color: ${p => p.theme.inverted};
 
   @media (min-width: ${p => p.theme.breakpoints[0]}) {
     height: 220px;
@@ -140,7 +140,7 @@ const CloseButton = styled(Button)`
   display: block;
   top: ${space(2)};
   right: ${space(2)};
-  color: ${p => p.theme.white};
+  color: ${p => p.theme.inverted};
   cursor: pointer;
   z-index: 1;
 `;

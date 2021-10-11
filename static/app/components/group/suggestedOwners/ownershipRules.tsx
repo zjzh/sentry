@@ -181,7 +181,7 @@ const Content = styled('span')`
 
 const SetupButton = styled(Button)`
   &:focus {
-    color: ${p => p.theme.white};
+    color: ${p => p.theme.inverted};
   }
 `;
 
