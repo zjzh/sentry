@@ -7,12 +7,14 @@ from snuba_sdk.function import Function
 
 from sentry import eventstore
 from sentry.search.events.fields import (
+    COMBINATORS,
     FUNCTIONS,
     FunctionDetails,
     InvalidSearchQuery,
     QueryFields,
     get_json_meta_type,
     parse_arguments,
+    parse_combinator,
     parse_function,
     resolve_field_list,
 )
@@ -169,6 +171,7 @@ def test_get_json_meta_type(field_alias, snuba_type, function, expected):
             r'to_other(release,"asdf @ \"qwer: (3,2)")',
             ("to_other", ["release", r'"asdf @ \"qwer: (3,2)"'], None),
         ),
+        ("identity(sessions)", ("identity", ["sessions"], None)),
     ],
 )
 def test_parse_function(function, expected):
@@ -192,6 +195,19 @@ def test_parse_function(function, expected):
 )
 def test_parse_arguments(function, columns, result):
     assert parse_arguments(function, columns) == result
+
+
+@pytest.mark.parametrize(
+    "function, expected",
+    [
+        pytest.param("func", ("func", None), id="no combinators"),
+        pytest.param("funcArray", ("func", "Array"), id="-Array combinator"),
+        pytest.param("funcarray", ("funcarray", None), id="is case sensitive"),
+        pytest.param("func_array", ("func_array", None), id="does not accept snake case"),
+    ],
+)
+def test_parse_combinator(function, expected):
+    assert parse_combinator(function) == expected
 
 
 class ResolveFieldListTest(unittest.TestCase):
@@ -360,14 +376,15 @@ class ResolveFieldListTest(unittest.TestCase):
         ]
 
     def test_aggregate_function_expansion(self):
-        fields = ["count_unique(user)", "count(id)", "min(timestamp)"]
-        result = resolve_field_list(fields, eventstore.Filter())
+        fields = ["count_unique(user)", "count(id)", "min(timestamp)", "identity(sessions)"]
+        result = resolve_field_list(fields, eventstore.Filter(), functions_acl=["identity"])
         # Automatic fields should be inserted, count() should have its column dropped.
         assert result["selected_columns"] == []
         assert result["aggregations"] == [
             ["uniq", "user", "count_unique_user"],
             ["count", None, "count_id"],
             ["min", "timestamp", "min_timestamp"],
+            ["identity", "sessions", "identity_sessions"],
         ]
         assert result["groupby"] == []
 
@@ -1670,3 +1687,12 @@ def test_range_funtions(field, expected):
     fields = resolve_snql_fieldlist([field])
     assert len(fields) == 1
     assert fields[0] == expected
+
+
+@pytest.mark.parametrize("combinator", COMBINATORS)
+def test_combinator_names_are_reserved(combinator):
+    fields = QueryFields(dataset=Dataset.Discover, params={})
+    for function in fields.function_converter:
+        assert not function.endswith(
+            combinator.kind
+        ), f"Cannot name function `{function}` because `-{combinator.kind}` suffix is reserved for combinators"

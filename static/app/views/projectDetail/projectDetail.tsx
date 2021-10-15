@@ -15,8 +15,8 @@ import GlobalEventProcessingAlert from 'app/components/globalEventProcessingAler
 import GlobalSdkUpdateAlert from 'app/components/globalSdkUpdateAlert';
 import IdBadge from 'app/components/idBadge';
 import * as Layout from 'app/components/layouts/thirds';
-import LightWeightNoProjectMessage from 'app/components/lightWeightNoProjectMessage';
 import LoadingError from 'app/components/loadingError';
+import NoProjectMessage from 'app/components/noProjectMessage';
 import GlobalSelectionHeader from 'app/components/organizations/globalSelectionHeader';
 import MissingProjectMembership from 'app/components/projects/missingProjectMembership';
 import TextOverflow from 'app/components/textOverflow';
@@ -24,7 +24,7 @@ import {IconSettings} from 'app/icons';
 import {t} from 'app/locale';
 import {PageContent} from 'app/styles/organization';
 import space from 'app/styles/space';
-import {GlobalSelection, Organization, Project, SessionApiResponse} from 'app/types';
+import {GlobalSelection, Organization, Project} from 'app/types';
 import {defined} from 'app/utils';
 import routeTitleGen from 'app/utils/routeTitle';
 import withGlobalSelection from 'app/utils/withGlobalSelection';
@@ -52,9 +52,7 @@ type Props = RouteComponentProps<RouteParams, {}> & {
   selection: GlobalSelection;
 };
 
-type State = AsyncView['state'] & {
-  hasSessions: boolean | null;
-};
+type State = AsyncView['state'];
 
 class ProjectDetail extends AsyncView<Props, State> {
   getTitle() {
@@ -65,56 +63,16 @@ class ProjectDetail extends AsyncView<Props, State> {
 
   componentDidMount() {
     this.syncProjectWithSlug();
-    if (this.props.location.query.project) {
-      this.fetchSessionsExistence();
-    }
   }
 
-  componentDidUpdate(prevProps: Props) {
+  componentDidUpdate() {
     this.syncProjectWithSlug();
-
-    if (prevProps.location.query.project !== this.props.location.query.project) {
-      this.fetchSessionsExistence();
-    }
   }
 
   get project() {
     const {projects, params} = this.props;
 
     return projects.find(p => p.slug === params.projectId);
-  }
-
-  async fetchSessionsExistence() {
-    const {organization, location} = this.props;
-    const {project: projectId, query} = location.query;
-
-    if (!projectId) {
-      return;
-    }
-
-    this.setState({
-      hasSessions: null,
-    });
-
-    try {
-      const response: SessionApiResponse = await this.api.requestPromise(
-        `/organizations/${organization.slug}/sessions/`,
-        {
-          query: {
-            project: projectId,
-            field: 'sum(session)',
-            statsPeriod: '90d',
-            interval: '1d',
-            query,
-          },
-        }
-      );
-      this.setState({
-        hasSessions: response.groups[0].totals['sum(session)'] > 0,
-      });
-    } catch {
-      // do nothing
-    }
   }
 
   handleProjectChange = (selectedProjects: number[]) => {
@@ -215,12 +173,12 @@ class ProjectDetail extends AsyncView<Props, State> {
     const {organization, params, location, router, loadingProjects, selection} =
       this.props;
     const project = this.project;
-    const {hasSessions} = this.state;
     const {query} = location.query;
     const hasPerformance = organization.features.includes('performance-view');
     const hasTransactions = hasPerformance && project?.firstTransactionEvent;
     const isProjectStabilized = this.isProjectStabilized();
     const visibleCharts = ['chart1'];
+    const hasSessions = project?.hasSessions ?? null;
 
     if (hasTransactions || hasSessions) {
       visibleCharts.push('chart2');
@@ -240,7 +198,7 @@ class ProjectDetail extends AsyncView<Props, State> {
         skipLoadLastUsed
         onUpdateProjects={this.handleProjectChange}
       >
-        <LightWeightNoProjectMessage organization={organization}>
+        <NoProjectMessage organization={organization}>
           <StyledPageContent>
             <Layout.Header>
               <Layout.HeaderContent>
@@ -370,7 +328,7 @@ class ProjectDetail extends AsyncView<Props, State> {
               </Layout.Side>
             </Layout.Body>
           </StyledPageContent>
-        </LightWeightNoProjectMessage>
+        </NoProjectMessage>
       </GlobalSelectionHeader>
     );
   }

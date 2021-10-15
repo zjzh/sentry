@@ -165,6 +165,7 @@ class QueryIntegrationTest(SnubaTestCase, TestCase):
 
     def test_missing_project(self):
         project_ids = []
+        other_project = None
         for project_name in ["a" * 32, "z" * 32, "m" * 32]:
             other_project = self.create_project(organization=self.organization, slug=project_name)
             project_ids.append(other_project.id)
@@ -174,7 +175,8 @@ class QueryIntegrationTest(SnubaTestCase, TestCase):
             )
 
         # delete the last project so its missing
-        other_project.delete()
+        if other_project is not None:
+            other_project.delete()
 
         for use_snql in [False, True]:
             result = discover.query(
@@ -2171,22 +2173,22 @@ class QueryIntegrationTest(SnubaTestCase, TestCase):
                 assert len(data[0]["stack.filename"]) == len(expected_filenames), use_snql
                 assert sorted(data[0]["stack.filename"]) == expected_filenames, use_snql
 
-        result = discover.query(
-            selected_columns=["stack.filename"],
-            query="stack.filename:[raven.js]",
-            params={
-                "organization_id": self.organization.id,
-                "project_id": [self.project.id],
-                "start": before_now(minutes=12),
-                "end": before_now(minutes=8),
-            },
-            use_snql=use_snql,
-        )
+            result = discover.query(
+                selected_columns=["stack.filename"],
+                query="stack.filename:[raven.js]",
+                params={
+                    "organization_id": self.organization.id,
+                    "project_id": [self.project.id],
+                    "start": before_now(minutes=12),
+                    "end": before_now(minutes=8),
+                },
+                use_snql=use_snql,
+            )
 
-        data = result["data"]
-        assert len(data) == 1
-        assert len(data[0]["stack.filename"]) == len(expected_filenames)
-        assert sorted(data[0]["stack.filename"]) == expected_filenames
+            data = result["data"]
+            assert len(data) == 1
+            assert len(data[0]["stack.filename"]) == len(expected_filenames)
+            assert sorted(data[0]["stack.filename"]) == expected_filenames
 
     def test_orderby_field_alias(self):
         data = load_data("android-ndk", timestamp=before_now(minutes=10))
@@ -2871,7 +2873,7 @@ class QueryIntegrationTest(SnubaTestCase, TestCase):
         for t, ev in enumerate(events):
             val = ev[0] * 32
             for i in range(ev[1]):
-                data = load_data("transaction", timestamp=before_now(seconds=3 * t + 1))
+                data = load_data("transaction", timestamp=self.now - timedelta(seconds=3 * t + 1))
                 data["transaction"] = f"{val}"
                 self.store_event(data=data, project_id=self.project.id)
 
@@ -2879,8 +2881,8 @@ class QueryIntegrationTest(SnubaTestCase, TestCase):
             results = discover.query(
                 selected_columns=["transaction", "count()"],
                 query="event.type:transaction AND (timestamp:<{} OR timestamp:>{})".format(
-                    iso_format(before_now(seconds=5)),
-                    iso_format(before_now(seconds=3)),
+                    iso_format(self.now - timedelta(seconds=5)),
+                    iso_format(self.now - timedelta(seconds=3)),
                 ),
                 params={
                     "project_id": [self.project.id],
@@ -2937,14 +2939,49 @@ class QueryIntegrationTest(SnubaTestCase, TestCase):
         assert data[0]["transaction"] == "a" * 32
         assert data[0]["count"] == 1
 
-    def test_access_to_private_functions(self):
-        # using private functions directly without access should error
-        with pytest.raises(InvalidSearchQuery, match="array_join: no access to private function"):
-            discover.query(
-                selected_columns=["array_join(tags.key)"],
+    def test_array_join(self):
+        data = load_data("transaction", timestamp=before_now(seconds=3))
+        data["measurements"] = {
+            "fp": {"value": 1000},
+            "fcp": {"value": 1000},
+            "lcp": {"value": 1000},
+        }
+        self.store_event(data=data, project_id=self.project.id)
+
+        for use_snql in [False, True]:
+            results = discover.query(
+                selected_columns=["array_join(measurements_key)"],
                 query="",
-                params={"project_id": [self.project.id]},
+                params={
+                    "project_id": [self.project.id],
+                    "start": self.two_min_ago,
+                    "end": self.now,
+                },
+                functions_acl=["array_join"],
+                use_snql=use_snql,
             )
+            assert {"fcp", "fp", "lcp"} == {
+                row["array_join_measurements_key"] for row in results["data"]
+            }
+
+    def test_access_to_private_functions(self):
+        for use_snql in [False, True]:
+            # using private functions directly without access should error
+            with pytest.raises(
+                InvalidSearchQuery, match="array_join: no access to private function"
+            ):
+                discover.query(
+                    selected_columns=["array_join(tags.key)"],
+                    query="",
+                    params={
+                        "project_id": [self.project.id],
+                        "start": self.two_min_ago,
+                        "end": self.now,
+                    },
+                    use_snql=use_snql,
+                )
+
+        # TODO: test the following with `use_snql=True` once histogram is using snql
 
         # using private functions in an aggregation without access should error
         with pytest.raises(InvalidSearchQuery, match="histogram: no access to private function"):
@@ -2967,6 +3004,30 @@ class QueryIntegrationTest(SnubaTestCase, TestCase):
                     auto_aggregations=True,
                     use_aggregate_conditions=True,
                 )
+
+    def test_sum_array_combinator(self):
+        data = load_data("transaction", timestamp=before_now(seconds=3))
+        data["measurements"] = {
+            "fp": {"value": 1000},
+            "fcp": {"value": 1000},
+            "lcp": {"value": 1000},
+        }
+        self.store_event(data=data, project_id=self.project.id)
+
+        results = discover.query(
+            selected_columns=["sumArray(measurements_value)"],
+            query="",
+            params={
+                "project_id": [self.project.id],
+                "start": self.two_min_ago,
+                "end": self.now,
+            },
+            # make sure to opt in to gain access to the function
+            functions_acl=["sumArray"],
+            # -Array combinator is only supported in SnQL
+            use_snql=True,
+        )
+        assert results["data"][0]["sumArray_measurements_value"] == 3000.0
 
     def test_any_function(self):
         data = load_data("transaction", timestamp=before_now(seconds=3))
@@ -5664,6 +5725,106 @@ class TimeseriesQueryTest(TimeseriesBase):
             keys.update(list(row.keys()))
         assert "count_unique_user" in keys
         assert "time" in keys
+
+    def test_comparison_aggregate_function_invalid(self):
+        with pytest.raises(
+            InvalidSearchQuery, match="Only one column can be selected for comparison queries"
+        ):
+            discover.timeseries_query(
+                selected_columns=["count()", "count_unique(user)"],
+                query="",
+                params={
+                    "start": self.day_ago,
+                    "end": self.day_ago + timedelta(hours=2),
+                    "project_id": [self.project.id],
+                },
+                rollup=3600,
+                comparison_delta=timedelta(days=1),
+            )
+
+    def test_comparison_aggregate_function(self):
+        self.store_event(
+            data={
+                "timestamp": iso_format(self.day_ago + timedelta(hours=1)),
+                "user": {"id": 1},
+            },
+            project_id=self.project.id,
+        )
+
+        result = discover.timeseries_query(
+            selected_columns=["count()"],
+            query="",
+            params={
+                "start": self.day_ago,
+                "end": self.day_ago + timedelta(hours=2),
+                "project_id": [self.project.id],
+            },
+            rollup=3600,
+            comparison_delta=timedelta(days=1),
+        )
+        assert len(result.data["data"]) == 3
+        # Values should all be 0, since there is no comparison period data at all.
+        assert [(0, 0), (3, 0), (0, 0)] == [
+            (val.get("count", 0), val.get("comparisonCount", 0)) for val in result.data["data"]
+        ]
+
+        self.store_event(
+            data={
+                "timestamp": iso_format(self.day_ago + timedelta(days=-1, hours=1)),
+                "user": {"id": 1},
+            },
+            project_id=self.project.id,
+        )
+        self.store_event(
+            data={
+                "timestamp": iso_format(self.day_ago + timedelta(days=-1, hours=1, minutes=2)),
+                "user": {"id": 2},
+            },
+            project_id=self.project.id,
+        )
+        self.store_event(
+            data={
+                "timestamp": iso_format(self.day_ago + timedelta(days=-1, hours=2, minutes=1)),
+            },
+            project_id=self.project.id,
+        )
+
+        result = discover.timeseries_query(
+            selected_columns=["count()"],
+            query="",
+            params={
+                "start": self.day_ago,
+                "end": self.day_ago + timedelta(hours=2, minutes=1),
+                "project_id": [self.project.id],
+            },
+            rollup=3600,
+            comparison_delta=timedelta(days=1),
+        )
+        assert len(result.data["data"]) == 3
+        # In the second bucket we have 3 events in the current period and 2 in the comparison, so
+        # we get a result of 50% increase
+        assert [(0, 0), (3, 2), (0, 0)] == [
+            (val.get("count", 0), val.get("comparisonCount", 0)) for val in result.data["data"]
+        ]
+
+        result = discover.timeseries_query(
+            selected_columns=["count_unique(user)"],
+            query="",
+            params={
+                "start": self.day_ago,
+                "end": self.day_ago + timedelta(hours=2, minutes=2),
+                "project_id": [self.project.id],
+            },
+            rollup=3600,
+            comparison_delta=timedelta(days=1),
+        )
+        assert len(result.data["data"]) == 3
+        # In the second bucket we have 1 unique user in the current period and 2 in the comparison, so
+        # we get a result of -50%
+        assert [(0, 0), (1, 2), (0, 0)] == [
+            (val.get("count_unique_user", 0), val.get("comparisonCount", 0))
+            for val in result.data["data"]
+        ]
 
     def test_count_miserable(self):
         event_data = load_data("transaction")

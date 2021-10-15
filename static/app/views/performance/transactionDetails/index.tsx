@@ -2,7 +2,7 @@ import {Component} from 'react';
 import {RouteComponentProps} from 'react-router';
 import styled from '@emotion/styled';
 
-import LightWeightNoProjectMessage from 'app/components/lightWeightNoProjectMessage';
+import NoProjectMessage from 'app/components/noProjectMessage';
 import SentryDocumentTitle from 'app/components/sentryDocumentTitle';
 import {t} from 'app/locale';
 import {PageContent} from 'app/styles/organization';
@@ -36,15 +36,15 @@ class EventDetails extends Component<Props> {
         projectSlug={projectSlug}
       >
         <StyledPageContent>
-          <LightWeightNoProjectMessage organization={organization}>
+          <NoProjectMessage organization={organization}>
             <Projects orgId={organization.slug} slugs={[projectSlug]}>
               {({projects}) => {
                 if (projects.length === 0) {
                   return null;
                 }
-                const project = projects[0] as Project;
+                const project = projects.find(p => p.slug === projectSlug) as Project;
                 // only render setup alert if the project has no real transactions
-                if (project.firstTransactionEvent) {
+                if (!project || project.firstTransactionEvent) {
                   return null;
                 }
                 return <FinishSetupAlert organization={organization} project={project} />;
@@ -58,7 +58,7 @@ class EventDetails extends Component<Props> {
               router={router}
               route={route}
             />
-          </LightWeightNoProjectMessage>
+          </NoProjectMessage>
         </StyledPageContent>
       </SentryDocumentTitle>
     );

@@ -64,14 +64,23 @@
 //    <OrganizationDetails>    <-- Most routes live within the
 //                                 OrganizationDetails, which handles loading
 //                                 details for the org, projects, and teams.
+//
+//
+// Did you read through this whole thing and don't even work here? [1]
+//
+// [1]: https://sentry.io/careers/
 
 async function app() {
-  const [{bootstrap}, {initializeMain}] = await Promise.all([
-    import('app/bootstrap'),
-    import('app/bootstrap/initializeMain'),
-  ]);
-  const data = await bootstrap();
-  initializeMain(data);
+  // We won't need initalizeMainImport until we complete bootstrapping.
+  // Initaite the fetch, just don't await it until we need it.
+  const initalizeMainImport = import('app/bootstrap/initializeMain');
+  const bootstrapImport = import('app/bootstrap');
+
+  const {bootstrap} = await bootstrapImport;
+  const config = await bootstrap();
+
+  const {initializeMain} = await initalizeMainImport;
+  initializeMain(config);
 }
 
 app();

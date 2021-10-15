@@ -37,10 +37,8 @@ from sentry.incidents.models import (
     AlertRuleTriggerAction,
 )
 from sentry.integrations.slack.utils import validate_channel_id
-from sentry.models import ActorTuple
-from sentry.models.organizationmember import OrganizationMember
-from sentry.models.team import Team
-from sentry.models.user import User
+from sentry.mediators import alert_rule_actions
+from sentry.models import ActorTuple, OrganizationMember, SentryAppInstallation, Team, User
 from sentry.shared_integrations.exceptions import ApiRateLimitedError
 from sentry.snuba.dataset import Dataset
 from sentry.snuba.models import QueryDatasets, SnubaQueryEventType
@@ -73,6 +71,9 @@ dataset_valid_event_types = {
 # TODO(davidenwang): eventually we should pass some form of these to the event_search parser to raise an error
 unsupported_queries = {"release:latest"}
 
+# Allowed time windows (in minutes) for crash rate alerts
+CRASH_RATE_ALERTS_ALLOWED_TIME_WINDOWS = [30, 60, 120, 240, 720, 1440]
+
 
 class AlertRuleTriggerActionSerializer(CamelSnakeModelSerializer):
     """
@@ -86,15 +87,28 @@ class AlertRuleTriggerActionSerializer(CamelSnakeModelSerializer):
     id = serializers.IntegerField(required=False)
     type = serializers.CharField()
     target_type = serializers.CharField()
+    sentry_app_config = serializers.JSONField(required=False)
+    sentry_app_installation_uuid = serializers.CharField(required=False)
 
     class Meta:
         model = AlertRuleTriggerAction
-        fields = ["id", "type", "target_type", "target_identifier", "integration", "sentry_app"]
+        fields = [
+            "id",
+            "type",
+            "target_type",
+            "target_identifier",
+            "integration",
+            "sentry_app",
+            "sentry_app_config",
+            "sentry_app_installation_uuid",
+        ]
         extra_kwargs = {
             "target_identifier": {"required": True},
             "target_display": {"required": False},
             "integration": {"required": False, "allow_null": True},
             "sentry_app": {"required": False, "allow_null": True},
+            "sentry_app_config": {"required": False, "allow_null": True},
+            "sentry_app_installation_uuid": {"required": False, "allow_null": True},
         }
 
     def validate_type(self, type):
@@ -165,6 +179,33 @@ class AlertRuleTriggerActionSerializer(CamelSnakeModelSerializer):
                 raise serializers.ValidationError(
                     {"sentry_app": "SentryApp must be provided for sentry_app"}
                 )
+            if attrs.get("sentry_app_config"):
+                if attrs.get("sentry_app_installation_uuid") is None:
+                    raise serializers.ValidationError(
+                        {"sentry_app": "Missing paramater: sentry_app_installation_uuid"}
+                    )
+
+                try:
+                    install = SentryAppInstallation.objects.get(
+                        uuid=attrs.get("sentry_app_installation_uuid")
+                    )
+                except SentryAppInstallation.DoesNotExist:
+                    raise serializers.ValidationError(
+                        {"sentry_app": "The installation does not exist."}
+                    )
+                # Check response from creator and bubble up errors from providers as a ValidationError
+                result = alert_rule_actions.AlertRuleActionCreator.run(
+                    install=install,
+                    fields=attrs.get("sentry_app_config"),
+                )
+
+                if not result["success"]:
+                    raise serializers.ValidationError(
+                        {"sentry_app": f'{install.sentry_app.name}: {result["message"]}'}
+                    )
+
+                del attrs["sentry_app_installation_uuid"]
+
         attrs["use_async_lookup"] = self.context.get("use_async_lookup")
         attrs["input_channel_id"] = self.context.get("input_channel_id")
         should_validate_channel_id = self.context.get("validate_channel_id", True)
@@ -270,7 +311,6 @@ class AlertRuleTriggerSerializer(CamelSnakeModelSerializer):
                     instance=action_instance,
                     data=action_data,
                 )
-
                 if action_serializer.is_valid():
                     try:
                         action_serializer.save()
@@ -399,6 +439,8 @@ class AlertRuleSerializer(CamelSnakeModelSerializer):
             )
 
     def validate_event_types(self, event_types):
+        if self.initial_data.get("dataset") == Dataset.Sessions.value:
+            return []
         try:
             return [SnubaQueryEventType.EventType[event_type.upper()] for event_type in event_types]
         except KeyError:
@@ -454,6 +496,9 @@ class AlertRuleSerializer(CamelSnakeModelSerializer):
                     "Invalid Metric: Please pass a valid function for aggregation"
                 )
 
+            dataset = Dataset(data["dataset"].value)
+            self._validate_time_window(dataset, data.get("time_window"))
+
             try:
                 raw_query(
                     aggregations=snuba_filter.aggregations,
@@ -462,7 +507,7 @@ class AlertRuleSerializer(CamelSnakeModelSerializer):
                     conditions=snuba_filter.conditions,
                     filter_keys=snuba_filter.filter_keys,
                     having=snuba_filter.having,
-                    dataset=Dataset(data["dataset"].value),
+                    dataset=dataset,
                     limit=1,
                     referrer="alertruleserializer.test_query",
                 )
@@ -483,7 +528,7 @@ class AlertRuleSerializer(CamelSnakeModelSerializer):
 
         event_types = data.get("event_types")
 
-        valid_event_types = dataset_valid_event_types[data["dataset"]]
+        valid_event_types = dataset_valid_event_types.get(data["dataset"], set())
         if event_types and set(event_types) - valid_event_types:
             raise serializers.ValidationError(
                 "Invalid event types for this dataset. Valid event types are %s"
@@ -530,6 +575,16 @@ class AlertRuleSerializer(CamelSnakeModelSerializer):
             data["resolve_threshold"] = translator(resolve_threshold)
         for trigger in triggers:
             trigger["alert_threshold"] = translator(trigger["alert_threshold"])
+
+    @staticmethod
+    def _validate_time_window(dataset, time_window):
+        if dataset == Dataset.Sessions:
+            # Validate time window
+            if time_window not in CRASH_RATE_ALERTS_ALLOWED_TIME_WINDOWS:
+                raise serializers.ValidationError(
+                    "Invalid Time Window: Allowed time windows for crash rate alerts are: "
+                    "30min, 1h, 2h, 4h, 12h and 24h"
+                )
 
     def _validate_trigger_thresholds(self, threshold_type, trigger, resolve_threshold):
         if resolve_threshold is None:
