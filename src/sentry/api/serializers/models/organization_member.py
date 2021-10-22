@@ -192,6 +192,9 @@ class OrganizationMemberWithProjectsSerializer(OrganizationMemberSerializer):
         return d
 
 
+# from typing import TypedDict
+
+
 class OrganizationMemberSCIMSerializer(Serializer):  # type: ignore
     def __init__(self, expand: Optional[Sequence[str]] = None) -> None:
         self.expand = expand or []

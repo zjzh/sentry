@@ -1,0 +1,53 @@
+openapi: 3.0.3
+info:
+  title: ''
+  version: 0.0.0
+paths:
+  /api/0/organizations/{organization_slug}/scim/v2/Users/{member_id}:
+    get:
+      operationId: Query an Individual Organization Member
+      description: |-
+        Query an individual organization member with a SCIM User GET Request.
+        - The `name` object will contain fields `firstName` and `lastName` with the values of `N/A`.
+        Sentry's SCIM API does not currently support these fields but returns them for compatibility purposes.
+      parameters:
+        - in: path
+          name: member_id
+          schema:
+            type: integer
+          description: The id of the member you'd like to query.
+          required: true
+        - in: path
+          name: organization_slug
+          schema:
+            type: string
+          description: The slug of the organization.
+          required: true
+      tags:
+        - SCIM
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/YourName'
+          description: ''
+components:
+  schemas:
+    YourName:
+      type: object
+      properties:
+        sender:
+          type: string
+        receiver:
+          type: string
+      required:
+        - receiver
+        - sender
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: sentrysid

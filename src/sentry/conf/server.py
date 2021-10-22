@@ -321,6 +321,7 @@ TEMPLATES = [
 ]
 
 INSTALLED_APPS = (
+    "drf_spectacular",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -885,7 +886,15 @@ REST_FRAMEWORK = {
     "TEST_REQUEST_DEFAULT_FORMAT": "json",
     "DEFAULT_PERMISSION_CLASSES": ("sentry.api.permissions.NoPermission",),
     "EXCEPTION_HANDLER": "sentry.api.handlers.custom_exception_handler",
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
 }
+
+SPECTACULAR_SETTINGS = {
+    "PREPROCESSING_HOOKS": ["sentry.apidocs.preprocessor.custom_preprocessing_hook"],
+    "DISABLE_ERRORS_AND_WARNINGS": False,
+    "COMPONENT_SPLIT_REQUEST": True,
+}
+
 
 CRISPY_TEMPLATE_PACK = "bootstrap3"
 

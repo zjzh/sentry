@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.db import transaction
 from django.db.models import Q
+from rest_framework import serializers
 from rest_framework.response import Response
 
 from sentry import roles
@@ -30,9 +31,12 @@ from .constants import (
 from .utils import OrganizationSCIMMemberPermission, SCIMEndpoint
 
 ERR_ONLY_OWNER = "You cannot remove the only remaining owner of the organization."
+from drf_spectacular.utils import OpenApiTypes, extend_schema, inline_serializer
 from rest_framework.exceptions import PermissionDenied
 
 from sentry.api.exceptions import ConflictError
+from sentry.apidocs.decorators import declare_public
+from sentry.apidocs.parameters import GLOBAL_PARAMS, SCIM_PARAMS
 
 
 def _scim_member_serializer_with_expansion(organization):
@@ -50,7 +54,14 @@ def _scim_member_serializer_with_expansion(organization):
     return OrganizationMemberSCIMSerializer(expand=expand)
 
 
+@declare_public(methods={"GET"})
 class OrganizationSCIMMemberDetails(SCIMEndpoint, OrganizationMemberEndpoint):
+    """
+    Query an individual organization member with a SCIM User GET Request.
+    - The `name` object will contain fields `firstName` and `lastName` with the values of `N/A`.
+    Sentry's SCIM API does not currently support these fields but returns them for compatibility purposes.
+    """
+
     permission_classes = (OrganizationSCIMMemberPermission,)
 
     def _delete_member(self, request, organization, member):
@@ -81,6 +92,29 @@ class OrganizationSCIMMemberDetails(SCIMEndpoint, OrganizationMemberEndpoint):
                 return True
         return False
 
+    @extend_schema(
+        operation_id="Query an Individual Organization Member",
+        parameters=[GLOBAL_PARAMS.ORG_SLUG, SCIM_PARAMS.MEMBER_ID],
+        request=None,
+        responses={
+            200: inline_serializer(
+                name="YourName",
+                fields={
+                    "sender": serializers.CharField(),
+                    "receiver": serializers.CharField(),
+                },
+            )
+        }
+        #     200: {
+        #         "schemas": OpenApiTypes.STR,
+        #         "id": OpenApiTypes.STR,
+        #         "userName": OpenApiTypes.STR,
+        #         "name": {"givenName": OpenApiTypes.STR, "familyName": OpenApiTypes.STR},
+        #         "emails": {"primary": bool, "value": OpenApiTypes.STR, "type": OpenApiTypes.STR},
+        #         "meta": {"resourceType": OpenApiTypes.BOOL},
+        #     }
+        # },
+    )
     def get(self, request, organization, member):
         context = serialize(
             member,
