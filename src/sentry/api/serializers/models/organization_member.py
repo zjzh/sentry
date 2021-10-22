@@ -192,7 +192,26 @@ class OrganizationMemberWithProjectsSerializer(OrganizationMemberSerializer):
         return d
 
 
-# from typing import TypedDict
+from typing import TypedDict
+
+
+class SCIMName(TypedDict):
+    givenName: str
+    familyName: str
+
+
+class SCIMEmail(TypedDict):
+    primary: bool
+    value: str
+    type: str
+
+
+class OrganizationMemberSCIMSerializerResponse(TypedDict):
+    schemas: str
+    id: str
+    userName: str
+    name: SCIMName
+    emails: List[SCIMEmail]
 
 
 class OrganizationMemberSCIMSerializer(Serializer):  # type: ignore
@@ -201,7 +220,7 @@ class OrganizationMemberSCIMSerializer(Serializer):  # type: ignore
 
     def serialize(
         self, obj: OrganizationMember, attrs: Mapping[str, Any], user: Any, **kwargs: Any
-    ) -> MutableMapping[str, JSONData]:
+    ) -> OrganizationMemberSCIMSerializerResponse:
 
         result = {
             "schemas": [SCIM_SCHEMA_USER],
