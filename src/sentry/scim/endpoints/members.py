@@ -4,6 +4,7 @@ from django.db.models import Q
 from rest_framework import serializers
 from rest_framework.response import Response
 
+import sentry.apidocs.schemaserializer
 from sentry import roles
 from sentry.api.bases.organizationmember import OrganizationMemberEndpoint
 from sentry.api.endpoints.organization_member_details import OrganizationMemberDetailsEndpoint
@@ -96,15 +97,7 @@ class OrganizationSCIMMemberDetails(SCIMEndpoint, OrganizationMemberEndpoint):
         operation_id="Query an Individual Organization Member",
         parameters=[GLOBAL_PARAMS.ORG_SLUG, SCIM_PARAMS.MEMBER_ID],
         request=None,
-        responses={
-            200: inline_serializer(
-                name="YourName",
-                fields={
-                    "sender": serializers.CharField(),
-                    "receiver": serializers.CharField(),
-                },
-            )
-        }
+        responses={200: OrganizationMemberSCIMSerializer}
         #     200: {
         #         "schemas": OpenApiTypes.STR,
         #         "id": OpenApiTypes.STR,

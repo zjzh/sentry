@@ -1,8 +1,12 @@
 from collections import defaultdict
 from typing import Any, List, Mapping, MutableMapping, Optional, Sequence, Set
 
+from drf_spectacular.extensions import OpenApiSerializerExtension
+
 from sentry import roles
 from sentry.api.serializers import Serializer, register, serialize
+from sentry.apidocs.decorators import mark_serializer_public
+from sentry.apidocs.schemaserializer import PublicSchemaSerializerMixin
 from sentry.models import (
     ExternalActor,
     OrganizationMember,
@@ -212,11 +216,15 @@ class OrganizationMemberSCIMSerializerResponse(TypedDict):
     userName: str
     name: SCIMName
     emails: List[SCIMEmail]
+    active: Optional[bool]
 
 
+@mark_serializer_public
 class OrganizationMemberSCIMSerializer(Serializer):  # type: ignore
     def __init__(self, expand: Optional[Sequence[str]] = None) -> None:
         self.expand = expand or []
+
+    partial = False
 
     def serialize(
         self, obj: OrganizationMember, attrs: Mapping[str, Any], user: Any, **kwargs: Any

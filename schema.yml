@@ -11,41 +11,32 @@ paths:
         - The `name` object will contain fields `firstName` and `lastName` with the values of `N/A`.
         Sentry's SCIM API does not currently support these fields but returns them for compatibility purposes.
       parameters:
-        - in: path
-          name: member_id
-          schema:
-            type: integer
-          description: The id of the member you'd like to query.
-          required: true
-        - in: path
-          name: organization_slug
-          schema:
-            type: string
-          description: The slug of the organization.
-          required: true
+      - in: path
+        name: member_id
+        schema:
+          type: integer
+        description: The id of the member you'd like to query.
+        required: true
+      - in: path
+        name: organization_slug
+        schema:
+          type: string
+        description: The slug of the organization.
+        required: true
       tags:
-        - SCIM
+      - SCIM
       security:
-        - cookieAuth: []
+      - cookieAuth: []
       responses:
         '200':
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/YourName'
+                type: object
+                additionalProperties: {}
+                description: Unspecified response body
           description: ''
 components:
-  schemas:
-    YourName:
-      type: object
-      properties:
-        sender:
-          type: string
-        receiver:
-          type: string
-      required:
-        - receiver
-        - sender
   securitySchemes:
     cookieAuth:
       type: apiKey
