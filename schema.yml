@@ -6,11 +6,11 @@ paths:
   /api/0/organizations/{organization_slug}/scim/v2/Users:
     post:
       operationId: Provision a New Organization Member
-      description: Create a new Organization Member via a SCIM Users POST Request.
-        `userName` should be set to the SAML field used for email, and active should
-        be set to `true`. Sentry's SCIM API doesn't currently support setting users
-        to inactive and the member will be deleted if inactive is set to `false`.
-        The API also does not support setting secondary emails.
+      description: |-
+        Create a new Organization Member via a SCIM Users POST Request.
+        `userName` should be set to the SAML field used for email, and active should be set to `true`.
+        Sentry's SCIM API doesn't currently support setting users to inactive and the member will be deleted
+        if inactive is set to `false`. The API also does not support setting secondary emails.
       parameters:
       - in: path
         name: organization_slug
@@ -52,8 +52,8 @@ paths:
         required: true
       security:
       - auth_token:
-        - member:write
         - member:admin
+        - member:write
       responses:
         '201':
           content:
@@ -90,7 +90,8 @@ paths:
       operationId: Query an Individual Organization Member
       description: |-
         Query an individual organization member with a SCIM User GET Request.
-        - The `name` object will contain fields `firstName` and `lastName` with the values of `N/A`. Sentry's SCIM API does not currently support these fields but returns them for compatibility purposes.
+        - The `name` object will contain fields `firstName` and `lastName` with the values of `N/A`.
+        Sentry's SCIM API does not currently support these fields but returns them for compatibility purposes.
       parameters:
       - in: path
         name: member_id
@@ -108,9 +109,9 @@ paths:
       - SCIM
       security:
       - auth_token:
-        - member:read
-        - member:write
         - member:admin
+        - member:write
+        - member:read
       responses:
         '200':
           content:

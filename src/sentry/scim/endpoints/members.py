@@ -64,12 +64,6 @@ def _scim_member_serializer_with_expansion(organization):
 
 @declare_public(methods={"GET"})
 class OrganizationSCIMMemberDetails(SCIMEndpoint, OrganizationMemberEndpoint):
-    """
-    Query an individual organization member with a SCIM User GET Request.
-    - The `name` object will contain fields `firstName` and `lastName` with the values of `N/A`.
-    Sentry's SCIM API does not currently support these fields but returns them for compatibility purposes.
-    """
-
     permission_classes = (OrganizationSCIMMemberPermission,)
 
     def _delete_member(self, request, organization, member):
@@ -103,11 +97,6 @@ class OrganizationSCIMMemberDetails(SCIMEndpoint, OrganizationMemberEndpoint):
     @extend_schema(
         operation_id="Query an Individual Organization Member",
         parameters=[GLOBAL_PARAMS.ORG_SLUG, SCIM_PARAMS.MEMBER_ID],
-        description=(
-            "Query an individual organization member with a SCIM User GET Request.\n"
-            "- The `name` object will contain fields `firstName` and `lastName` with the values of `N/A`."
-            " Sentry's SCIM API does not currently support these fields but returns them for compatibility purposes."
-        ),
         request=None,
         responses={
             200: OrganizationMemberSCIMSerializer,
@@ -131,6 +120,11 @@ class OrganizationSCIMMemberDetails(SCIMEndpoint, OrganizationMemberEndpoint):
         ],
     )
     def get(self, request, organization, member):
+        """
+        Query an individual organization member with a SCIM User GET Request.
+        - The `name` object will contain fields `firstName` and `lastName` with the values of `N/A`.
+        Sentry's SCIM API does not currently support these fields but returns them for compatibility purposes.
+        """
         context = serialize(
             member,
             serializer=_scim_member_serializer_with_expansion(organization),
@@ -208,12 +202,6 @@ class OrganizationSCIMMemberIndex(SCIMEndpoint):
         operation_id="Provision a New Organization Member",
         parameters=[GLOBAL_PARAMS.ORG_SLUG],
         request=OrganizationMemberSerializer,
-        description=(
-            "Create a new Organization Member via a SCIM Users POST Request."
-            " `userName` should be set to the SAML field used for email, and active should be set to `true`."
-            " Sentry's SCIM API doesn't currently support setting users to inactive and the member will be deleted"
-            " if inactive is set to `false`. The API also does not support setting secondary emails."
-        ),
         responses={
             201: OrganizationMemberSCIMSerializer,
             401: RESPONSE_UNAUTHORIZED,
@@ -237,6 +225,12 @@ class OrganizationSCIMMemberIndex(SCIMEndpoint):
         ],
     )
     def post(self, request, organization):
+        """
+        Create a new Organization Member via a SCIM Users POST Request.
+        `userName` should be set to the SAML field used for email, and active should be set to `true`.
+        Sentry's SCIM API doesn't currently support setting users to inactive and the member will be deleted
+        if inactive is set to `false`. The API also does not support setting secondary emails.
+        """
         serializer = OrganizationMemberSerializer(
             data={
                 "email": request.data.get("userName"),

@@ -15,10 +15,10 @@ class TokenAuthExtension(OpenApiAuthenticationExtension):
         return {"type": "http", "scheme": "bearer"}
 
     def get_security_requirement(self, auto_schema):
-        permissions = []
+        permissions = set()
         # TODO: resolve duplicates
         for permission in auto_schema.view.get_permissions():
             for p in permission.scope_map.get(auto_schema.method, []):
-                permissions.append(p)
+                permissions.add(p)
 
-        return {self.name: permissions}
+        return {self.name: list(permissions)}
