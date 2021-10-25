@@ -32,10 +32,17 @@ from .constants import (
 from .utils import OrganizationSCIMMemberPermission, SCIMEndpoint
 
 ERR_ONLY_OWNER = "You cannot remove the only remaining owner of the organization."
-from drf_spectacular.utils import OpenApiTypes, extend_schema, inline_serializer
+from drf_spectacular.utils import (
+    OpenApiExample,
+    OpenApiResponse,
+    OpenApiTypes,
+    extend_schema,
+    inline_serializer,
+)
 from rest_framework.exceptions import PermissionDenied
 
 from sentry.api.exceptions import ConflictError
+from sentry.apidocs.constants import RESPONSE_FORBIDDEN, RESPONSE_NOTFOUND, RESPONSE_UNAUTHORIZED
 from sentry.apidocs.decorators import declare_public
 from sentry.apidocs.parameters import GLOBAL_PARAMS, SCIM_PARAMS
 
@@ -97,16 +104,31 @@ class OrganizationSCIMMemberDetails(SCIMEndpoint, OrganizationMemberEndpoint):
         operation_id="Query an Individual Organization Member",
         parameters=[GLOBAL_PARAMS.ORG_SLUG, SCIM_PARAMS.MEMBER_ID],
         request=None,
-        responses={200: OrganizationMemberSCIMSerializer}
-        #     200: {
-        #         "schemas": OpenApiTypes.STR,
-        #         "id": OpenApiTypes.STR,
-        #         "userName": OpenApiTypes.STR,
-        #         "name": {"givenName": OpenApiTypes.STR, "familyName": OpenApiTypes.STR},
-        #         "emails": {"primary": bool, "value": OpenApiTypes.STR, "type": OpenApiTypes.STR},
-        #         "meta": {"resourceType": OpenApiTypes.BOOL},
-        #     }
-        # },
+        responses={
+            200: OrganizationMemberSCIMSerializer,
+            401: RESPONSE_UNAUTHORIZED,
+            403: RESPONSE_FORBIDDEN,
+            404: RESPONSE_NOTFOUND,
+        },
+        examples=[  # TODO: see if this can go on serializer object instead
+            OpenApiExample(
+                "Successful response",
+                description=(
+                    "Query an individual organization member with a SCIM User GET Request.\n"
+                    "- The `name` object will contain fields `firstName` and `lastName` with the values of `N/A`."
+                    " Sentry's SCIM API does not currently support these fields but returns them for compatibility purposes."
+                ),
+                value={
+                    "schemas": ["urn:ietf:params:scim:schemas:core:2.0:User"],
+                    "id": "102",
+                    "userName": "test.user@okta.local",
+                    "emails": [{"primary": True, "value": "test.user@okta.local", "type": "work"}],
+                    "name": {"familyName": "N/A", "givenName": "N/A"},
+                    "active": True,
+                    "meta": {"resourceType": "User"},
+                },
+            ),
+        ],
     )
     def get(self, request, organization, member):
         context = serialize(

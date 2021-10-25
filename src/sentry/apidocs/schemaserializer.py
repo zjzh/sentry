@@ -50,7 +50,7 @@ class PublicSchemaResponseSerializerExtension(OpenApiSerializerExtension):
     match_subclasses = True
 
     def get_name(self) -> Optional[str]:
-        return "test"
+        return self.target.__name__
 
     def map_serializer(self, auto_schema, direction):
         required = set()

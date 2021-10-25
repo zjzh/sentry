@@ -893,6 +893,7 @@ SPECTACULAR_SETTINGS = {
     "PREPROCESSING_HOOKS": ["sentry.apidocs.preprocessor.custom_preprocessing_hook"],
     "DISABLE_ERRORS_AND_WARNINGS": False,
     "COMPONENT_SPLIT_REQUEST": True,
+    "AUTHENTICATION_WHITELIST": ["sentry.api.authentication.TokenAuthentication"],
 }
 
 
@@ -2474,3 +2475,6 @@ SENTRY_POST_PROCESS_FORWARDER_BATCHING = True
 # Whether badly behaving projects will be automatically
 # sent to the low priority queue
 SENTRY_ENABLE_AUTO_LOW_PRIORITY_QUEUE = False
+
+
+from sentry.apidocs.extensions import *
