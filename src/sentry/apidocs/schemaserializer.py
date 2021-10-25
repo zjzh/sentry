@@ -42,11 +42,13 @@ def map_typedict(t):
     return {"type": "object", "properties": properties, "required": []}
 
 
+def get_class(obj) -> type:
+    return obj if inspect.isclass(obj) else obj.__class__
+
+
 class PublicSchemaResponseSerializerExtension(OpenApiSerializerExtension):
     priority = 0
-    target_class = (
-        "sentry.api.serializers.models.organization_member.OrganizationMemberSCIMSerializer"
-    )
+    target_class = "sentry.api.serializers.base.Serializer"
     match_subclasses = True
 
     def get_name(self) -> Optional[str]:
@@ -54,7 +56,12 @@ class PublicSchemaResponseSerializerExtension(OpenApiSerializerExtension):
 
     def map_serializer(self, auto_schema, direction):
         required = set()
-        sig = inspect.signature(self.target_class.serialize)
+        sig = inspect.signature(self.target.serialize)
+
+        # breakpoint()
+        if type(sig.return_annotation) != _TypedDictMeta:
+            return {"type": "string", "required": True}
+
         properties = map_typedict(sig.return_annotation)
 
         # a = build_object_type(
@@ -65,11 +72,18 @@ class PublicSchemaResponseSerializerExtension(OpenApiSerializerExtension):
         # )
         return properties
 
-    # @classmethod
-    # def _matches(cls, target) -> bool:
-    #     print(target)
-    #     print("344444")
-    #     print(PUBLIC_SERIALIZERS)
-    #     for k, v in target.items():
-    #         if f"{v.__module__}.{v.__name__}" in PUBLIC_SERIALIZERS:
-    #             return True
+    @classmethod
+    def _matches(cls, target) -> bool:
+        if isinstance(cls.target_class, str):
+            cls._load_class()
+
+        if cls.target_class is None:
+            return False  # app not installed
+        elif cls.match_subclasses:
+            print(issubclass(get_class(target), cls.target_class))
+            return (
+                issubclass(get_class(target), cls.target_class)
+                and f"{target.__module__}.{target.__name__}" in PUBLIC_SERIALIZERS
+            )
+        else:
+            return get_class(target) == cls.target_class
