@@ -6,7 +6,6 @@ from drf_spectacular.extensions import OpenApiSerializerExtension
 from sentry import roles
 from sentry.api.serializers import Serializer, register, serialize
 from sentry.apidocs.decorators import mark_serializer_public
-from sentry.apidocs.schemaserializer import PublicSchemaSerializerMixin
 from sentry.models import (
     ExternalActor,
     OrganizationMember,

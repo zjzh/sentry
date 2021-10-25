@@ -32,11 +32,42 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                additionalProperties: {}
-                description: Unspecified response body
+                $ref: '#/components/schemas/test'
           description: ''
 components:
+  schemas:
+    test:
+      type: object
+      properties:
+        schemas:
+          type: string
+        id:
+          type: string
+        userName:
+          type: string
+        name:
+          type: object
+          properties:
+            givenName:
+              type: string
+            familyName:
+              type: string
+          required: []
+        emails:
+          type: array
+          items:
+            type: object
+            properties:
+              primary:
+                type: boolean
+              value:
+                type: string
+              type:
+                type: string
+            required: []
+        active:
+          type: string
+          required: true
   securitySchemes:
     cookieAuth:
       type: apiKey

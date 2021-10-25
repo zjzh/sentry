@@ -1,5 +1,5 @@
 from .preprocessor import PUBLIC_ENDPOINTS
-from .schemaserializer import PublicSchemaSerializerMixin
+from .schemaserializer import PUBLIC_SERIALIZERS
 
 
 def declare_public(methods):
@@ -15,7 +15,7 @@ def declare_public(methods):
 
 
 def mark_serializer_public(serializer_cls):
-    PublicSchemaSerializerMixin(serializer_cls)
+    PUBLIC_SERIALIZERS.add(f"{serializer_cls.__module__}.{serializer_cls.__name__}")
     return serializer_cls
 
 

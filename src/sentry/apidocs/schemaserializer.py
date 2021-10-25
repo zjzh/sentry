@@ -10,6 +10,8 @@ from drf_spectacular.openapi import (
 )
 from drf_spectacular.plumbing import get_doc, safe_ref
 
+PUBLIC_SERIALIZERS = set()
+
 
 def map_field_from_type(t):
     required = True
@@ -40,25 +42,20 @@ def map_typedict(t):
     return {"type": "object", "properties": properties, "required": []}
 
 
-class PublicSchemaSerializerMixin(OpenApiSerializerExtension):
-    def __init__(self, target):
-        # super().__init__(target)
-        self.target_class = f"{target.__module__}.{target.__name__}"
-        print(self.target_class)
-
+class PublicSchemaResponseSerializerExtension(OpenApiSerializerExtension):
     priority = 0
+    target_class = (
+        "sentry.api.serializers.models.organization_member.OrganizationMemberSCIMSerializer"
+    )
+    match_subclasses = True
 
     def get_name(self) -> Optional[str]:
         return "test"
 
     def map_serializer(self, auto_schema, direction):
         required = set()
-        # breakpoint()
         sig = inspect.signature(self.target_class.serialize)
-        # breakpoint()
         properties = map_typedict(sig.return_annotation)
-
-        print(properties)
 
         # a = build_object_type(
         #     properties=properties,
@@ -67,3 +64,12 @@ class PublicSchemaSerializerMixin(OpenApiSerializerExtension):
         #     # description=get_doc(self.target_class.__class__),
         # )
         return properties
+
+    # @classmethod
+    # def _matches(cls, target) -> bool:
+    #     print(target)
+    #     print("344444")
+    #     print(PUBLIC_SERIALIZERS)
+    #     for k, v in target.items():
+    #         if f"{v.__module__}.{v.__name__}" in PUBLIC_SERIALIZERS:
+    #             return True
