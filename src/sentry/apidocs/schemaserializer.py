@@ -80,7 +80,6 @@ class PublicSchemaResponseSerializerExtension(OpenApiSerializerExtension):
         if cls.target_class is None:
             return False  # app not installed
         elif cls.match_subclasses:
-            print(issubclass(get_class(target), cls.target_class))
             return (
                 issubclass(get_class(target), cls.target_class)
                 and f"{target.__module__}.{target.__name__}" in PUBLIC_SERIALIZERS

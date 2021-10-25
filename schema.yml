@@ -3,13 +3,94 @@ info:
   title: ''
   version: 0.0.0
 paths:
+  /api/0/organizations/{organization_slug}/scim/v2/Users:
+    post:
+      operationId: Provision a New Organization Member
+      description: Create a new Organization Member via a SCIM Users POST Request.
+        `userName` should be set to the SAML field used for email, and active should
+        be set to `true`. Sentry's SCIM API doesn't currently support setting users
+        to inactive and the member will be deleted if inactive is set to `false`.
+        The API also does not support setting secondary emails.
+      parameters:
+      - in: path
+        name: organization_slug
+        schema:
+          type: string
+        description: The slug of the organization.
+        required: true
+      tags:
+      - SCIM
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrganizationMemberRequest'
+            examples:
+              SuccessfulResponse:
+                value:
+                  schemas:
+                  - urn:ietf:params:scim:schemas:core:2.0:User
+                  id: '102'
+                  userName: test.user@okta.local
+                  emails:
+                  - primary: true
+                    value: test.user@okta.local
+                    type: work
+                  name:
+                    familyName: N/A
+                    givenName: N/A
+                  active: true
+                  meta:
+                    resourceType: User
+                summary: Successful response
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/OrganizationMemberRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/OrganizationMemberRequest'
+        required: true
+      security:
+      - auth_token:
+        - member:write
+        - member:admin
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrganizationMemberSCIM'
+              examples:
+                SuccessfulResponse:
+                  value:
+                    schemas:
+                    - urn:ietf:params:scim:schemas:core:2.0:User
+                    id: '102'
+                    userName: test.user@okta.local
+                    emails:
+                    - primary: true
+                      value: test.user@okta.local
+                      type: work
+                    name:
+                      familyName: N/A
+                      givenName: N/A
+                    active: true
+                    meta:
+                      resourceType: User
+                  summary: Successful response
+          description: ''
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
   /api/0/organizations/{organization_slug}/scim/v2/Users/{member_id}:
     get:
       operationId: Query an Individual Organization Member
       description: |-
         Query an individual organization member with a SCIM User GET Request.
-        - The `name` object will contain fields `firstName` and `lastName` with the values of `N/A`.
-        Sentry's SCIM API does not currently support these fields but returns them for compatibility purposes.
+        - The `name` object will contain fields `firstName` and `lastName` with the values of `N/A`. Sentry's SCIM API does not currently support these fields but returns them for compatibility purposes.
       parameters:
       - in: path
         name: member_id
@@ -54,9 +135,6 @@ paths:
                     meta:
                       resourceType: User
                   summary: Successful response
-                  description: |-
-                    Query an individual organization member with a SCIM User GET Request.
-                    - The `name` object will contain fields `firstName` and `lastName` with the values of `N/A`. Sentry's SCIM API does not currently support these fields but returns them for compatibility purposes.
           description: ''
         '401':
           description: Unauthorized
@@ -66,6 +144,26 @@ paths:
           description: Not Found
 components:
   schemas:
+    OrganizationMemberRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 75
+        role:
+          $ref: '#/components/schemas/RoleEnum'
+        teams:
+          type: array
+          items: {}
+          default: []
+        sendInvite:
+          type: boolean
+          writeOnly: true
+          default: true
+      required:
+      - email
+      - role
     OrganizationMemberSCIM:
       type: object
       properties:
@@ -98,6 +196,13 @@ components:
         active:
           type: string
           required: true
+    RoleEnum:
+      enum:
+      - member
+      - admin
+      - manager
+      - owner
+      type: string
   securitySchemes:
     auth_token:
       type: http

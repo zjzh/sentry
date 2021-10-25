@@ -103,6 +103,11 @@ class OrganizationSCIMMemberDetails(SCIMEndpoint, OrganizationMemberEndpoint):
     @extend_schema(
         operation_id="Query an Individual Organization Member",
         parameters=[GLOBAL_PARAMS.ORG_SLUG, SCIM_PARAMS.MEMBER_ID],
+        description=(
+            "Query an individual organization member with a SCIM User GET Request.\n"
+            "- The `name` object will contain fields `firstName` and `lastName` with the values of `N/A`."
+            " Sentry's SCIM API does not currently support these fields but returns them for compatibility purposes."
+        ),
         request=None,
         responses={
             200: OrganizationMemberSCIMSerializer,
@@ -113,11 +118,6 @@ class OrganizationSCIMMemberDetails(SCIMEndpoint, OrganizationMemberEndpoint):
         examples=[  # TODO: see if this can go on serializer object instead
             OpenApiExample(
                 "Successful response",
-                description=(
-                    "Query an individual organization member with a SCIM User GET Request.\n"
-                    "- The `name` object will contain fields `firstName` and `lastName` with the values of `N/A`."
-                    " Sentry's SCIM API does not currently support these fields but returns them for compatibility purposes."
-                ),
                 value={
                     "schemas": ["urn:ietf:params:scim:schemas:core:2.0:User"],
                     "id": "102",
@@ -160,6 +160,7 @@ class OrganizationSCIMMemberDetails(SCIMEndpoint, OrganizationMemberEndpoint):
         return Response(status=204)
 
 
+@declare_public(methods={"POST"})
 class OrganizationSCIMMemberIndex(SCIMEndpoint):
     permission_classes = (OrganizationSCIMMemberPermission,)
 
@@ -203,6 +204,38 @@ class OrganizationSCIMMemberIndex(SCIMEndpoint):
             cursor_cls=SCIMCursor,
         )
 
+    @extend_schema(
+        operation_id="Provision a New Organization Member",
+        parameters=[GLOBAL_PARAMS.ORG_SLUG],
+        request=OrganizationMemberSerializer,
+        description=(
+            "Create a new Organization Member via a SCIM Users POST Request."
+            " `userName` should be set to the SAML field used for email, and active should be set to `true`."
+            " Sentry's SCIM API doesn't currently support setting users to inactive and the member will be deleted"
+            " if inactive is set to `false`. The API also does not support setting secondary emails."
+        ),
+        responses={
+            201: OrganizationMemberSCIMSerializer,
+            401: RESPONSE_UNAUTHORIZED,
+            403: RESPONSE_FORBIDDEN,
+            404: RESPONSE_NOTFOUND,
+            # 409, 400
+        },
+        examples=[  # TODO: see if this can go on serializer object instead
+            OpenApiExample(
+                "Successful response",
+                value={
+                    "schemas": ["urn:ietf:params:scim:schemas:core:2.0:User"],
+                    "id": "102",
+                    "userName": "test.user@okta.local",
+                    "emails": [{"primary": True, "value": "test.user@okta.local", "type": "work"}],
+                    "name": {"familyName": "N/A", "givenName": "N/A"},
+                    "active": True,
+                    "meta": {"resourceType": "User"},
+                },
+            ),
+        ],
+    )
     def post(self, request, organization):
         serializer = OrganizationMemberSerializer(
             data={
