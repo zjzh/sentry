@@ -1,10 +1,4 @@
-from typing import Any, Dict, List
-
 from drf_spectacular.extensions import OpenApiAuthenticationExtension
-
-# from sentry.scim.endpoints.members import OrganizationSCIMMemberDetails, OrganizationSCIMMemberIndex
-
-# print(OrganizationSCIMMemberDetails.get_authenticators())
 
 
 class TokenAuthExtension(OpenApiAuthenticationExtension):

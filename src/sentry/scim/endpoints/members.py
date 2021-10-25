@@ -4,7 +4,6 @@ from django.db.models import Q
 from rest_framework import serializers
 from rest_framework.response import Response
 
-import sentry.apidocs.schemaserializer
 from sentry import roles
 from sentry.api.bases.organizationmember import OrganizationMemberEndpoint
 from sentry.api.endpoints.organization_member_details import OrganizationMemberDetailsEndpoint
@@ -32,13 +31,7 @@ from .constants import (
 from .utils import OrganizationSCIMMemberPermission, SCIMEndpoint
 
 ERR_ONLY_OWNER = "You cannot remove the only remaining owner of the organization."
-from drf_spectacular.utils import (
-    OpenApiExample,
-    OpenApiResponse,
-    OpenApiTypes,
-    extend_schema,
-    inline_serializer,
-)
+from drf_spectacular.utils import OpenApiExample, extend_schema
 from rest_framework.exceptions import PermissionDenied
 
 from sentry.api.exceptions import ConflictError

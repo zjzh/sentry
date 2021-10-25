@@ -1,8 +1,6 @@
 from collections import defaultdict
 from typing import Any, List, Mapping, MutableMapping, Optional, Sequence, Set
 
-from drf_spectacular.extensions import OpenApiSerializerExtension
-
 from sentry import roles
 from sentry.api.serializers import Serializer, register, serialize
 from sentry.apidocs.decorators import mark_serializer_public

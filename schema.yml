@@ -52,8 +52,8 @@ paths:
         required: true
       security:
       - auth_token:
-        - member:admin
         - member:write
+        - member:admin
       responses:
         '201':
           content:
@@ -109,9 +109,9 @@ paths:
       - SCIM
       security:
       - auth_token:
-        - member:admin
         - member:write
         - member:read
+        - member:admin
       responses:
         '200':
           content:
@@ -181,7 +181,9 @@ components:
               type: string
             familyName:
               type: string
-          required: []
+          required:
+          - familyName
+          - givenName
         emails:
           type: array
           items:
@@ -193,10 +195,18 @@ components:
                 type: string
               type:
                 type: string
-            required: []
+            required:
+            - primary
+            - value
+            - type
         active:
-          type: string
-          required: true
+          type: boolean
+      required:
+      - userName
+      - id
+      - schemas
+      - emails
+      - name
     RoleEnum:
       enum:
       - member

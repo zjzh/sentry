@@ -1,7 +1,3 @@
-# from django.urls import reverse
-
-# from sentry.scim.endpoints.members import OrganizationSCIMMemberDetails, OrganizationSCIMMemberIndex
-
 PUBLIC_ENDPOINTS = {}
 
 

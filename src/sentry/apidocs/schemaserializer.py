@@ -1,5 +1,13 @@
 import inspect
-from typing import Optional, _GenericAlias, _TypedDictMeta
+from typing import (
+    Optional,
+    Union,
+    _GenericAlias,
+    _TypedDictMeta,
+    get_args,
+    get_origin,
+    get_type_hints,
+)
 
 from drf_spectacular.extensions import OpenApiSerializerExtension
 from drf_spectacular.openapi import (
@@ -13,33 +21,43 @@ from drf_spectacular.plumbing import get_doc, safe_ref
 PUBLIC_SERIALIZERS = set()
 
 
+def is_optional(field):
+    # https://stackoverflow.com/a/58841311
+    return get_origin(field) is Union and type(None) in get_args(field)
+
+
 def map_field_from_type(t):
-    required = True
     if type(t) == _TypedDictMeta:
-        return map_typedict(t)
+        return map_typedict(t), True
 
     if is_basic_type(t):
         schema = build_basic_type(t)
         if schema is None:
             return None
-        return schema
+        return schema, True
 
-    if t.__origin__ == list:
-        return build_array_type(map_field_from_type(t.__args__[0]))
+    if get_origin(t) is list:
+        field, required = map_field_from_type(t.__args__[0])
+        return build_array_type(field), True
 
-    return {"type": "string", "required": True}
+    if is_optional(t):
+        return map_field_from_type(get_args(t)[0])[0], False
+
+    breakpoint()
+    return {"type": "string", "required": True}, True
 
 
 def map_typedict(t):
     # TODO: register nested TypedDicts as components
     properties = {}
     required = set()
-    for k, v in t.__annotations__.items():
-        properties[k] = map_field_from_type(v)
-        # if field_required:
-        #     required.add(k)
+    for k, v in get_type_hints(t).items():
+        field, field_required = map_field_from_type(v)
+        properties[k] = field
+        if field_required:
+            required.add(k)
     # return build_object_type(properties, required=set(), description="")
-    return {"type": "object", "properties": properties, "required": []}
+    return {"type": "object", "properties": properties, "required": list(required)}
 
 
 def get_class(obj) -> type:
