@@ -1,5 +1,7 @@
 from collections import defaultdict
-from typing import Any, List, Mapping, MutableMapping, Optional, Sequence, Set
+from typing import Any, List, Mapping, MutableMapping, Optional, Sequence, Set, TypedDict
+
+from drf_spectacular.utils import extend_schema_serializer
 
 from sentry import roles
 from sentry.api.serializers import Serializer, register, serialize
@@ -193,9 +195,6 @@ class OrganizationMemberWithProjectsSerializer(OrganizationMemberSerializer):
         return d
 
 
-from typing import TypedDict
-
-
 class SCIMName(TypedDict):
     givenName: str
     familyName: str
@@ -207,27 +206,39 @@ class SCIMEmail(TypedDict):
     type: str
 
 
-class OrganizationMemberSCIMSerializerResponse(TypedDict):
-    schemas: str
+class SCIMMeta(TypedDict):
+    resourceType: str
+
+
+class OrganizationMemberSCIMSerializerResponse(TypedDict, total=False):
+    schemas: List[str]
     id: str
     userName: str
     name: SCIMName
     emails: List[SCIMEmail]
     active: Optional[bool]
+    meta: SCIMMeta
 
 
+@extend_schema_serializer(exclude_fields=("schemas",))
 @mark_serializer_public
 class OrganizationMemberSCIMSerializer(Serializer):  # type: ignore
+    """
+    This serializes an organization member for compatability with the SCIM standard.
+    """
+
+    read_only = False
+
     def __init__(self, expand: Optional[Sequence[str]] = None) -> None:
         self.expand = expand or []
 
-    partial = False
+    partial = True
 
     def serialize(
         self, obj: OrganizationMember, attrs: Mapping[str, Any], user: Any, **kwargs: Any
     ) -> OrganizationMemberSCIMSerializerResponse:
 
-        result = {
+        result: OrganizationMemberSCIMSerializerResponse = {
             "schemas": [SCIM_SCHEMA_USER],
             "id": str(obj.id),
             "userName": obj.get_email(),

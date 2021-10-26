@@ -168,8 +168,6 @@ components:
     OrganizationMemberSCIM:
       type: object
       properties:
-        schemas:
-          type: string
         id:
           type: string
         userName:
@@ -184,6 +182,7 @@ components:
           required:
           - familyName
           - givenName
+          description: ''
         emails:
           type: array
           items:
@@ -196,17 +195,27 @@ components:
               type:
                 type: string
             required:
+            - type
             - primary
             - value
-            - type
+            description: ''
         active:
           type: boolean
+        meta:
+          type: object
+          properties:
+            resourceType:
+              type: string
+          required:
+          - resourceType
+          description: ''
       required:
-      - userName
-      - id
-      - schemas
-      - emails
       - name
+      - meta
+      - userName
+      - emails
+      - id
+      description: ''
     RoleEnum:
       enum:
       - member

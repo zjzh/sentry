@@ -1,24 +1,14 @@
 import inspect
-from typing import (
-    Optional,
-    Union,
-    _GenericAlias,
-    _TypedDictMeta,
-    get_args,
-    get_origin,
-    get_type_hints,
-)
+from typing import Optional, Union, _TypedDictMeta, get_args, get_origin, get_type_hints
 
+from drf_spectacular.drainage import get_override
 from drf_spectacular.extensions import OpenApiSerializerExtension
-from drf_spectacular.openapi import (
-    build_array_type,
-    build_basic_type,
-    build_object_type,
-    is_basic_type,
-)
-from drf_spectacular.plumbing import get_doc, safe_ref
+from drf_spectacular.openapi import build_array_type, build_basic_type, is_basic_type
+
+# from drf_spectacular.plumbing import get_doc, safe_ref
 
 PUBLIC_SERIALIZERS = set()
+# https://www.python.org/dev/peps/pep-0655/
 
 
 def is_optional(field):
@@ -43,21 +33,32 @@ def map_field_from_type(t):
     if is_optional(t):
         return map_field_from_type(get_args(t)[0])[0], False
 
-    breakpoint()
     return {"type": "string", "required": True}, True
 
 
-def map_typedict(t):
+# Private attributes?
+def map_typedict(t, excluded_fields=None):
+    if not excluded_fields:
+        excluded_fields = []
+    # TODO: add descriptions from __doc__
     # TODO: register nested TypedDicts as components
     properties = {}
     required = set()
     for k, v in get_type_hints(t).items():
+        if k in excluded_fields:
+            continue
         field, field_required = map_field_from_type(v)
         properties[k] = field
         if field_required:
             required.add(k)
     # return build_object_type(properties, required=set(), description="")
-    return {"type": "object", "properties": properties, "required": list(required)}
+    description = t.__doc__ or ""
+    return {
+        "type": "object",
+        "properties": properties,
+        "required": list(required),
+        "description": description,
+    }
 
 
 def get_class(obj) -> type:
@@ -73,14 +74,15 @@ class PublicSchemaResponseSerializerExtension(OpenApiSerializerExtension):
         return self.target.__name__
 
     def map_serializer(self, auto_schema, direction):
-        required = set()
         sig = inspect.signature(self.target.serialize)
 
-        # breakpoint()
+        excluded_fields = get_override(self.target, "exclude_fields", [])
+
         if type(sig.return_annotation) != _TypedDictMeta:
+            # print("wrong type!!")
             return {"type": "string", "required": True}
 
-        properties = map_typedict(sig.return_annotation)
+        properties = map_typedict(sig.return_annotation, excluded_fields)
 
         # a = build_object_type(
         #     properties=properties,
