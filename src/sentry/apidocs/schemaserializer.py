@@ -32,8 +32,7 @@ def map_field_from_type(t):
 
     if is_optional(t):
         return map_field_from_type(get_args(t)[0])[0], False
-
-    return {"type": "string", "required": True}, True
+    raise Exception("couldn't find a type!")
 
 
 # Private attributes?
@@ -79,8 +78,7 @@ class PublicSchemaResponseSerializerExtension(OpenApiSerializerExtension):
         excluded_fields = get_override(self.target, "exclude_fields", [])
 
         if type(sig.return_annotation) != _TypedDictMeta:
-            # print("wrong type!!")
-            return {"type": "string", "required": True}
+            raise Exception("wrong type!")
 
         properties = map_typedict(sig.return_annotation, excluded_fields)
 
