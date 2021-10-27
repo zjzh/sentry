@@ -19,9 +19,9 @@ class Record(namedtuple("Record", "key value timestamp")):
 
 ScheduleEntry = namedtuple("ScheduleEntry", "key timestamp")
 
-OPTIONS = frozenset(("increment_delay", "maximum_delay", "minimum_delay"))
-
 Digest = Mapping["Rule", Mapping["Group", Sequence[Record]]]
+
+OPTIONS = frozenset(("increment_delay", "maximum_delay", "minimum_delay"))
 
 
 def get_option_key(plugin: str, option: str) -> str:
