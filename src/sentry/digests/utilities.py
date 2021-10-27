@@ -1,17 +1,27 @@
 from collections import Counter, OrderedDict, defaultdict
 from datetime import datetime
 from typing import Counter as CounterType
-from typing import Iterable, Mapping, MutableMapping, Optional, Set, Tuple
+from typing import Iterable, Mapping, MutableMapping, Optional, Sequence, Set, Tuple
 
-from sentry.digests import Digest
+from sentry.digests import Record
 from sentry.digests.notifications import Notification
 from sentry.eventstore.models import Event
-from sentry.models import ActorTuple, OrganizationMemberTeam, ProjectOwnership, Team, User
+from sentry.models import (
+    ActorTuple,
+    Group,
+    OrganizationMemberTeam,
+    ProjectOwnership,
+    Rule,
+    Team,
+    User,
+)
 from sentry.notifications.types import ActionTargetType
+
+Digest = Mapping[Rule, Mapping[Group, Sequence[Record[Notification]]]]
 
 
 def get_digest_metadata(
-    digest: Digest[Notification],
+    digest: Digest,
 ) -> Tuple[Optional[datetime], Optional[datetime], CounterType[str]]:
     """TODO(mgaeta): This should probably just be part of `build_digest`."""
     start: Optional[datetime] = None
@@ -43,9 +53,9 @@ def should_get_personalized_digests(target_type: ActionTargetType, project_id: i
 def get_personalized_digests(
     target_type: ActionTargetType,
     project_id: int,
-    digest: Digest[Notification],
+    digest: Digest,
     user_ids: Iterable[int],
-) -> Iterable[Tuple[int, Digest[Notification]]]:
+) -> Iterable[Tuple[int, Digest]]:
     """
     TODO(mgaeta): I know this is inefficient. In the case that ProjectOwnership
      does exist, I do the same query twice. Once with this statement and again
@@ -66,7 +76,7 @@ def get_personalized_digests(
             yield user_id, digest
 
 
-def get_event_from_groups_in_digest(digest: Digest[Notification]) -> Iterable[Event]:
+def get_event_from_groups_in_digest(digest: Digest) -> Iterable[Event]:
     """Gets the first event from each group in the digest."""
     events = set()
     for rule_groups in digest.values():
@@ -75,9 +85,7 @@ def get_event_from_groups_in_digest(digest: Digest[Notification]) -> Iterable[Ev
     return events
 
 
-def build_custom_digest(
-    original_digest: Digest[Notification], events: Iterable[Event]
-) -> Digest[Notification]:
+def build_custom_digest(original_digest: Digest, events: Iterable[Event]) -> Digest:
     user_digest = OrderedDict()
     for rule, rule_groups in original_digest.items():
         user_rule_groups = OrderedDict()

@@ -1,15 +1,11 @@
 from dataclasses import dataclass
 from datetime import datetime
-from typing import TYPE_CHECKING, Generic, Literal, Mapping, NamedTuple, Optional, Sequence, TypeVar
+from typing import Generic, Literal, NamedTuple, Optional, TypeVar
 
 from django.conf import settings
 
 from sentry.utils.dates import to_datetime
 from sentry.utils.services import LazyServiceWrapper
-
-if TYPE_CHECKING:
-    from sentry.models import Group, Rule
-
 
 T = TypeVar("T")
 
@@ -30,9 +26,6 @@ class Record(Generic[T]):
 class ScheduleEntry(NamedTuple):
     key: str
     timestamp: float
-
-
-Digest = Mapping["Rule", Mapping["Group", Sequence[Record[T]]]]
 
 
 def get_option_key(
