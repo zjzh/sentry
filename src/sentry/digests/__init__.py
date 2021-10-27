@@ -1,6 +1,6 @@
 from collections import namedtuple
 from datetime import datetime
-from typing import TYPE_CHECKING, Mapping, Optional, Sequence
+from typing import TYPE_CHECKING, Mapping, NamedTuple, Optional, Sequence
 
 from django.conf import settings
 
@@ -17,7 +17,10 @@ class Record(namedtuple("Record", "key value timestamp")):
         return to_datetime(self.timestamp)  # type: ignore
 
 
-ScheduleEntry = namedtuple("ScheduleEntry", "key timestamp")
+class ScheduleEntry(NamedTuple):
+    key: str
+    timestamp: float
+
 
 Digest = Mapping["Rule", Mapping["Group", Sequence[Record]]]
 
