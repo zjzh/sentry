@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import pickle
 import zlib
 from abc import ABC, abstractmethod
@@ -28,7 +30,7 @@ class Codec(ABC, Generic[TDecoded, TEncoded]):
     def decode(self, value: TEncoded) -> TDecoded:
         raise NotImplementedError
 
-    def __or__(self, codec: "Codec[TEncoded, T]") -> "Codec[TDecoded, T]":
+    def __or__(self, codec: Codec[TEncoded, T]) -> Codec[TDecoded, T]:
         """
         Create a new codec by pipelining it with another codec.
 
