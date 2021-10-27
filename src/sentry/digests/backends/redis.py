@@ -1,12 +1,12 @@
 import logging
 import time
 from contextlib import contextmanager
-from typing import Any, Iterable, Iterator, Optional, Sequence, Tuple
+from typing import Any, Iterable, Iterator, Optional, Tuple
 
 from rb.clients import LocalClient
 from redis.exceptions import ResponseError
 
-from sentry.digests import Record, ScheduleEntry
+from sentry.digests import Record, ScheduleEntry, Timeline
 from sentry.digests.backends.base import Backend, InvalidState
 from sentry.utils.compat import map
 from sentry.utils.locking.backends.redis import RedisLockBackend
@@ -192,7 +192,7 @@ class RedisBackend(Backend):
     @contextmanager
     def digest(
         self, key: str, minimum_delay: Optional[int] = None, timestamp: Optional[float] = None
-    ) -> Iterator[Sequence[Record[Any]]]:
+    ) -> Iterator[Timeline[Any]]:
         if minimum_delay is None:
             minimum_delay = self.minimum_delay
 

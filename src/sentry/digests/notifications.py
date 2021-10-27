@@ -16,7 +16,7 @@ from typing import (
 )
 
 from sentry.app import tsdb
-from sentry.digests import Record
+from sentry.digests import Record, Timeline
 from sentry.eventstore.models import Event
 from sentry.models import Group, GroupStatus, Project, Rule
 from sentry.notifications.types import ActionTargetType
@@ -231,10 +231,9 @@ def sort_rule_groups(rules: Mapping[str, Rule]) -> Mapping[str, Rule]:
 
 def build_digest(
     project: "Project",
-    records: Sequence[Record[Notification]],
+    records: Timeline[Notification],
     state: Optional[Mapping[str, Any]] = None,
 ) -> Tuple[Optional[Any], Sequence[str]]:
-    records = list(records)
     if not records:
         return None, []
 

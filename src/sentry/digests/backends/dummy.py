@@ -1,7 +1,7 @@
 from contextlib import contextmanager
-from typing import TYPE_CHECKING, Any, Iterable, Iterator, Optional, Sequence
+from typing import TYPE_CHECKING, Any, Iterable, Iterator, Optional
 
-from sentry.digests import Record, ScheduleEntry
+from sentry.digests import Record, ScheduleEntry, Timeline
 from sentry.digests.backends.base import Backend
 
 if TYPE_CHECKING:
@@ -23,9 +23,7 @@ class DummyBackend(Backend):
         return False
 
     @contextmanager
-    def digest(
-        self, key: str, minimum_delay: Optional[int] = None
-    ) -> Iterator[Sequence[Record[Any]]]:
+    def digest(self, key: str, minimum_delay: Optional[int] = None) -> Iterator[Timeline[Any]]:
         yield []
 
     def schedule(

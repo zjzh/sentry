@@ -1,8 +1,8 @@
 import logging
 from contextlib import contextmanager
-from typing import TYPE_CHECKING, Any, Iterable, Iterator, Mapping, Optional, Sequence
+from typing import TYPE_CHECKING, Any, Iterable, Iterator, Mapping, Optional
 
-from sentry.digests import Record, ScheduleEntry
+from sentry.digests import Record, ScheduleEntry, Timeline
 from sentry.utils.codecs import Codec
 from sentry.utils.imports import import_string
 from sentry.utils.services import Service
@@ -136,9 +136,7 @@ class Backend(Service):  # type: ignore
         raise NotImplementedError
 
     @contextmanager
-    def digest(
-        self, key: str, minimum_delay: Optional[int] = None
-    ) -> Iterator[Sequence[Record[Any]]]:
+    def digest(self, key: str, minimum_delay: Optional[int] = None) -> Iterator[Timeline[Any]]:
         """
         Extract records from a timeline for processing.
 

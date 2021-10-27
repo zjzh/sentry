@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Generic, Literal, NamedTuple, Optional, TypeVar
+from typing import Generic, Literal, NamedTuple, Optional, Sequence, TypeVar
 
 from django.conf import settings
 
@@ -21,6 +21,9 @@ class Record(Generic[T]):
     @property
     def datetime(self) -> Optional[datetime]:
         return to_datetime(self.timestamp)  # type: ignore
+
+
+Timeline = Sequence[Record[T]]
 
 
 class ScheduleEntry(NamedTuple):
