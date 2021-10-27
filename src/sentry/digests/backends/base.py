@@ -1,6 +1,7 @@
 import logging
 from typing import TYPE_CHECKING, Any, Iterable, Mapping, Optional
 
+from sentry.utils.codecs import Codec
 from sentry.utils.imports import import_string
 from sentry.utils.services import Service
 
@@ -77,7 +78,7 @@ class Backend(Service):  # type: ignore
 
         # The ``codec`` option provides the strategy for encoding and decoding
         # records in the timeline.
-        self.codec = load(options.pop("codec", DEFAULT_CODEC))
+        self.codec: Codec[Any, bytes] = load(options.pop("codec", DEFAULT_CODEC))
 
         # The ``capacity`` option defines the maximum number of items that
         # should be contained within a timeline. (Whether this is a hard or

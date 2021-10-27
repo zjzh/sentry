@@ -1,6 +1,7 @@
+import pickle
 import zlib
 from abc import ABC, abstractmethod
-from typing import Generic, TypeVar, cast
+from typing import Any, Generic, TypeVar, cast
 
 import zstandard
 
@@ -76,6 +77,14 @@ class JSONCodec(Codec[JSONData, str]):
 
     def decode(self, value: str) -> JSONData:
         return json.loads(value)
+
+
+class PickleCodec(Codec[Any, bytes]):
+    def encode(self, value: Any) -> bytes:
+        return pickle.dumps(value)
+
+    def decode(self, value: bytes) -> Any:
+        return pickle.loads(value)
 
 
 class ZlibCodec(Codec[bytes, bytes]):
