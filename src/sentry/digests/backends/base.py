@@ -1,12 +1,12 @@
 import logging
 from typing import TYPE_CHECKING, Any, Iterable, Mapping, Optional
 
+from sentry.digests import Record, ScheduleEntry
 from sentry.utils.codecs import Codec
 from sentry.utils.imports import import_string
 from sentry.utils.services import Service
 
 if TYPE_CHECKING:
-    from sentry.digests import Record, ScheduleEntry
     from sentry.models import Project
 
 logger = logging.getLogger("sentry.digests")
@@ -115,7 +115,7 @@ class Backend(Service):  # type: ignore
     def add(
         self,
         key: str,
-        record: "Record",
+        record: Record,
         increment_delay: Optional[int] = None,
         maximum_delay: Optional[int] = None,
         timestamp: Optional[float] = None,
@@ -171,7 +171,7 @@ class Backend(Service):  # type: ignore
 
     def schedule(
         self, deadline: float, timestamp: Optional[float] = None
-    ) -> Optional[Iterable["ScheduleEntry"]]:
+    ) -> Optional[Iterable[ScheduleEntry]]:
         """
         Identify timelines that are ready for processing.
 
