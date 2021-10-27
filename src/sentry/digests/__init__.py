@@ -1,6 +1,6 @@
 from collections import namedtuple
 from datetime import datetime
-from typing import TYPE_CHECKING, Mapping, NamedTuple, Optional, Sequence
+from typing import TYPE_CHECKING, Literal, Mapping, NamedTuple, Optional, Sequence
 
 from django.conf import settings
 
@@ -24,11 +24,10 @@ class ScheduleEntry(NamedTuple):
 
 Digest = Mapping["Rule", Mapping["Group", Sequence[Record]]]
 
-OPTIONS = frozenset(("increment_delay", "maximum_delay", "minimum_delay"))
 
-
-def get_option_key(plugin: str, option: str) -> str:
-    assert option in OPTIONS
+def get_option_key(
+    plugin: str, option: Literal["increment_delay", "maximum_delay", "minimum_delay"]
+) -> str:
     return f"digests:{plugin}:{option}"
 
 
