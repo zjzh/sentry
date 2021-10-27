@@ -1,6 +1,6 @@
-from collections import namedtuple
+from dataclasses import dataclass
 from datetime import datetime
-from typing import TYPE_CHECKING, Literal, Mapping, NamedTuple, Optional, Sequence
+from typing import TYPE_CHECKING, Generic, Literal, Mapping, NamedTuple, Optional, Sequence, TypeVar
 
 from django.conf import settings
 
@@ -11,7 +11,17 @@ if TYPE_CHECKING:
     from sentry.models import Group, Rule
 
 
-class Record(namedtuple("Record", "key value timestamp")):
+T = TypeVar("T")
+
+
+@dataclass(frozen=True)
+class Record(Generic[T]):
+    __slots__ = ["key", "value", "timestamp"]
+
+    key: str
+    value: T
+    timestamp: float
+
     @property
     def datetime(self) -> Optional[datetime]:
         return to_datetime(self.timestamp)  # type: ignore
@@ -22,7 +32,7 @@ class ScheduleEntry(NamedTuple):
     timestamp: float
 
 
-Digest = Mapping["Rule", Mapping["Group", Sequence[Record]]]
+Digest = Mapping["Rule", Mapping["Group", Sequence[Record[T]]]]
 
 
 def get_option_key(

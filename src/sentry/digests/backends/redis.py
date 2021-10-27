@@ -1,7 +1,7 @@
 import logging
 import time
 from contextlib import contextmanager
-from typing import Any, Iterable, Optional, Tuple
+from typing import Any, Iterable, Iterator, Optional, Sequence, Tuple
 
 from rb.clients import LocalClient
 from redis.exceptions import ResponseError
@@ -101,7 +101,7 @@ class RedisBackend(Backend):
     def add(
         self,
         key: str,
-        record: Record,
+        record: Record[Any],
         increment_delay: Optional[int] = None,
         maximum_delay: Optional[int] = None,
         timestamp: Optional[float] = None,
@@ -192,7 +192,7 @@ class RedisBackend(Backend):
     @contextmanager
     def digest(
         self, key: str, minimum_delay: Optional[int] = None, timestamp: Optional[float] = None
-    ) -> Any:
+    ) -> Iterator[Sequence[Record[Any]]]:
         if minimum_delay is None:
             minimum_delay = self.minimum_delay
 

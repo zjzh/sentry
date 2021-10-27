@@ -1,7 +1,7 @@
 import functools
 import itertools
 import logging
-from collections import OrderedDict, defaultdict, namedtuple
+from collections import OrderedDict, defaultdict
 from functools import reduce
 from typing import (
     Any,
@@ -9,6 +9,7 @@ from typing import (
     Mapping,
     MutableMapping,
     MutableSequence,
+    NamedTuple,
     Optional,
     Sequence,
     Tuple,
@@ -23,7 +24,10 @@ from sentry.utils.dates import to_timestamp
 
 logger = logging.getLogger("sentry.digests")
 
-Notification = namedtuple("Notification", "event rules")
+
+class Notification(NamedTuple):
+    event: Event
+    rules: Sequence[Rule]
 
 
 def split_key(key: str) -> Tuple["Project", "ActionTargetType", Optional[str]]:
@@ -49,7 +53,7 @@ def unsplit_key(
     )
 
 
-def event_to_record(event: Event, rules: Sequence[Rule]) -> Record:
+def event_to_record(event: Event, rules: Sequence[Rule]) -> Record[Notification]:
     if not rules:
         logger.warning("Creating record for %r that does not contain any rules!", event)
 
@@ -60,7 +64,7 @@ def event_to_record(event: Event, rules: Sequence[Rule]) -> Record:
     )
 
 
-def fetch_state(project: "Project", records: Sequence[Record]) -> Mapping[str, Any]:
+def fetch_state(project: "Project", records: Sequence[Record[Notification]]) -> Mapping[str, Any]:
     # This reads a little strange, but remember that records are returned in
     # reverse chronological order, and we query the database in chronological
     # order.
@@ -131,7 +135,7 @@ class Pipeline:
         self.operations.append(operation)
         return self
 
-    def filter(self, function: Callable[[Record], bool]) -> "Pipeline":
+    def filter(self, function: Callable[[Any], bool]) -> "Pipeline":
         def operation(sequence: Sequence[Any]) -> Sequence[Any]:
             result = [s for s in sequence if function(s)]
             self._log(f"{function!r} filtered {len(sequence)} items to {len(result)}.")
@@ -162,11 +166,11 @@ class Pipeline:
 
 
 def rewrite_record(
-    record: Record,
+    record: Record[Notification],
     project: "Project",
     groups: Mapping[int, "Group"],
     rules: Mapping[str, Rule],
-) -> Optional[Record]:
+) -> Optional[Record[Notification]]:
     event = record.value.event
 
     # Reattach the group to the event.
@@ -185,8 +189,9 @@ def rewrite_record(
 
 
 def group_records(
-    groups: MutableMapping[str, Mapping[str, MutableSequence[Record]]], record: Record
-) -> Mapping[str, Mapping[str, Sequence[Record]]]:
+    groups: MutableMapping[str, Mapping[str, MutableSequence[Record[Notification]]]],
+    record: Record[Notification],
+) -> Mapping[str, Mapping[str, Sequence[Record[Notification]]]]:
     group = record.value.event.group
     rules = record.value.rules
     if not rules:
@@ -199,8 +204,8 @@ def group_records(
 
 
 def sort_group_contents(
-    rules: MutableMapping[str, Mapping["Group", Sequence[Record]]]
-) -> Mapping[str, Mapping["Group", Sequence[Record]]]:
+    rules: MutableMapping[str, Mapping["Group", Sequence[Record[Notification]]]]
+) -> Mapping[str, Mapping["Group", Sequence[Record[Notification]]]]:
     for key, groups in rules.items():
         rules[key] = OrderedDict(
             sorted(
@@ -226,7 +231,7 @@ def sort_rule_groups(rules: Mapping[str, Rule]) -> Mapping[str, Rule]:
 
 def build_digest(
     project: "Project",
-    records: Sequence[Record],
+    records: Sequence[Record[Notification]],
     state: Optional[Mapping[str, Any]] = None,
 ) -> Tuple[Optional[Any], Sequence[str]]:
     records = list(records)
@@ -240,7 +245,7 @@ def build_digest(
 
     state = attach_state(**state)
 
-    def check_group_state(record: Record) -> bool:
+    def check_group_state(record: Record[Notification]) -> bool:
         # Explicitly typing to satisfy mypy.
         is_unresolved: bool = record.value.event.group.get_status() == GroupStatus.UNRESOLVED
         return is_unresolved

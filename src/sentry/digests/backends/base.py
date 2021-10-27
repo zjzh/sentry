@@ -1,5 +1,6 @@
 import logging
-from typing import TYPE_CHECKING, Any, Iterable, Mapping, Optional
+from contextlib import contextmanager
+from typing import TYPE_CHECKING, Any, Iterable, Iterator, Mapping, Optional, Sequence
 
 from sentry.digests import Record, ScheduleEntry
 from sentry.utils.codecs import Codec
@@ -115,7 +116,7 @@ class Backend(Service):  # type: ignore
     def add(
         self,
         key: str,
-        record: Record,
+        record: Record[Any],
         increment_delay: Optional[int] = None,
         maximum_delay: Optional[int] = None,
         timestamp: Optional[float] = None,
@@ -134,7 +135,10 @@ class Backend(Service):  # type: ignore
         """
         raise NotImplementedError
 
-    def digest(self, key: str, minimum_delay: Optional[int] = None) -> Any:
+    @contextmanager
+    def digest(
+        self, key: str, minimum_delay: Optional[int] = None
+    ) -> Iterator[Sequence[Record[Any]]]:
         """
         Extract records from a timeline for processing.
 
