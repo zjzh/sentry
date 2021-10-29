@@ -37,7 +37,19 @@ function StackTrace({
   groupingCurrentLevel,
 }: Props) {
   const stackTraceNotFound = !(data.frames ?? []).length;
-  const platform = (event.platform ?? 'other') as PlatformType;
+
+  // Prioritize the frame platform but fall back to the platform of the event
+  function getPlatform(): PlatformType {
+    const framePlatform = data.frames?.find(frame => defined(frame.platform));
+
+    if (framePlatform?.platform) {
+      return framePlatform.platform;
+    }
+
+    return event.platform ?? 'other';
+  }
+
+  const platform = getPlatform();
 
   return (
     <TraceEventDataSection

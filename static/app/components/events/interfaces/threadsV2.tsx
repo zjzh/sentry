@@ -68,10 +68,40 @@ function Threads({
   const stackTraceNotFound = !threads.length;
   const {activeThread} = state;
 
-  const platform = (event.platform ?? 'other') as PlatformType;
   const hasMoreThanOneThread = threads.length > 1;
   const exception = getThreadException(event, activeThread);
   const stackView = activeThread ? getIntendedStackView(activeThread, event) : undefined;
+
+  // Prioritize the frame platform but fall back to the platform of the event
+  function getPlatform(): PlatformType {
+    const exceptionValue = exception?.values?.find(
+      value => !!value.stacktrace?.frames?.find(frame => defined(frame.platform))
+    );
+
+    if (exceptionValue) {
+      const exceptionFramePlatform = exceptionValue.stacktrace?.frames?.find(frame =>
+        defined(frame.platform)
+      );
+
+      if (exceptionFramePlatform?.platform) {
+        return exceptionFramePlatform.platform;
+      }
+    }
+
+    if (activeThread) {
+      const threadFramePlatform = activeThread?.stacktrace?.frames?.find(frame =>
+        defined(frame.platform)
+      );
+
+      if (threadFramePlatform?.platform) {
+        return threadFramePlatform.platform;
+      }
+    }
+
+    return event.platform ?? 'other';
+  }
+
+  const platform = getPlatform();
 
   function renderPills() {
     const {id, name, current, crashed} = activeThread ?? {};
@@ -193,7 +223,7 @@ function Threads({
       showPermalink={!hasMoreThanOneThread}
       hasMinified={
         !!exception?.values?.find(value => value.rawStacktrace) ||
-        (hasMoreThanOneThread ? !!activeThread?.rawStacktrace : false)
+        !!activeThread?.rawStacktrace
       }
       hasVerboseFunctionNames={
         !!exception?.values?.find(
@@ -205,41 +235,32 @@ function Threads({
                 frame.rawFunction !== frame.function
             )
         ) ||
-        (hasMoreThanOneThread
-          ? !!activeThread?.stacktrace?.frames?.find(
-              frame =>
-                defined(frame.rawFunction) &&
-                defined(frame.function) &&
-                frame.rawFunction !== frame.function
-            )
-          : false)
+        !!activeThread?.stacktrace?.frames?.find(
+          frame =>
+            defined(frame.rawFunction) &&
+            defined(frame.function) &&
+            frame.rawFunction !== frame.function
+        )
       }
       hasAbsoluteFilePaths={
-        !!exception?.values?.find(
-          value => !!value.stacktrace?.frames?.find(frame => defined(frame.filename))
-        ) ||
-        (hasMoreThanOneThread
-          ? !!activeThread?.stacktrace?.frames?.find(frame => defined(frame.filename))
-          : false)
+        platform !== 'native' && platform !== 'cocoa' && platform !== 'objc'
+          ? false
+          : !!exception?.values?.find(
+              value => !!value.stacktrace?.frames?.find(frame => defined(frame.filename))
+            ) ||
+            !!activeThread?.stacktrace?.frames?.find(frame => defined(frame.filename))
       }
       hasAbsoluteAddresses={
         !!exception?.values?.find(
           value =>
             !!value.stacktrace?.frames?.find(frame => defined(frame.instructionAddr))
         ) ||
-        (hasMoreThanOneThread
-          ? !!activeThread?.stacktrace?.frames?.find(frame =>
-              defined(frame.instructionAddr)
-            )
-          : false)
+        !!activeThread?.stacktrace?.frames?.find(frame => defined(frame.instructionAddr))
       }
       hasAppOnlyFrames={
         !!exception?.values?.find(
           value => !!value.stacktrace?.frames?.find(frame => !!frame.inApp)
-        ) ||
-        (hasMoreThanOneThread
-          ? !!activeThread?.stacktrace?.frames?.find(frame => !!frame.inApp)
-          : false)
+        ) || !!activeThread?.stacktrace?.frames?.find(frame => !!frame.inApp)
       }
       hasNewestFirst={
         !!exception?.values?.find(value => (value.stacktrace?.frames ?? []).length > 1) ||

@@ -41,7 +41,27 @@ function Exception({
   }
 
   const stackTraceNotFound = !(data.values ?? []).length;
-  const platform = (event.platform ?? 'other') as PlatformType;
+
+  // Prioritize the frame platform but fall back to the platform of the event
+  function getPlatform(): PlatformType {
+    const exceptionValue = data.values?.find(
+      value => !!value.stacktrace?.frames?.find(frame => defined(frame.platform))
+    );
+
+    if (exceptionValue) {
+      const exceptionFramePlatform = exceptionValue.stacktrace?.frames?.find(frame =>
+        defined(frame.platform)
+      );
+
+      if (exceptionFramePlatform?.platform) {
+        return exceptionFramePlatform.platform;
+      }
+    }
+
+    return event.platform ?? 'other';
+  }
+
+  const platform = getPlatform();
 
   return (
     <TraceEventDataSection
