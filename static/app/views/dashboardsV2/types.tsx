@@ -24,12 +24,27 @@ export type WidgetQuery = {
   orderby: string;
 };
 
+export type IssueWidgetQuery = {
+  name: string;
+  fields: string[];
+  conditions: string;
+  orderby: string;
+};
+
 export type Widget = {
   id?: string;
   title: string;
   displayType: DisplayType;
   interval: string;
   queries: WidgetQuery[];
+};
+
+export type IssueWidget = {
+  id?: string;
+  title: string;
+  displayType: DisplayType;
+  interval: string;
+  query: IssueWidgetQuery;
 };
 
 /**

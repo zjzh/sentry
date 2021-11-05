@@ -226,9 +226,13 @@ export async function openInviteMembersModal({
   openModal(deps => <Modal {...deps} {...args} />, {modalCss, onClose});
 }
 
-export async function openAddDashboardWidgetModal(options: DashboardWidgetModalOptions) {
-  const mod = await import('app/components/modals/addDashboardWidgetModal');
-  const {default: Modal, modalCss} = mod;
+export async function openAddDashboardWidgetModal(
+  options: DashboardWidgetModalOptions & {widgetType?: string}
+) {
+  const discoverModal = await import('app/components/modals/addDashboardWidgetModal');
+  const issuesModal = await import('app/components/modals/addDashboardIssueWidgetModal');
+  const {default: Modal, modalCss} =
+    options?.widgetType === 'issues' ? issuesModal : discoverModal;
 
   openModal(deps => <Modal {...deps} {...options} />, {backdrop: 'static', modalCss});
 }
