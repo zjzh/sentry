@@ -7,20 +7,16 @@ import {t} from 'app/locale';
 import space from 'app/styles/space';
 import {GlobalSelection, Organization, TagCollection} from 'app/types';
 import withIssueTags from 'app/utils/withIssueTags';
-import {Widget, WidgetQuery} from 'app/views/dashboardsV2/types';
+import {WidgetQuery} from 'app/views/dashboardsV2/types';
 import IssueListSearchBar from 'app/views/issueList/searchBar';
 import Field from 'app/views/settings/components/forms/field';
 
 type Props = {
   organization: Organization;
   selection: GlobalSelection;
-  displayType: Widget['displayType'];
-  query: IssueWidgetQuery;
+  query: WidgetQuery;
   error?: Record<string, any>;
   onChange: (widgetQuery: WidgetQuery) => void;
-  canAddSearchConditions: boolean;
-  handleAddSearchConditions: () => void;
-  handleDeleteQuery: (queryIndex: number) => void;
   tags: TagCollection;
 };
 
@@ -71,18 +67,18 @@ class IssueWidgetQueriesForm extends React.Component<Props> {
               onSearch={this.handleFieldChange('conditions')}
               excludeEnvironment
               supportedTags={tags}
-              tagValueLoader={tagValueLoader}
-              savedSearch={savedSearch}
-              onSidebarToggle={onSidebarToggle}
+              tagValueLoader={() => new Promise(() => [])}
+              savedSearch={undefined}
+              onSidebarToggle={() => undefined}
             />
             <StyledSearchBar
               searchSource="widget_builder"
               organization={organization}
               projectIds={selection.projects}
-              query={widgetQuery.conditions}
+              query={query.conditions}
               fields={[]}
-              onSearch={this.handleFieldChange(queryIndex, 'conditions')}
-              onBlur={this.handleFieldChange(queryIndex, 'conditions')}
+              onSearch={this.handleFieldChange('conditions')}
+              onBlur={this.handleFieldChange('conditions')}
               useFormWrapper={false}
               maxQueryLength={MAX_QUERY_LENGTH}
             />

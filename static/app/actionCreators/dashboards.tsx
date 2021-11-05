@@ -145,7 +145,7 @@ export function validateWidget(
 export function validateIssueWidget(
   api: Client,
   orgId: string,
-  widget: IssueWidget
+  widget: Widget
 ): Promise<undefined> {
   const promise: Promise<undefined> = api.requestPromise(
     `/organizations/${orgId}/dashboards/widgets/`,

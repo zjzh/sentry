@@ -17,14 +17,12 @@ export enum DisplayType {
   TOP_N = 'top_n',
 }
 
-export type WidgetQuery = {
-  name: string;
-  fields: string[];
-  conditions: string;
-  orderby: string;
-};
+export enum WidgetType {
+  DISCOVER = 'discover',
+  ISSUE = 'issue',
+}
 
-export type IssueWidgetQuery = {
+export type WidgetQuery = {
   name: string;
   fields: string[];
   conditions: string;
@@ -37,14 +35,7 @@ export type Widget = {
   displayType: DisplayType;
   interval: string;
   queries: WidgetQuery[];
-};
-
-export type IssueWidget = {
-  id?: string;
-  title: string;
-  displayType: DisplayType;
-  interval: string;
-  query: IssueWidgetQuery;
+  type?: WidgetType;
 };
 
 /**

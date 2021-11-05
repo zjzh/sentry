@@ -4,7 +4,6 @@ import {components, OptionProps} from 'react-select';
 import {css} from '@emotion/react';
 import styled from '@emotion/styled';
 import cloneDeep from 'lodash/cloneDeep';
-import pick from 'lodash/pick';
 import set from 'lodash/set';
 
 import {validateIssueWidget} from 'app/actionCreators/dashboards';
@@ -24,53 +23,44 @@ import {
   Organization,
   RelativePeriod,
   SelectValue,
+  TagCollection,
 } from 'app/types';
 import trackAdvancedAnalyticsEvent from 'app/utils/analytics/trackAdvancedAnalyticsEvent';
-import {parseFunction} from 'app/utils/discover/fields';
 import withApi from 'app/utils/withApi';
 import withGlobalSelection from 'app/utils/withGlobalSelection';
-import withTags from 'app/utils/withTags';
-import {DISPLAY_TYPE_CHOICES} from 'app/views/dashboardsV2/data';
 import {
   DashboardDetails,
   DashboardListItem,
   DisplayType,
-  IssueWidget,
-  IssueWidgetQuery,
   MAX_WIDGETS,
+  Widget,
+  WidgetQuery,
+  WidgetType,
 } from 'app/views/dashboardsV2/types';
-import {
-  mapErrors,
-  normalizeQueries,
-} from 'app/views/dashboardsV2/widget/eventWidget/utils';
-import WidgetCard from 'app/views/dashboardsV2/widgetCard';
+import {mapErrors} from 'app/views/dashboardsV2/widget/eventWidget/utils';
 import Input from 'app/views/settings/components/forms/controls/input';
 import Field from 'app/views/settings/components/forms/field';
 
 import Tooltip from '../tooltip';
 
-export type DashboardWidgetModalOptions = {
+export type DashboardIssueWidgetModalOptions = {
   organization: Organization;
   dashboard?: DashboardDetails;
   selection?: GlobalSelection;
-  onAddWidget?: (data: IssueWidget) => void;
-  widget?: IssueWidget;
-  onUpdateWidget?: (nextWidget: IssueWidget) => void;
-  defaultWidgetQuery?: IssueWidgetQuery;
-  defaultTableColumns?: readonly string[];
-  defaultTitle?: string;
-  displayType?: DisplayType;
-  fromDiscover?: boolean;
+  onAddWidget?: (data: Widget) => void;
+  widget?: Widget;
+  onUpdateWidget?: (nextWidget: Widget) => void;
   start?: DateString;
   end?: DateString;
   statsPeriod?: RelativePeriod | string;
 };
 
 type Props = ModalRenderProps &
-  DashboardWidgetModalOptions & {
+  DashboardIssueWidgetModalOptions & {
     api: Client;
     organization: Organization;
     selection: GlobalSelection;
+    tags: TagCollection;
   };
 
 type FlatValidationError = {
@@ -79,11 +69,10 @@ type FlatValidationError = {
 
 type State = {
   title: string;
-  displayType: IssueWidget['displayType'];
-  interval: IssueWidget['interval'];
-  query: IssueWidgetQuery;
+  interval: Widget['interval'];
+  queries: WidgetQuery[];
   loading: boolean;
-  error?: Record<string, any>;
+  errors?: Record<string, any>;
   dashboards: DashboardListItem[];
   selectedDashboard?: SelectValue<string>;
   userHasModified: boolean;
@@ -95,19 +84,18 @@ const newQuery = {
   conditions: '',
   orderby: '',
 };
-class AddDashboardWidgetModal extends React.Component<Props, State> {
+class AddDashboardIssueWidgetModal extends React.Component<Props, State> {
   constructor(props: Props) {
     super(props);
 
-    const {widget, defaultWidgetQuery, defaultTitle, displayType, fromDiscover} = props;
+    const {widget} = props;
     if (!widget) {
       this.state = {
-        title: defaultTitle ?? '',
-        displayType: displayType ?? DisplayType.LINE,
+        title: '',
         interval: '5m',
-        query: defaultWidgetQuery ? {...defaultWidgetQuery} : {...newQuery},
-        error: undefined,
-        loading: !!fromDiscover,
+        queries: [{...newQuery}],
+        errors: undefined,
+        loading: false,
         dashboards: [],
         userHasModified: false,
       };
@@ -116,20 +104,13 @@ class AddDashboardWidgetModal extends React.Component<Props, State> {
 
     this.state = {
       title: widget.title,
-      displayType: widget.displayType,
       interval: widget.interval,
-      query: widget.query,
-      error: undefined,
+      queries: widget.queries,
+      errors: undefined,
       loading: false,
       dashboards: [],
       userHasModified: false,
     };
-  }
-
-  componentDidMount() {
-    const {fromDiscover} = this.props;
-    if (fromDiscover) this.fetchDashboards();
-    this.handleDefaultFields();
   }
 
   handleSubmit = async (event: React.FormEvent) => {
@@ -137,24 +118,23 @@ class AddDashboardWidgetModal extends React.Component<Props, State> {
 
     const {
       api,
-      closeModal,
       organization,
       onAddWidget,
       onUpdateWidget,
       widget: previousWidget,
-      fromDiscover,
     } = this.props;
     this.setState({loading: true});
     let errors: FlatValidationError = {};
-    const widgetData: IssueWidget = pick(this.state, [
-      'title',
-      'displayType',
-      'interval',
-      'query',
-    ]);
+    const widgetData: Widget = {
+      title: this.state.title,
+      interval: this.state.interval,
+      queries: this.state.queries,
+      displayType: DisplayType.TABLE,
+      type: WidgetType.ISSUE,
+    };
     // Only Table and Top N views need orderby
     if (![DisplayType.TABLE, DisplayType.TOP_N].includes(widgetData.displayType)) {
-      widgetData.query.orderby = '';
+      widgetData.queries[0].orderby = '';
     }
     try {
       await validateIssueWidget(api, organization.slug, widgetData);
@@ -168,17 +148,11 @@ class AddDashboardWidgetModal extends React.Component<Props, State> {
         onAddWidget(widgetData);
         addSuccessMessage(t('Added widget.'));
       }
-      if (!fromDiscover) {
-        closeModal();
-      }
     } catch (err) {
       errors = mapErrors(err?.responseJSON ?? {}, {});
       this.setState({errors});
     } finally {
       this.setState({loading: false});
-      if (fromDiscover) {
-        this.handleSubmitFromDiscover(errors, widgetData);
-      }
     }
   };
 
@@ -208,13 +182,11 @@ class AddDashboardWidgetModal extends React.Component<Props, State> {
       } = {
         queryNames: [],
         queryConditions: [],
-        queryFields: widgetData.queries[0].fields,
-        queryOrderby: widgetData.queries[0].orderby,
+        queryFields: widgetData.queries[0]?.fields,
+        queryOrderby: widgetData.queries[0]?.orderby,
       };
-      widgetData.queries.forEach(query => {
-        queryData.queryNames.push(query.name);
-        queryData.queryConditions.push(query.conditions);
-      });
+      queryData.queryNames.push(widgetData.queries[0]?.name);
+      queryData.queryConditions.push(widgetData.queries[0]?.conditions);
       const pathQuery = {
         displayType: widgetData.displayType,
         interval: widgetData.interval,
@@ -240,49 +212,14 @@ class AddDashboardWidgetModal extends React.Component<Props, State> {
     }
   };
 
-  handleDefaultFields = () => {
-    const {defaultWidgetQuery, defaultTableColumns} = this.props;
-    this.setState(prevState => {
-      const newState = cloneDeep(prevState);
-      const displayType = prevState.displayType as Widget['displayType'];
-      const normalized = normalizeQueries(displayType, prevState.queries);
-
-      // If switching to Table visualization, use saved query fields for Y-Axis if user has not made query changes
-      if (defaultWidgetQuery && defaultTableColumns && !prevState.userHasModified) {
-        if (displayType === DisplayType.TABLE) {
-          normalized.forEach(query => {
-            query.fields = [...defaultTableColumns];
-          });
-        } else if (displayType === DisplayType.TOP_N) {
-          // Function columns not valid group bys for TOP_N display
-          const topNFields = [
-            ...defaultTableColumns.filter(column => !parseFunction(column)),
-            ...defaultWidgetQuery.fields,
-          ];
-          normalized.forEach(query => {
-            query.fields = [...topNFields];
-            query.orderby = defaultWidgetQuery.orderby;
-          });
-        } else {
-          normalized.forEach(query => {
-            query.fields = [...defaultWidgetQuery.fields];
-          });
-        }
-      }
-
-      set(newState, 'queries', normalized);
-      return {...newState, errors: undefined};
-    });
-  };
-
   handleFieldChange = (field: string) => (value: string) => {
-    const {fromDiscover, organization} = this.props;
+    const {organization} = this.props;
     this.setState(prevState => {
       const newState = cloneDeep(prevState);
       set(newState, field, value);
 
       trackAdvancedAnalyticsEvent('dashboards_views.add_widget_modal.change', {
-        from: fromDiscover ? 'discoverv2' : 'dashboards',
+        from: 'dashboards',
         field,
         value,
         organization,
@@ -290,50 +227,17 @@ class AddDashboardWidgetModal extends React.Component<Props, State> {
 
       return {...newState, errors: undefined};
     });
-
-    if (field === 'displayType') {
-      this.handleDefaultFields();
-    }
   };
 
-  handleQueryChange = (widgetQuery: IssueWidgetQuery, index: number) => {
+  handleQueryChange = (widgetQuery: WidgetQuery) => {
     this.setState(prevState => {
       const newState = cloneDeep(prevState);
-      set(newState, `queries.${index}`, widgetQuery);
+      set(newState, `query`, widgetQuery);
       set(newState, 'userHasModified', true);
 
       return {...newState, errors: undefined};
     });
   };
-
-  handleQueryRemove = (index: number) => {
-    this.setState(prevState => {
-      const newState = cloneDeep(prevState);
-      newState.query.splice(index, 1);
-
-      return {...newState, errors: undefined};
-    });
-  };
-
-  handleAddSearchConditions = () => {
-    this.setState(prevState => {
-      const newState = cloneDeep(prevState);
-      const query = cloneDeep(newQuery);
-      query.fields = this.state.queries[0].fields;
-      newState.queries.push(query);
-
-      return newState;
-    });
-  };
-
-  canAddSearchConditions() {
-    const rightDisplayType = ['line', 'area', 'stacked_area', 'bar'].includes(
-      this.state.displayType
-    );
-    const underQueryLimit = this.state.queries.length < 3;
-
-    return rightDisplayType && underQueryLimit;
-  }
 
   async fetchDashboards() {
     const {api, organization} = this.props;
@@ -430,12 +334,12 @@ class AddDashboardWidgetModal extends React.Component<Props, State> {
       api,
       organization,
       selection,
-      fromDiscover,
       onUpdateWidget,
       widget: previousWidget,
       start,
       end,
       statsPeriod,
+      tags,
     } = this.props;
     const state = this.state;
     const errors = state.errors;
@@ -452,16 +356,9 @@ class AddDashboardWidgetModal extends React.Component<Props, State> {
     return (
       <React.Fragment>
         <Header closeButton>
-          <h4>
-            {fromDiscover
-              ? t('Add Issues Widget to Dashboard')
-              : isUpdatingWidget
-              ? t('Edit Issues Widget')
-              : t('Add Issues Widget')}
-          </h4>
+          <h4>{isUpdatingWidget ? t('Edit Issues Widget') : t('Add Issues Widget')}</h4>
         </Header>
         <Body>
-          {fromDiscover && this.renderDashboardSelector()}
           <DoubleFieldWrapper>
             <StyledField
               data-test-id="widget-name"
@@ -484,36 +381,16 @@ class AddDashboardWidgetModal extends React.Component<Props, State> {
                 disabled={state.loading}
               />
             </StyledField>
-            <StyledField
-              data-test-id="chart-type"
-              label={t('Visualization Display')}
-              inline={false}
-              flexibleControlStateSize
-              stacked
-              error={errors?.displayType}
-              required
-            >
-              <SelectControl
-                options={DISPLAY_TYPE_CHOICES.slice()}
-                name="displayType"
-                value={state.displayType}
-                onChange={option => this.handleFieldChange('displayType')(option.value)}
-                disabled={state.loading}
-              />
-            </StyledField>
           </DoubleFieldWrapper>
           <IssueWidgetQueriesForm
             organization={organization}
             selection={querySelection}
-            displayType={state.displayType}
-            query={state.query}
-            errors={error?.query}
+            query={state.queries[0]}
+            error={errors?.query}
             onChange={(widgetQuery: WidgetQuery) => this.handleQueryChange(widgetQuery)}
-            canAddSearchConditions={this.canAddSearchConditions()}
-            handleAddSearchConditions={this.handleAddSearchConditions}
-            handleDeleteQuery={this.handleQueryRemove}
+            tags={tags}
           />
-          <WidgetCard
+          <IssueWidgetCard
             api={api}
             organization={organization}
             selection={querySelection}
@@ -572,4 +449,4 @@ const StyledField = styled(Field)`
   position: relative;
 `;
 
-export default withApi(withGlobalSelection(withTags(AddDashboardWidgetModal)));
+export default withApi(withGlobalSelection(AddDashboardIssueWidgetModal));
