@@ -220,7 +220,7 @@ class OrganizationMemberSCIMSerializerResponse(TypedDict, total=False):
     meta: SCIMMeta
 
 
-@extend_schema_serializer(exclude_fields=("schemas",))
+# @extend_schema_serializer(exclude_fields=("schemas",))
 @mark_serializer_public
 class OrganizationMemberSCIMSerializer(Serializer):  # type: ignore
     """

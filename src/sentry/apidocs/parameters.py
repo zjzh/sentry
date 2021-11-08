@@ -4,7 +4,14 @@ from drf_spectacular.utils import OpenApiParameter
 class GLOBAL_PARAMS:
     ORG_SLUG = OpenApiParameter(
         name="organization_slug",
-        description="The slug of the organization.",
+        description="The slug of the organization the resource belongs to.",
+        required=True,
+        type=str,
+        location="path",
+    )
+    PROJECT_SLUG = OpenApiParameter(
+        name="project_slug",
+        description="The slug of the project the resource belongs to.",
         required=True,
         type=str,
         location="path",

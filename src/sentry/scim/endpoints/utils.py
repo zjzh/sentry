@@ -1,15 +1,21 @@
+from typing import Any, List, Mapping, TypedDict, TypeVar
+
 from drf_spectacular.utils import extend_schema
 from rest_framework import serializers
 from rest_framework.exceptions import ParseError
 from rest_framework.negotiation import BaseContentNegotiation
 
 from sentry.api.bases.organization import OrganizationEndpoint, OrganizationPermission
+from sentry.apidocs.decorators import mark_serializer_public
 from sentry.models import AuthProvider
 
 from .constants import SCIM_400_INVALID_FILTER, SCIM_API_LIST
 
 SCIM_CONTENT_TYPES = ["application/json", "application/json+scim"]
 ACCEPTED_FILTERED_KEYS = ["userName", "value", "displayName"]
+from dataclasses import dataclass
+
+from sentry.api.serializers import Serializer
 
 
 class SCIMFilterError(ValueError):
@@ -55,6 +61,48 @@ class SCIMQueryParamSerializer(serializers.Serializer):
         except SCIMFilterError:
             raise serializers.ValidationError("invalid filter")
         return filter
+
+
+T = TypeVar("T")
+
+
+@dataclass
+class SCIMListResponse:
+    schemas: List[str]
+    total_results: int
+    start_index: str
+    items_per_page: int
+    resources: List[T]
+
+
+from sentry.api.serializers.models.organization_member import (
+    OrganizationMemberSCIMSerializer,
+    OrganizationMemberSCIMSerializerResponse,
+)
+
+
+class SCIMListResponseDict(TypedDict):
+    schemas: List[str]
+    total_results: int
+    start_index: str
+    items_per_page: int
+    resources: List[OrganizationMemberSCIMSerializerResponse]
+
+
+@mark_serializer_public
+class SCIMListResponseSerializer(Serializer):
+    partial = False
+
+    def serialize(
+        self, obj: SCIMListResponse, attrs: Mapping[str, Any], user: Any, **kwargs: Any
+    ) -> SCIMListResponseDict:
+        return {
+            "schemas": obj.schemas,
+            "totalResults": obj.total_results,  # TODO: audit perf of queryset.count()
+            "startIndex": obj.start_index,
+            "itemsPerPage": obj.items_per_page,  # what's max?
+            "resources": obj.resources,
+        }
 
 
 class OrganizationSCIMPermission(OrganizationPermission):

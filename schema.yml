@@ -4,6 +4,60 @@ info:
   version: 0.0.0
 paths:
   /api/0/organizations/{organization_slug}/scim/v2/Users:
+    get:
+      operationId: List an Organization's Members
+      description: Returns a paginated list of members bound to a organization with
+        a SCIM Users GET Request.
+      parameters:
+      - in: query
+        name: count
+        schema:
+          type: integer
+          minimum: 0
+          default: 100
+      - in: query
+        name: excludedAttributes
+        schema:
+          type: array
+          items:
+            type: string
+          default: []
+      - in: query
+        name: filter
+        schema:
+          type: string
+      - in: path
+        name: organization_slug
+        schema:
+          type: string
+        description: The slug of the organization the resource belongs to.
+        required: true
+      - in: query
+        name: startIndex
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+      tags:
+      - SCIM
+      security:
+      - auth_token:
+        - member:write
+        - member:read
+        - member:admin
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SCIMListResponse'
+          description: ''
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
     post:
       operationId: Provision a New Organization Member
       description: |-
@@ -16,7 +70,7 @@ paths:
         name: organization_slug
         schema:
           type: string
-        description: The slug of the organization.
+        description: The slug of the organization the resource belongs to.
         required: true
       tags:
       - SCIM
@@ -103,7 +157,7 @@ paths:
         name: organization_slug
         schema:
           type: string
-        description: The slug of the organization.
+        description: The slug of the organization the resource belongs to.
         required: true
       tags:
       - SCIM
@@ -143,6 +197,56 @@ paths:
           description: Forbidden
         '404':
           description: Not Found
+  /api/0/projects/{organization_slug}/{project_slug}/events/:
+    get:
+      operationId: List a Project's Events
+      description: |-
+        Return a list of events bound to a project.
+
+        Note: This endpoint is experimental and may be removed without notice.
+
+        :qparam bool full: if this is set to true then the event payload will
+                           include the full event body, including the stacktrace.
+                           Set to 1 to enable.
+
+        :pparam string organization_slug: the slug of the organization the
+                                          groups belong to.
+        :pparam string project_slug: the slug of the project the groups
+                                     belong to.
+      parameters:
+      - in: query
+        name: full
+        schema:
+          type: boolean
+        description: if this is set to true then the event payload willinclude the
+          full event body, including the stacktrace.Set to 1 to enable.
+        required: true
+      - in: path
+        name: organization_slug
+        schema:
+          type: string
+        description: The slug of the organization the resource belongs to.
+        required: true
+      - in: path
+        name: project_slug
+        schema:
+          type: string
+        description: The slug of the project the resource belongs to.
+        required: true
+      tags:
+      - projects
+      security:
+      - auth_token:
+        - project:read
+        - project:write
+        - project:admin
+      responses:
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
 components:
   schemas:
     OrganizationMemberRequest:
@@ -168,6 +272,10 @@ components:
     OrganizationMemberSCIM:
       type: object
       properties:
+        schemas:
+          type: array
+          items:
+            type: string
         id:
           type: string
         userName:
@@ -196,8 +304,8 @@ components:
                 type: string
             required:
             - type
-            - primary
             - value
+            - primary
             description: ''
         active:
           type: boolean
@@ -210,11 +318,12 @@ components:
           - resourceType
           description: ''
       required:
-      - name
-      - meta
-      - userName
       - emails
       - id
+      - userName
+      - schemas
+      - meta
+      - name
       description: ''
     RoleEnum:
       enum:
@@ -223,6 +332,84 @@ components:
       - manager
       - owner
       type: string
+    SCIMListResponse:
+      type: object
+      properties:
+        schemas:
+          type: array
+          items:
+            type: string
+        total_results:
+          type: integer
+        start_index:
+          type: string
+        items_per_page:
+          type: integer
+        resources:
+          type: array
+          items:
+            type: object
+            properties:
+              schemas:
+                type: array
+                items:
+                  type: string
+              id:
+                type: string
+              userName:
+                type: string
+              name:
+                type: object
+                properties:
+                  givenName:
+                    type: string
+                  familyName:
+                    type: string
+                required:
+                - familyName
+                - givenName
+                description: ''
+              emails:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    primary:
+                      type: boolean
+                    value:
+                      type: string
+                    type:
+                      type: string
+                  required:
+                  - type
+                  - value
+                  - primary
+                  description: ''
+              active:
+                type: boolean
+              meta:
+                type: object
+                properties:
+                  resourceType:
+                    type: string
+                required:
+                - resourceType
+                description: ''
+            required:
+            - emails
+            - id
+            - userName
+            - schemas
+            - meta
+            - name
+            description: ''
+      required:
+      - schemas
+      - start_index
+      - total_results
+      - resources
+      - items_per_page
+      description: ''
   securitySchemes:
     auth_token:
       type: http

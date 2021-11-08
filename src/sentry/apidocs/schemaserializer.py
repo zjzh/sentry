@@ -64,6 +64,28 @@ def get_class(obj) -> type:
     return obj if inspect.isclass(obj) else obj.__class__
 
 
+from sentry.api.serializers import Serializer
+
+
+def map_serializer(serializer):
+    sig = inspect.signature(serializer.serialize)
+
+    excluded_fields = get_override(serializer, "exclude_fields", [])
+
+    if type(sig.return_annotation) != _TypedDictMeta:
+        raise Exception("wrong type!")
+
+    properties = map_typedict(sig.return_annotation, excluded_fields)
+
+    # a = build_object_type(
+    #     properties=properties,
+    #     required=required,
+    #     description=""
+    #     # description=get_doc(self.target_class.__class__),
+    # )
+    return properties
+
+
 class PublicSchemaResponseSerializerExtension(OpenApiSerializerExtension):
     priority = 0
     target_class = "sentry.api.serializers.base.Serializer"
@@ -71,24 +93,6 @@ class PublicSchemaResponseSerializerExtension(OpenApiSerializerExtension):
 
     def get_name(self) -> Optional[str]:
         return self.target.__name__
-
-    def map_serializer(self, auto_schema, direction):
-        sig = inspect.signature(self.target.serialize)
-
-        excluded_fields = get_override(self.target, "exclude_fields", [])
-
-        if type(sig.return_annotation) != _TypedDictMeta:
-            raise Exception("wrong type!")
-
-        properties = map_typedict(sig.return_annotation, excluded_fields)
-
-        # a = build_object_type(
-        #     properties=properties,
-        #     required=required,
-        #     description=""
-        #     # description=get_doc(self.target_class.__class__),
-        # )
-        return properties
 
     @classmethod
     def _matches(cls, target) -> bool:
@@ -104,3 +108,21 @@ class PublicSchemaResponseSerializerExtension(OpenApiSerializerExtension):
             )
         else:
             return get_class(target) == cls.target_class
+
+    def map_serializer(self, auto_schema, direction):
+        return map_serializer(self.target)
+
+
+# TODO: create this for our types
+# def inline_serializer(name: str, fields: Dict[str, Field], **kwargs) -> Serializer:
+#     """
+#     A helper function to create an inline serializer. Primary use is with
+#     :func:`@extend_schema <.extend_schema>`, where one needs an implicit one-off
+#     serializer that is not reflected in an actual class.
+
+#     :param name: name of the
+#     :param fields: dict with field names as keys and serializer fields as values
+#     :param kwargs: optional kwargs for serializer initialization
+#     """
+#     serializer_class = type(name, (Serializer,), fields)
+#     return serializer_class(**kwargs)

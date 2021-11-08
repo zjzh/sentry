@@ -28,10 +28,15 @@ from .constants import (
     SCIM_409_USER_EXISTS,
     MemberPatchOps,
 )
-from .utils import OrganizationSCIMMemberPermission, SCIMEndpoint
+from .utils import (
+    OrganizationSCIMMemberPermission,
+    SCIMEndpoint,
+    SCIMListResponseSerializer,
+    SCIMQueryParamSerializer,
+)
 
 ERR_ONLY_OWNER = "You cannot remove the only remaining owner of the organization."
-from drf_spectacular.utils import OpenApiExample, extend_schema
+from drf_spectacular.utils import OpenApiExample, extend_schema, inline_serializer
 from rest_framework.exceptions import PermissionDenied
 
 from sentry.api.exceptions import ConflictError
@@ -147,11 +152,26 @@ class OrganizationSCIMMemberDetails(SCIMEndpoint, OrganizationMemberEndpoint):
         return Response(status=204)
 
 
-@declare_public(methods={"POST"})
+@declare_public(methods={"GET", "POST"})
 class OrganizationSCIMMemberIndex(SCIMEndpoint):
     permission_classes = (OrganizationSCIMMemberPermission,)
 
+    @extend_schema(
+        operation_id="List an Organization's Members",
+        parameters=[GLOBAL_PARAMS.ORG_SLUG, SCIMQueryParamSerializer],  # TODO: descriptions
+        request=OrganizationMemberSerializer,
+        responses={
+            200: SCIMListResponseSerializer,
+            401: RESPONSE_UNAUTHORIZED,
+            403: RESPONSE_FORBIDDEN,
+            404: RESPONSE_NOTFOUND,
+            # 409, 400
+        },
+    )
     def get(self, request, organization):
+        """
+        Returns a paginated list of members bound to a organization with a SCIM Users GET Request.
+        """
         # note that SCIM doesn't care about changing results as they're queried
 
         query_params = self.get_query_parameters(request)
