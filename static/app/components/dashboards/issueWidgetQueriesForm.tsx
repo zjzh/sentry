@@ -1,8 +1,6 @@
 import * as React from 'react';
 import styled from '@emotion/styled';
 
-import SearchBar from 'app/components/events/searchBar';
-import {MAX_QUERY_LENGTH} from 'app/constants';
 import {t} from 'app/locale';
 import space from 'app/styles/space';
 import {GlobalSelection, Organization, TagCollection} from 'app/types';
@@ -47,7 +45,7 @@ class IssueWidgetQueriesForm extends React.Component<Props> {
   }
 
   render() {
-    const {organization, selection, error, query, tags} = this.props;
+    const {organization, error, query, tags} = this.props;
 
     return (
       <QueryWrapper>
@@ -60,7 +58,7 @@ class IssueWidgetQueriesForm extends React.Component<Props> {
           error={error?.conditions}
         >
           <SearchConditionsWrapper>
-            <IssueListSearchBar
+            <StyledIssueListSearchBar
               organization={organization}
               query={query.conditions || ''}
               sort=""
@@ -70,17 +68,6 @@ class IssueWidgetQueriesForm extends React.Component<Props> {
               tagValueLoader={() => new Promise(() => [])}
               savedSearch={undefined}
               onSidebarToggle={() => undefined}
-            />
-            <StyledSearchBar
-              searchSource="widget_builder"
-              organization={organization}
-              projectIds={selection.projects}
-              query={query.conditions}
-              fields={[]}
-              onSearch={this.handleFieldChange('conditions')}
-              onBlur={this.handleFieldChange('conditions')}
-              useFormWrapper={false}
-              maxQueryLength={MAX_QUERY_LENGTH}
             />
           </SearchConditionsWrapper>
         </Field>
@@ -102,7 +89,7 @@ export const SearchConditionsWrapper = styled('div')`
   }
 `;
 
-const StyledSearchBar = styled(SearchBar)`
+const StyledIssueListSearchBar = styled(IssueListSearchBar)`
   flex-grow: 1;
 `;
 

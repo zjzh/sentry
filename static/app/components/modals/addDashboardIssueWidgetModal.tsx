@@ -23,11 +23,11 @@ import {
   Organization,
   RelativePeriod,
   SelectValue,
-  TagCollection,
 } from 'app/types';
 import trackAdvancedAnalyticsEvent from 'app/utils/analytics/trackAdvancedAnalyticsEvent';
 import withApi from 'app/utils/withApi';
 import withGlobalSelection from 'app/utils/withGlobalSelection';
+import IssueWidgetCard from 'app/views/dashboardsV2/issueWidgetCard';
 import {
   DashboardDetails,
   DashboardListItem,
@@ -60,7 +60,6 @@ type Props = ModalRenderProps &
     api: Client;
     organization: Organization;
     selection: GlobalSelection;
-    tags: TagCollection;
   };
 
 type FlatValidationError = {
@@ -232,7 +231,7 @@ class AddDashboardIssueWidgetModal extends React.Component<Props, State> {
   handleQueryChange = (widgetQuery: WidgetQuery) => {
     this.setState(prevState => {
       const newState = cloneDeep(prevState);
-      set(newState, `query`, widgetQuery);
+      set(newState, `queries`, [widgetQuery]);
       set(newState, 'userHasModified', true);
 
       return {...newState, errors: undefined};
@@ -339,7 +338,6 @@ class AddDashboardIssueWidgetModal extends React.Component<Props, State> {
       start,
       end,
       statsPeriod,
-      tags,
     } = this.props;
     const state = this.state;
     const errors = state.errors;
@@ -388,13 +386,12 @@ class AddDashboardIssueWidgetModal extends React.Component<Props, State> {
             query={state.queries[0]}
             error={errors?.query}
             onChange={(widgetQuery: WidgetQuery) => this.handleQueryChange(widgetQuery)}
-            tags={tags}
           />
           <IssueWidgetCard
             api={api}
             organization={organization}
             selection={querySelection}
-            widget={this.state}
+            widget={{...this.state, displayType: DisplayType.TABLE}}
             isEditing={false}
             onDelete={() => undefined}
             onEdit={() => undefined}
