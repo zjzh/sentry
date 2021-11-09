@@ -4,9 +4,8 @@ import * as qs from 'query-string';
 
 import {Client} from 'app/api';
 import {isSelectionEqual} from 'app/components/organizations/globalSelectionHeader/utils';
-import {GlobalSelection, OrganizationSummary} from 'app/types';
+import {GlobalSelection, Group, OrganizationSummary} from 'app/types';
 import {getUtcDateString} from 'app/utils/dates';
-import {TableDataWithTitle} from 'app/utils/discover/discoverQuery';
 import {IssueDisplayOptions, IssueSortOptions} from 'app/views/issueList/utils';
 
 import {Widget, WidgetQuery} from './types';
@@ -41,8 +40,7 @@ type State = {
   errorMessage: undefined | string;
   loading: boolean;
   queryFetchID: symbol | undefined;
-  rawResults: undefined | RawResult[];
-  tableResults: undefined | TableDataWithTitle[];
+  tableResults: undefined | Group[];
 };
 
 class WidgetQueries extends React.Component<Props, State> {
@@ -50,7 +48,6 @@ class WidgetQueries extends React.Component<Props, State> {
     loading: true,
     queryFetchID: undefined,
     errorMessage: undefined,
-    rawResults: undefined,
     tableResults: undefined,
   };
 
@@ -60,7 +57,6 @@ class WidgetQueries extends React.Component<Props, State> {
 
   componentDidUpdate(prevProps: Props) {
     const {selection, widget} = this.props;
-
     // We do not fetch data whenever the query name changes.
     // Also don't count empty fields when checking for field changes
     const [prevWidgetQueries] = prevProps.widget.queries
@@ -105,21 +101,10 @@ class WidgetQueries extends React.Component<Props, State> {
 
   fetchEventData() {
     const {selection, api, organization, widget} = this.props;
-
-    // Table, world map, and stat widgets use table results and need
-    // to do a discover 'table' query instead of a 'timeseries' query.
     this.setState({tableResults: []});
-
     // Issue Widgets only support single queries
     const query = widget.queries[0];
-    let groupListUrl: string = '';
-    // let groupStatUrl: string = '';
-    if (widget.displayType === 'table') {
-      groupListUrl = `/organizations/${organization.slug}/issues/`;
-      // groupStatUrl = `/organizations/${organization.slug}/issues-stats/`;
-    } else {
-      throw Error('Expected widget displayType to be table');
-    }
+    const groupListUrl = `/organizations/${organization.slug}/issues/`;
     const params: EndpointParams = {
       project: selection.projects,
       environment: selection.environments,
@@ -151,7 +136,6 @@ class WidgetQueries extends React.Component<Props, State> {
 
     const promises = [groupListPromise];
 
-    const completed = 0;
     promises.forEach(async promise => {
       const data = await promise;
       this.setState({loading: false, errorMessage: undefined, tableResults: data});
