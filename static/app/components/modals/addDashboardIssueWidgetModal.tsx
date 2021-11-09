@@ -357,29 +357,27 @@ class AddDashboardIssueWidgetModal extends React.Component<Props, State> {
           <h4>{isUpdatingWidget ? t('Edit Issues Widget') : t('Add Issues Widget')}</h4>
         </Header>
         <Body>
-          <DoubleFieldWrapper>
-            <StyledField
-              data-test-id="widget-name"
-              label={t('Widget Name')}
-              inline={false}
-              flexibleControlStateSize
-              stacked
-              error={errors?.title}
+          <StyledField
+            data-test-id="widget-name"
+            label={t('Widget Name')}
+            inline={false}
+            flexibleControlStateSize
+            stacked
+            error={errors?.title}
+            required
+          >
+            <Input
+              type="text"
+              name="title"
+              maxLength={255}
               required
-            >
-              <Input
-                type="text"
-                name="title"
-                maxLength={255}
-                required
-                value={state.title}
-                onChange={(event: React.ChangeEvent<HTMLInputElement>) => {
-                  this.handleFieldChange('title')(event.target.value);
-                }}
-                disabled={state.loading}
-              />
-            </StyledField>
-          </DoubleFieldWrapper>
+              value={state.title}
+              onChange={(event: React.ChangeEvent<HTMLInputElement>) => {
+                this.handleFieldChange('title')(event.target.value);
+              }}
+              disabled={state.loading}
+            />
+          </StyledField>
           <IssueWidgetQueriesForm
             organization={organization}
             selection={querySelection}
@@ -428,13 +426,6 @@ class AddDashboardIssueWidgetModal extends React.Component<Props, State> {
     );
   }
 }
-
-const DoubleFieldWrapper = styled('div')`
-  display: inline-grid;
-  grid-template-columns: repeat(2, 1fr);
-  grid-column-gap: ${space(1)};
-  width: 100%;
-`;
 
 export const modalCss = css`
   width: 100%;

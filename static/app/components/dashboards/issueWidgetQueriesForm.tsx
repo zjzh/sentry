@@ -78,6 +78,7 @@ class IssueWidgetQueriesForm extends React.Component<Props> {
 
 const QueryWrapper = styled('div')`
   position: relative;
+  padding-bottom: 16px;
 `;
 
 export const SearchConditionsWrapper = styled('div')`

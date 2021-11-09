@@ -5,16 +5,20 @@ import styled from '@emotion/styled';
 import {Location} from 'history';
 import isEqual from 'lodash/isEqual';
 
+import ActorAvatar from 'app/components/avatar/actorAvatar';
 import ErrorPanel from 'app/components/charts/errorPanel';
+import Tooltip from 'app/components/tooltip';
 import TransitionChart from 'app/components/charts/transitionChart';
 import TransparentLoadingMask from 'app/components/charts/transparentLoadingMask';
 import EventOrGroupExtraDetails from 'app/components/eventOrGroupExtraDetails';
 import EventOrGroupHeader from 'app/components/eventOrGroupHeader';
 import LoadingIndicator from 'app/components/loadingIndicator';
+import ExternalLink from 'app/components/links/externalLink';
+import {IconUser} from 'app/icons';
 import Placeholder from 'app/components/placeholder';
 import ToolbarHeader from 'app/components/toolbarHeader';
 import {IconWarning} from 'app/icons';
-import {t} from 'app/locale';
+import {t, tct} from 'app/locale';
 import space from 'app/styles/space';
 import {GlobalSelection, Organization} from 'app/types';
 import {Theme} from 'app/utils/theme';
@@ -57,7 +61,6 @@ class WidgetCardChart extends React.Component<WidgetCardChartProps> {
         title: '',
       },
     };
-
     return !isEqual(currentProps, nextProps);
   }
 
@@ -66,7 +69,7 @@ class WidgetCardChart extends React.Component<WidgetCardChartProps> {
     errorMessage,
     tableResults,
   }: TableResultProps): React.ReactNode {
-    const {widget, organization, selection} = this.props;
+    const {widget, organization} = this.props;
     if (errorMessage) {
       return (
         <ErrorPanel>
@@ -83,25 +86,69 @@ class WidgetCardChart extends React.Component<WidgetCardChartProps> {
     return (
       <React.Fragment>
         <StyledFlex>
-          <EventsOrUsersLabel>{t('Events')}</EventsOrUsersLabel>
-          <EventsOrUsersLabel>{t('Users')}</EventsOrUsersLabel>
+          <IssueHeaderLabel>{t('Issue')}</IssueHeaderLabel>
           <AssigneesLabel className="hidden-xs hidden-sm">
             <ToolbarHeader>{t('Assignee')}</ToolbarHeader>
           </AssigneesLabel>{' '}
         </StyledFlex>
         {tableResults.map((result, index) => {
+          const {assignedTo} = result;
           return (
             <StyledIssueRow key={index}>
-              <EventOrGroupHeader
-                index={index}
-                organization={organization}
-                includeLink
-                data={result}
-                query={widget.queries[0].conditions}
-                size="normal"
-                hideIcons
-              />
-              <EventOrGroupExtraDetails data={result} />
+              <GroupSummary>
+                <EventOrGroupHeader
+                  index={index}
+                  organization={organization}
+                  includeLink
+                  data={result}
+                  query={widget.queries[0].conditions}
+                  size="normal"
+                  hideIcons
+                />
+                <EventOrGroupExtraDetails data={result} />
+              </GroupSummary>
+              <EventUserWrapper>
+                {assignedTo && (
+                  <StyledActorAvatar
+                    actor={assignedTo}
+                    className="avatar"
+                    size={24}
+                    tooltip={
+                      <TooltipWrapper>
+                        {tct('Assigned to [name]', {
+                          name:
+                            assignedTo.type === 'team'
+                              ? `#${assignedTo.name}`
+                              : assignedTo.name,
+                        })}
+                      </TooltipWrapper>
+                    }
+                  />
+                )}
+                {!assignedTo && (
+                  <Tooltip
+                  isHoverable
+                  skipWrapper
+                  title={
+                    <TooltipWrapper>
+                      <div>{t('Unassigned')}</div>
+                      <TooltipSubtext>
+                        {tct(
+                          'You can auto-assign issues by adding [issueOwners:Issue Owner rules].',
+                          {
+                            issueOwners: (
+                              <TooltipSubExternalLink href="https://docs.sentry.io/product/error-monitoring/issue-owners/" />
+                            ),
+                          }
+                        )}
+                      </TooltipSubtext>
+                    </TooltipWrapper>
+                  }
+                  >
+                  <StyledIconUser size="20px" color="gray400" />
+                  </Tooltip>
+                )}
+              </EventUserWrapper>
             </StyledIssueRow>
           );
         })}
@@ -140,6 +187,7 @@ const LoadingScreen = ({loading}: {loading: boolean}) => {
 };
 
 const StyledIssueRow = styled('div')`
+  display: flex;
   border-bottom: 1px solid rgb(231, 225, 236);
   position: relative;
   padding: 10px 0px 10px 16px;
@@ -177,6 +225,53 @@ const StyledFlex = styled('div')`
   background: ${p => p.theme.backgroundSecondary};
   border: 1px solid ${p => p.theme.border};
   margin: 12px -1px -1px;
+`;
+
+const GroupSummary = styled('div')`
+  overflow: hidden;
+  flex: 1;
+`;
+
+const EventUserWrapper = styled('div')`
+  display: flex;
+  justify-content: flex-end;
+  align-self: center;
+  width: 60px;
+  margin: 0 ${space(2)};
+
+  @media (min-width: ${p => p.theme.breakpoints[3]}) {
+    width: 80px;
+  }
+`;
+
+const IssueHeaderLabel = styled(EventsOrUsersLabel)`
+  flex: 1 1 0%;
+  justify-content: left;
+`;
+
+const StyledActorAvatar = styled(ActorAvatar)`
+  margin-right: 20px;
+`;
+
+const TooltipWrapper = styled('div')`
+  text-align: left;
+`;
+
+const TooltipSubtext = styled('div')`
+  color: ${p => p.theme.subText};
+`;
+
+const TooltipSubExternalLink = styled(ExternalLink)`
+  color: ${p => p.theme.subText};
+  text-decoration: underline;
+
+  :hover {
+    color: ${p => p.theme.subText};
+  }
+`;
+
+const StyledIconUser = styled(IconUser)`
+  margin-right: 20px;
 `;
 
 export default withTheme(WidgetCardChart);
