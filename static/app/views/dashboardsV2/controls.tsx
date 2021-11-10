@@ -35,6 +35,7 @@ class Controls extends React.Component<Props> {
       onCommit,
       onDelete,
       onAddIssueWidget,
+      organization,
     } = this.props;
 
     const cancelButton = (
@@ -112,18 +113,27 @@ class Controls extends React.Component<Props> {
               >
                 {t('Edit Dashboard')}
               </Button>
-              <Button
-                data-test-id="dashboard-add-issues-widget"
-                onClick={e => {
-                  e.preventDefault();
-                  onAddIssueWidget();
-                }}
-                priority="primary"
-                icon={<IconAdd size="xs" />}
-                disabled={!hasFeature}
+              <Feature
+                organization={organization}
+                features={['organizations:issues-in-dashboards']}
               >
-                {t('Add Issues Widget')}
-              </Button>
+                {({hasFeature: hasIssuesInDashboardsFeature}) =>
+                  hasIssuesInDashboardsFeature && (
+                    <Button
+                      data-test-id="dashboard-add-issues-widget"
+                      onClick={e => {
+                        e.preventDefault();
+                        onAddIssueWidget();
+                      }}
+                      priority="primary"
+                      icon={<IconAdd size="xs" />}
+                      disabled={!hasFeature}
+                    >
+                      {t('Add Issue Widget')}
+                    </Button>
+                  )
+                }
+              </Feature>
             </React.Fragment>
           )}
         </DashboardEditFeature>

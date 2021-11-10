@@ -9,10 +9,7 @@ import {
   updateDashboard,
 } from 'app/actionCreators/dashboards';
 import {addSuccessMessage} from 'app/actionCreators/indicator';
-import {
-  openAddDashboardIssueWidgetModal,
-  openAddDashboardWidgetModal,
-} from 'app/actionCreators/modal';
+import {openAddDashboardIssueWidgetModal} from 'app/actionCreators/modal';
 import {Client} from 'app/api';
 import Breadcrumbs from 'app/components/breadcrumbs';
 import HookOrDefault from 'app/components/hookOrDefault';
@@ -374,22 +371,6 @@ class DashboardDetail extends Component<Props, State> {
       }),
       this.updateRouteAfterSavingWidget
     );
-  };
-
-  onAddWidget = () => {
-    const {organization, dashboard} = this.props;
-
-    openAddDashboardWidgetModal({
-      organization,
-      dashboard,
-      onAddWidget: widget => {
-        this.setState({
-          dashboardState: DashboardState.EDIT,
-          modifiedDashboard: cloneDashboard(dashboard),
-        });
-        this.onUpdateWidget([...dashboard.widgets, widget]);
-      },
-    });
   };
 
   onAddIssueWidget = () => {

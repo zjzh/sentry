@@ -141,18 +141,3 @@ export function validateWidget(
   );
   return promise;
 }
-
-export function validateIssueWidget(
-  api: Client,
-  orgId: string,
-  widget: Widget
-): Promise<undefined> {
-  const promise: Promise<undefined> = api.requestPromise(
-    `/organizations/${orgId}/dashboards/widgets/`,
-    {
-      method: 'POST',
-      data: widget,
-    }
-  );
-  return promise;
-}

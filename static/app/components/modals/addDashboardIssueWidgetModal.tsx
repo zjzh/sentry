@@ -1,38 +1,26 @@
 import * as React from 'react';
-import {browserHistory} from 'react-router';
-import {components, OptionProps} from 'react-select';
 import {css} from '@emotion/react';
 import styled from '@emotion/styled';
 import cloneDeep from 'lodash/cloneDeep';
 import set from 'lodash/set';
 
-import {validateIssueWidget} from 'app/actionCreators/dashboards';
-import {addErrorMessage, addSuccessMessage} from 'app/actionCreators/indicator';
+import {validateWidget} from 'app/actionCreators/dashboards';
+import {addSuccessMessage} from 'app/actionCreators/indicator';
 import {ModalRenderProps} from 'app/actionCreators/modal';
 import {Client} from 'app/api';
 import Button from 'app/components/button';
 import ButtonBar from 'app/components/buttonBar';
 import IssueWidgetQueriesForm from 'app/components/dashboards/issueWidgetQueriesForm';
-import SelectControl from 'app/components/forms/selectControl';
 import {PanelAlert} from 'app/components/panels';
-import {t, tct} from 'app/locale';
-import space from 'app/styles/space';
-import {
-  DateString,
-  GlobalSelection,
-  Organization,
-  RelativePeriod,
-  SelectValue,
-} from 'app/types';
+import {t} from 'app/locale';
+import {DateString, GlobalSelection, Organization, RelativePeriod} from 'app/types';
 import trackAdvancedAnalyticsEvent from 'app/utils/analytics/trackAdvancedAnalyticsEvent';
 import withApi from 'app/utils/withApi';
 import withGlobalSelection from 'app/utils/withGlobalSelection';
 import IssueWidgetCard from 'app/views/dashboardsV2/issueWidgetCard';
 import {
   DashboardDetails,
-  DashboardListItem,
   DisplayType,
-  MAX_WIDGETS,
   Widget,
   WidgetQuery,
   WidgetType,
@@ -40,8 +28,6 @@ import {
 import {mapErrors} from 'app/views/dashboardsV2/widget/eventWidget/utils';
 import Input from 'app/views/settings/components/forms/controls/input';
 import Field from 'app/views/settings/components/forms/field';
-
-import Tooltip from '../tooltip';
 
 export type DashboardIssueWidgetModalOptions = {
   organization: Organization;
@@ -72,8 +58,6 @@ type State = {
   queries: WidgetQuery[];
   loading: boolean;
   errors?: Record<string, any>;
-  dashboards: DashboardListItem[];
-  selectedDashboard?: SelectValue<string>;
   userHasModified: boolean;
 };
 
@@ -95,7 +79,6 @@ class AddDashboardIssueWidgetModal extends React.Component<Props, State> {
         queries: [{...newQuery}],
         errors: undefined,
         loading: false,
-        dashboards: [],
         userHasModified: false,
       };
       return;
@@ -107,7 +90,6 @@ class AddDashboardIssueWidgetModal extends React.Component<Props, State> {
       queries: widget.queries,
       errors: undefined,
       loading: false,
-      dashboards: [],
       userHasModified: false,
     };
   }
@@ -136,7 +118,7 @@ class AddDashboardIssueWidgetModal extends React.Component<Props, State> {
       widgetData.queries[0].orderby = '';
     }
     try {
-      await validateIssueWidget(api, organization.slug, widgetData);
+      await validateWidget(api, organization.slug, widgetData);
       if (typeof onUpdateWidget === 'function' && !!previousWidget) {
         onUpdateWidget({
           id: previousWidget?.id,
@@ -152,62 +134,6 @@ class AddDashboardIssueWidgetModal extends React.Component<Props, State> {
       this.setState({errors});
     } finally {
       this.setState({loading: false});
-    }
-  };
-
-  handleSubmitFromDiscover = async (errors: FlatValidationError, widgetData: Widget) => {
-    const {closeModal, organization} = this.props;
-    const {selectedDashboard, dashboards} = this.state;
-    // Validate that a dashboard was selected since api call to /dashboards/widgets/ does not check for dashboard
-    if (
-      !selectedDashboard ||
-      !(
-        dashboards.find(({title, id}) => {
-          return title === selectedDashboard?.label && id === selectedDashboard?.value;
-        }) || selectedDashboard.value === 'new'
-      )
-    ) {
-      errors.dashboard = t('This field may not be blank');
-      this.setState({errors});
-    }
-    if (!Object.keys(errors).length && selectedDashboard) {
-      closeModal();
-
-      const queryData: {
-        queryNames: string[];
-        queryConditions: string[];
-        queryFields: string[];
-        queryOrderby: string;
-      } = {
-        queryNames: [],
-        queryConditions: [],
-        queryFields: widgetData.queries[0]?.fields,
-        queryOrderby: widgetData.queries[0]?.orderby,
-      };
-      queryData.queryNames.push(widgetData.queries[0]?.name);
-      queryData.queryConditions.push(widgetData.queries[0]?.conditions);
-      const pathQuery = {
-        displayType: widgetData.displayType,
-        interval: widgetData.interval,
-        title: widgetData.title,
-        ...queryData,
-      };
-
-      trackAdvancedAnalyticsEvent('discover_views.add_to_dashboard.confirm', {
-        organization,
-      });
-
-      if (selectedDashboard.value === 'new') {
-        browserHistory.push({
-          pathname: `/organizations/${organization.slug}/dashboards/new/`,
-          query: pathQuery,
-        });
-      } else {
-        browserHistory.push({
-          pathname: `/organizations/${organization.slug}/dashboard/${selectedDashboard.value}/`,
-          query: pathQuery,
-        });
-      }
     }
   };
 
@@ -238,93 +164,6 @@ class AddDashboardIssueWidgetModal extends React.Component<Props, State> {
     });
   };
 
-  async fetchDashboards() {
-    const {api, organization} = this.props;
-    const promise: Promise<DashboardListItem[]> = api.requestPromise(
-      `/organizations/${organization.slug}/dashboards/`,
-      {
-        method: 'GET',
-        query: {sort: 'myDashboardsAndRecentlyViewed'},
-      }
-    );
-
-    try {
-      const dashboards = await promise;
-      this.setState({
-        dashboards,
-      });
-    } catch (error) {
-      const errorResponse = error?.responseJSON ?? null;
-      if (errorResponse) {
-        addErrorMessage(errorResponse);
-      } else {
-        addErrorMessage(t('Unable to fetch dashboards'));
-      }
-    }
-    this.setState({loading: false});
-  }
-
-  handleDashboardChange(option: SelectValue<string>) {
-    this.setState({selectedDashboard: option});
-  }
-
-  renderDashboardSelector() {
-    const {errors, loading, dashboards} = this.state;
-    const dashboardOptions = dashboards.map(d => {
-      return {
-        label: d.title,
-        value: d.id,
-        isDisabled: d.widgetDisplay.length >= MAX_WIDGETS,
-      };
-    });
-    return (
-      <React.Fragment>
-        <p>
-          {t(
-            `Choose which dashboard you'd like to add this query to. It will appear as a widget.`
-          )}
-        </p>
-        <Field
-          label={t('Custom Dashboard')}
-          inline={false}
-          flexibleControlStateSize
-          stacked
-          error={errors?.dashboard}
-          style={{marginBottom: space(1), position: 'relative'}}
-          required
-        >
-          <SelectControl
-            name="dashboard"
-            options={[
-              {label: t('+ Create New Dashboard'), value: 'new'},
-              ...dashboardOptions,
-            ]}
-            onChange={(option: SelectValue<string>) => this.handleDashboardChange(option)}
-            disabled={loading}
-            components={{
-              Option: ({label, data, ...optionProps}: OptionProps<any>) => (
-                <Tooltip
-                  disabled={!!!data.isDisabled}
-                  title={tct('Max widgets ([maxWidgets]) per dashboard reached.', {
-                    maxWidgets: MAX_WIDGETS,
-                  })}
-                  containerDisplayMode="block"
-                  position="right"
-                >
-                  <components.Option
-                    label={label}
-                    data={data}
-                    {...(optionProps as any)}
-                  />
-                </Tooltip>
-              ),
-            }}
-          />
-        </Field>
-      </React.Fragment>
-    );
-  }
-
   render() {
     const {
       Footer,
@@ -354,7 +193,7 @@ class AddDashboardIssueWidgetModal extends React.Component<Props, State> {
     return (
       <React.Fragment>
         <Header closeButton>
-          <h4>{isUpdatingWidget ? t('Edit Issues Widget') : t('Add Issues Widget')}</h4>
+          <h4>{isUpdatingWidget ? t('Edit Issue Widget') : t('Add Issue Widget')}</h4>
         </Header>
         <Body>
           <StyledField
