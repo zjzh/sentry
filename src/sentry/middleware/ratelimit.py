@@ -1,7 +1,6 @@
-# ratelimit.py
-#
-# Middleware that applies a rate limit to every endpoint
-
+"""
+Middleware that applies a rate limit to every endpoint.
+"""
 
 from __future__ import annotations
 
