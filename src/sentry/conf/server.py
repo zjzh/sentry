@@ -882,6 +882,7 @@ REST_FRAMEWORK = {
     "TEST_REQUEST_DEFAULT_FORMAT": "json",
     "DEFAULT_PERMISSION_CLASSES": ("sentry.api.permissions.NoPermission",),
     "EXCEPTION_HANDLER": "sentry.api.handlers.custom_exception_handler",
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
 }
 
 SPECTACULAR_SETTINGS = {
@@ -891,7 +892,6 @@ SPECTACULAR_SETTINGS = {
     "AUTHENTICATION_WHITELIST": ["sentry.api.authentication.TokenAuthentication"],
 }
 
-from sentry.apidocs.extensions import *
 
 CRISPY_TEMPLATE_PACK = "bootstrap3"
 
@@ -2505,3 +2505,5 @@ ZERO_DOWNTIME_MIGRATIONS_STATEMENT_TIMEOUT = None
 # Note: The docs have this backwards. We set this to False here so that we always add check
 # constraints instead of setting the column to not null.
 ZERO_DOWNTIME_MIGRATIONS_USE_NOT_NULL = False
+
+from sentry.apidocs.extensions import *  # NOQA  # TODO: figure out better init import
