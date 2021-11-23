@@ -21,6 +21,7 @@ from sentry.api.event_search import SearchFilter
 from sentry.api.paginator import DateTimePaginator, Paginator, SequencePaginator
 from sentry.constants import ALLOWED_FUTURE_DELTA
 from sentry.models import Environment, Group, Optional, Project
+from sentry.search.events.constants import OPERATOR_TO_SNQL
 from sentry.search.events.fields import DateArg
 from sentry.search.events.filter import convert_search_filter_to_snuba_query
 from sentry.search.utils import validate_cdc_search_filters
@@ -804,7 +805,9 @@ class CdcPostgresSnubaQueryExecutor(PostgresSnubaQueryExecutor):
         for search_filter in search_filters:
             where_conditions.append(
                 Condition(
-                    Column(search_filter.key.name, e_group), Op.IN, search_filter.value.raw_value
+                    Column(search_filter.key.name, e_group),
+                    OPERATOR_TO_SNQL[search_filter.operator],
+                    search_filter.value.raw_value,
                 )
             )
 
