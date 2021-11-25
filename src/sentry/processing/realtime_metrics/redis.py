@@ -1,5 +1,4 @@
 import logging
-from itertools import chain
 from typing import Iterable, Sequence, Set
 
 from sentry.exceptions import InvalidConfiguration
@@ -134,20 +133,14 @@ class RedisRealtimeMetricsStore(base.RealtimeMetricsStore):
         """
 
         already_seen = set()
-        # Normally if there's a duration entry for a project then there should be a counter
-        # entry for it as well, but double check both to be safe
-        all_keys = chain(
-            self.cluster.scan_iter(
-                match=self._counter_key_prefix() + ":*",
-            ),
-            self.cluster.scan_iter(
-                match=self._duration_key_prefix() + ":*",
-            ),
+        # Assume that the counter keyspace contains all projects with measurements, and that the
+        # duration keyspace does not have entries for projects the counter keyspace does not have.
+        all_keys = self.cluster.scan_iter(
+            match=self._counter_key_prefix() + ":*",
+            count=1000,
         )
 
         for item in all_keys:
-            # Because this could be one of two patterns, this splits based on the most basic
-            # delimiter ":" instead of splitting on known prefixes
             _prefix, _metric_type, _bucket_size, project_id_raw, _else = item.split(":", maxsplit=4)
             project_id = int(project_id_raw)
             if project_id not in already_seen:
