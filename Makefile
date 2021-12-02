@@ -32,6 +32,17 @@ build-js-po: node-version-check
 	rm -rf node_modules/.cache/babel-loader
 	SENTRY_EXTRACT_TRANSLATIONS=1 $(WEBPACK)
 
+build-spectacular-docs:
+	@OPENAPIGENERATE=1 sentry django spectacular --file tests/apidocs/openapi-spectacular.json --format openapi-json --validate --fail-on-warn
+
+build-api-docs:
+	@echo "--> Building deprecated openapi spec from json files"
+	yarn build-deprecated-docs
+	@echo "--> Building drf-spectacular openapi spec (combines with deprecated docs)"
+	make build-spectacular-docs
+	@echo "--> Dereference the json schema for ease of use"
+	yarn deref-api-docs
+
 build: locale
 
 merge-locale-catalogs: build-js-po
