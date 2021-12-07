@@ -314,14 +314,15 @@ class DashboardDetail extends Component<Props, State> {
       throw new Error('Expected layouts and widgets to be the same length');
     }
 
-    saveDashboardLayout(
-      organizationId,
-      dashboardId,
-      layout.map((widgetLayout, index) => ({
-        ...widgetLayout,
-        i: constructGridItemKey(newWidgets[index]),
-      }))
-    );
+    const newLayout = layout.map((widgetLayout, index) => ({
+      ...widgetLayout,
+      i: constructGridItemKey(newWidgets[index]),
+    }));
+    saveDashboardLayout(organizationId, dashboardId, newLayout);
+
+    setTimeout(() => this.onLayoutChange(newLayout), 0);
+    // console.log(modifiedDashboard.widgets);
+    // console.log(newWidgets);
   };
 
   onCommit = () => {
@@ -591,6 +592,7 @@ class DashboardDetail extends Component<Props, State> {
       location,
       newWidget,
     };
+    console.log(layout);
 
     return (
       <GlobalSelectionHeader

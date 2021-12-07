@@ -244,6 +244,9 @@ class Dashboard extends Component<Props> {
       onLayoutChange,
     } = this.props;
 
+    // console.table(widgets);
+    // console.table(layout);
+
     return (
       <GridLayout
         cols={NUM_COLS}
@@ -252,6 +255,7 @@ class Dashboard extends Component<Props> {
         draggableHandle={`.${DRAG_HANDLE_CLASS}`}
         layout={layout}
         onLayoutChange={newLayout => {
+          console.log('boooop');
           const isNotAddButton = ({i}) => i !== ADD_WIDGET_BUTTON_DRAG_ID;
           onLayoutChange(newLayout.filter(isNotAddButton));
         }}
@@ -287,7 +291,11 @@ export function constructGridItemKey(widget: Widget) {
 }
 
 export function assignTempId(widget) {
-  return {...widget, tempId: nanoid()};
+  if (!(widget.id ?? widget.tempId)) {
+    return {...widget, tempId: nanoid()};
+  }
+
+  return widget;
 }
 
 /**
