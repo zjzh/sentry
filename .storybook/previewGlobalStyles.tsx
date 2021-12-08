@@ -21,10 +21,11 @@ const styles = (theme: Theme) => css`
   }
 
   /** Content wraps */
-  #docs-root {
+  #docs-root,
+  #root {
     display: flex;
     justify-content: center;
-    background: ${theme.background};
+    background: ${theme.bodyBackground};
   }
   .sbdocs.sbdocs-wrapper {
     padding: calc(${space(4)} * 3) calc(${space(4)} * 2);
