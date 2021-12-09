@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Iterable, MutableMapping
+from typing import TYPE_CHECKING, Iterable, MutableMapping, Callable, Optional
 
 from sentry import roles
 from sentry.models import OrganizationMember, Team
@@ -9,9 +9,11 @@ if TYPE_CHECKING:
     from sentry.models import Organization, User
 
 
-class RoleBasedMixin:
+class RoleBasedStrategy:
     member_by_user_id: MutableMapping[int, OrganizationMember] = {}
-    organization: Organization
+
+    def __init__(self, organization: Organization):
+        self.organization = organization
 
     def get_member(self, user: User) -> OrganizationMember:
         # cache the result
@@ -27,8 +29,13 @@ class RoleBasedMixin:
         """
         self.member_by_user_id[member.user_id] = member
 
-    def determine_recipients(self) -> Iterable[Team | User]:
-        members = self.determine_member_recipients()
+    def determine_recipients(
+        self,
+        members: Optional[Iterable[OrganizationMember]] = None,
+    ) -> Iterable[Team | User]:
+        # temp hack until we we start subclassing RoleBasedStrategy
+        if members is None:
+            members = self.determine_member_recipients()
         # store the members in our cache
         for member in members:
             self.set_member_in_cache(member)
