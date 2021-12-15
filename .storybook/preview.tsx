@@ -30,6 +30,7 @@ const withThemeStory: DecoratorFn = (Story, context) => {
   return (
     <ThemeProvider theme={currentTheme}>
       <GlobalStyles isDark={isDark} theme={currentTheme} />
+      <PreviewGlobalStyles theme={currentTheme} />
       <Story {...context} />
     </ThemeProvider>
   );

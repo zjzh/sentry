@@ -21,7 +21,8 @@ const styles = (theme: Theme) => css`
   }
 
   /** Content wraps */
-  #docs-root {
+  #docs-root,
+  #root {
     display: flex;
     justify-content: center;
     background: ${theme.background};
