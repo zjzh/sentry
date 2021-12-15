@@ -78,6 +78,11 @@ type State = {
 };
 
 class Dashboard extends Component<Props, State> {
+  constructor(props) {
+    super(props);
+    this.getRef = this.getRef.bind(this);
+  }
+
   state = {
     isMobile: false,
   };
@@ -108,6 +113,11 @@ class Dashboard extends Component<Props, State> {
   // because onLayoutChange can trigger before we can set
   // the mobile breakpoint state
   private gridContainer = createRef<HTMLDivElement>();
+
+  getRef(el) {
+    this.gridContainer = el;
+    return this.gridContainer;
+  }
 
   async addNewWidget() {
     const {api, organization, newWidget} = this.props;
@@ -289,7 +299,7 @@ class Dashboard extends Component<Props, State> {
     const canModifyLayout = !isMobile && isEditing;
 
     return (
-      <div ref={this.gridContainer}>
+      <div ref={this.getRef}>
         <GridLayout
           breakpoints={BREAKPOINTS}
           cols={COLUMNS}

@@ -8,6 +8,7 @@ import {act} from 'sentry-test/reactTestingLibrary';
 
 import * as modals from 'sentry/actionCreators/modal';
 import ProjectsStore from 'sentry/stores/projectsStore';
+import GridDashboard from 'sentry/views/dashboardsV2/gridLayout/dashboard';
 import {DashboardState} from 'sentry/views/dashboardsV2/types';
 import * as types from 'sentry/views/dashboardsV2/types';
 import ViewEditDashboard from 'sentry/views/dashboardsV2/view';
@@ -303,6 +304,9 @@ describe('Dashboards > Detail', function () {
         url: '/organizations/org-slug/dashboards/1/',
         method: 'PUT',
         body: TestStubs.Dashboard([widgets[0]], {id: '1', title: 'Custom Errors'}),
+      });
+      jest.spyOn(GridDashboard.prototype, 'getRef').mockImplementation(function () {
+        this.gridContainer = {offsetWidth: 1000};
       });
       wrapper = mountWithTheme(
         <ViewEditDashboard
