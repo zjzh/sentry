@@ -11,7 +11,11 @@ const watchers = [watcherPy, watcherJson];
 
 const makeApiDocsCommand = function () {
   console.log('rebuilding...');
-  output = execSync('make build-api-docs');
+  try {
+    output = execSync('make build-api-docs', {stdio: 'inherit'});
+  } catch (e) {
+    return;
+  }
   console.log(output.toString());
 };
 
