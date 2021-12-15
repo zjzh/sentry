@@ -9,14 +9,25 @@ const watcherJson = sane('api-docs');
 
 const watchers = [watcherPy, watcherJson];
 
+let isCurrentlyRunning = false;
+
 const makeApiDocsCommand = function () {
-  console.log('rebuilding...');
-  try {
-    output = execSync('make build-api-docs', {stdio: 'inherit'});
-  } catch (e) {
+  if (isCurrentlyRunning) {
+    console.log('currently building');
     return;
   }
-  console.log(output.toString());
+  console.log('rebuilding...');
+  try {
+    isCurrentlyRunning = true;
+    output = execSync('make build-api-docs', {stdio: 'inherit'});
+  } catch (e) {
+    isCurrentlyRunning = false;
+    return;
+  }
+  if (output) {
+    console.log(output.toString());
+  }
+  isCurrentlyRunning = false;
 };
 
 for (const w of watchers) {
