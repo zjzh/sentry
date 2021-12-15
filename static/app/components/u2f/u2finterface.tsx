@@ -2,9 +2,10 @@ import * as React from 'react';
 import * as Sentry from '@sentry/react';
 import u2f from 'u2f-api';
 
-import {t, tct} from 'app/locale';
-import ConfigStore from 'app/stores/configStore';
-import {ChallengeData} from 'app/types';
+import {base64urlToBuffer, bufferToBase64url} from 'sentry/components/u2f/webAuthnHelper';
+import {t, tct} from 'sentry/locale';
+import ConfigStore from 'sentry/stores/configStore';
+import {ChallengeData} from 'sentry/types';
 
 type TapParams = {
   response: string;
@@ -13,6 +14,7 @@ type TapParams = {
 
 type Props = {
   challengeData: ChallengeData;
+  isWebauthnSigninFFEnabled: boolean;
   flowMode: string;
   silentIfUnsupported: boolean;
   onTap: ({response, challenge}: TapParams) => Promise<void>;
@@ -39,7 +41,9 @@ class U2fInterface extends React.Component<Props, State> {
   };
 
   async componentDidMount() {
-    const supported = await u2f.isSupported();
+    const supported = this.props.isWebauthnSigninFFEnabled
+      ? !!window.PublicKeyCredential
+      : await u2f.isSupported();
 
     // eslint-disable-next-line react/no-did-mount-set-state
     this.setState({isSupported: supported});
@@ -49,18 +53,22 @@ class U2fInterface extends React.Component<Props, State> {
     }
   }
 
-  invokeU2fFlow() {
-    let promise: Promise<u2f.SignResponse | u2f.RegisterResponse>;
-
-    if (this.props.flowMode === 'sign') {
-      promise = u2f.sign(this.props.challengeData.authenticateRequests);
-    } else if (this.props.flowMode === 'enroll') {
-      const {registerRequests, authenticateRequests} = this.props.challengeData;
-      promise = u2f.register(registerRequests, authenticateRequests);
-    } else {
-      throw new Error(`Unsupported flow mode '${this.props.flowMode}'`);
+  getU2FResponse(data) {
+    if (!data.response) {
+      return JSON.stringify(data);
     }
 
+    const authenticatorData = {
+      keyHandle: data.id,
+      clientData: bufferToBase64url(data.response.clientDataJSON),
+      signatureData: bufferToBase64url(data.response.signature),
+      authenticatorData: bufferToBase64url(data.response.authenticatorData),
+    };
+
+    return JSON.stringify(authenticatorData);
+  }
+
+  submitU2fResponse(promise) {
     promise
       .then(data => {
         this.setState(
@@ -68,7 +76,7 @@ class U2fInterface extends React.Component<Props, State> {
             hasBeenTapped: true,
           },
           () => {
-            const u2fResponse = JSON.stringify(data);
+            const u2fResponse = this.getU2FResponse(data);
             const challenge = JSON.stringify(this.props.challengeData);
 
             if (this.state.responseElement) {
@@ -120,6 +128,54 @@ class U2fInterface extends React.Component<Props, State> {
           hasBeenTapped: false,
         });
       });
+  }
+
+  webAuthnSignIn(authenticateRequests) {
+    const credentials: PublicKeyCredentialDescriptor[] = [];
+    // challenge and appId are the same for each device in authenticateRequests
+    const challenge = authenticateRequests[0].challenge;
+    const appId = authenticateRequests[0].appId;
+
+    authenticateRequests.forEach(device => {
+      credentials.push({
+        id: base64urlToBuffer(device.keyHandle),
+        type: 'public-key',
+        transports: ['usb', 'ble', 'nfc'],
+      });
+    });
+
+    const publicKeyCredentialRequestOptions: PublicKeyCredentialRequestOptions = {
+      challenge: base64urlToBuffer(challenge),
+      allowCredentials: credentials,
+      userVerification: 'discouraged',
+      extensions: {
+        appid: appId,
+      },
+    };
+
+    const promise = navigator.credentials.get({
+      publicKey: publicKeyCredentialRequestOptions,
+    });
+    this.submitU2fResponse(promise);
+  }
+
+  invokeU2fFlow() {
+    let promise: Promise<u2f.SignResponse | u2f.RegisterResponse>;
+
+    if (this.props.flowMode === 'sign') {
+      if (this.props.isWebauthnSigninFFEnabled) {
+        this.webAuthnSignIn(this.props.challengeData.authenticateRequests);
+      } else {
+        promise = u2f.sign(this.props.challengeData.authenticateRequests);
+        this.submitU2fResponse(promise);
+      }
+    } else if (this.props.flowMode === 'enroll') {
+      const {registerRequests, registeredKeys} = this.props.challengeData;
+      promise = u2f.register(registerRequests as any, registeredKeys as any);
+      this.submitU2fResponse(promise);
+    } else {
+      throw new Error(`Unsupported flow mode '${this.props.flowMode}'`);
+    }
   }
 
   onTryAgain = () => {
@@ -180,7 +236,7 @@ class U2fInterface extends React.Component<Props, State> {
             {
               UNKNOWN_ERROR: t('There was an unknown problem, please try again'),
               DEVICE_ERROR: t('Your U2F device reported an error.'),
-              DUPLICATE_DEVICE: t('This device is already in use.'),
+              DUPLICATE_DEVICE: t('This device is already registered with Sentry.'),
               UNKNOWN_DEVICE: t('The device you used for sign-in is unknown.'),
               BAD_APPID: tct(
                 '[p1:The Sentry server administrator modified the ' +

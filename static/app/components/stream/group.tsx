@@ -3,27 +3,27 @@ import {css, Theme} from '@emotion/react';
 import styled from '@emotion/styled';
 import classNames from 'classnames';
 
-import AssigneeSelector from 'app/components/assigneeSelector';
-import GuideAnchor from 'app/components/assistant/guideAnchor';
-import Count from 'app/components/count';
-import DropdownMenu from 'app/components/dropdownMenu';
-import EventOrGroupExtraDetails from 'app/components/eventOrGroupExtraDetails';
-import EventOrGroupHeader from 'app/components/eventOrGroupHeader';
-import Link from 'app/components/links/link';
-import MenuItem from 'app/components/menuItem';
-import {getRelativeSummary} from 'app/components/organizations/timeRangeSelector/utils';
-import {PanelItem} from 'app/components/panels';
-import Placeholder from 'app/components/placeholder';
-import ProgressBar from 'app/components/progressBar';
-import GroupChart from 'app/components/stream/groupChart';
-import GroupCheckBox from 'app/components/stream/groupCheckBox';
-import TimeSince from 'app/components/timeSince';
-import {DEFAULT_STATS_PERIOD} from 'app/constants';
-import {t} from 'app/locale';
-import GroupStore from 'app/stores/groupStore';
-import SelectedGroupStore from 'app/stores/selectedGroupStore';
-import overflowEllipsis from 'app/styles/overflowEllipsis';
-import space from 'app/styles/space';
+import AssigneeSelector from 'sentry/components/assigneeSelector';
+import GuideAnchor from 'sentry/components/assistant/guideAnchor';
+import Count from 'sentry/components/count';
+import DropdownMenu from 'sentry/components/dropdownMenu';
+import EventOrGroupExtraDetails from 'sentry/components/eventOrGroupExtraDetails';
+import EventOrGroupHeader from 'sentry/components/eventOrGroupHeader';
+import Link from 'sentry/components/links/link';
+import MenuItem from 'sentry/components/menuItem';
+import {getRelativeSummary} from 'sentry/components/organizations/timeRangeSelector/utils';
+import {PanelItem} from 'sentry/components/panels';
+import Placeholder from 'sentry/components/placeholder';
+import ProgressBar from 'sentry/components/progressBar';
+import GroupChart from 'sentry/components/stream/groupChart';
+import GroupCheckBox from 'sentry/components/stream/groupCheckBox';
+import TimeSince from 'sentry/components/timeSince';
+import {DEFAULT_STATS_PERIOD} from 'sentry/constants';
+import {t} from 'sentry/locale';
+import GroupStore from 'sentry/stores/groupStore';
+import SelectedGroupStore from 'sentry/stores/selectedGroupStore';
+import overflowEllipsis from 'sentry/styles/overflowEllipsis';
+import space from 'sentry/styles/space';
 import {
   GlobalSelection,
   Group,
@@ -32,22 +32,22 @@ import {
   NewQuery,
   Organization,
   User,
-} from 'app/types';
-import {defined, percent, valueIsEqual} from 'app/utils';
-import {trackAnalyticsEvent} from 'app/utils/analytics';
-import {callIfFunction} from 'app/utils/callIfFunction';
-import EventView from 'app/utils/discover/eventView';
-import {formatPercentage} from 'app/utils/formatters';
-import {queryToObj} from 'app/utils/stream';
-import withGlobalSelection from 'app/utils/withGlobalSelection';
-import withOrganization from 'app/utils/withOrganization';
-import {TimePeriodType} from 'app/views/alerts/rules/details/constants';
+} from 'sentry/types';
+import {defined, percent, valueIsEqual} from 'sentry/utils';
+import trackAdvancedAnalyticsEvent from 'sentry/utils/analytics/trackAdvancedAnalyticsEvent';
+import {callIfFunction} from 'sentry/utils/callIfFunction';
+import EventView from 'sentry/utils/discover/eventView';
+import {formatPercentage} from 'sentry/utils/formatters';
+import {queryToObj} from 'sentry/utils/stream';
+import withGlobalSelection from 'sentry/utils/withGlobalSelection';
+import withOrganization from 'sentry/utils/withOrganization';
+import {TimePeriodType} from 'sentry/views/alerts/rules/details/constants';
 import {
   getTabs,
   isForReviewQuery,
   IssueDisplayOptions,
   Query,
-} from 'app/views/issueList/utils';
+} from 'sentry/views/issueList/utils';
 
 const DiscoveryExclusionFields: string[] = [
   'query',
@@ -177,7 +177,7 @@ class StreamGroup extends React.Component<Props, State> {
     const tab = getTabs(organization).find(([tabQuery]) => tabQuery === query)?.[1];
     const owners = data?.owners || [];
     return {
-      organization_id: organization.id,
+      organization,
       group_id: data.id,
       tab: tab?.analyticsName || 'other',
       was_shown_suggestion: owners.length > 0,
@@ -188,20 +188,14 @@ class StreamGroup extends React.Component<Props, State> {
     const {query, organization} = this.props;
     const {data} = this.state;
     if (query === Query.FOR_REVIEW) {
-      trackAnalyticsEvent({
-        eventKey: 'inbox_tab.issue_clicked',
-        eventName: 'Clicked Issue from Inbox Tab',
-        organization_id: organization.id,
+      trackAdvancedAnalyticsEvent('inbox_tab.issue_clicked', {
+        organization,
         group_id: data.id,
       });
     }
 
     if (query !== undefined) {
-      trackAnalyticsEvent({
-        eventKey: 'issues_stream.issue_clicked',
-        eventName: 'Clicked Issue from Issues Stream',
-        ...this.sharedAnalytics(),
-      });
+      trackAdvancedAnalyticsEvent('issues_stream.issue_clicked', this.sharedAnalytics());
     }
   };
 
@@ -212,9 +206,7 @@ class StreamGroup extends React.Component<Props, State> {
   ) => {
     const {query} = this.props;
     if (query !== undefined) {
-      trackAnalyticsEvent({
-        eventKey: 'issues_stream.issue_assigned',
-        eventName: 'Assigned Issue from Issues Stream',
+      trackAdvancedAnalyticsEvent('issues_stream.issue_assigned', {
         ...this.sharedAnalytics(),
         did_assign_suggestion: !!suggestedAssignee,
         assigned_suggestion_reason: suggestedAssignee?.suggestedReason,
@@ -256,13 +248,14 @@ class StreamGroup extends React.Component<Props, State> {
 
     if (isFiltered && typeof query === 'string') {
       const queryObj = queryToObj(query);
-      for (const queryTag in queryObj)
+      for (const queryTag in queryObj) {
         if (!DiscoveryExclusionFields.includes(queryTag)) {
           const queryVal = queryObj[queryTag].includes(' ')
             ? `"${queryObj[queryTag]}"`
             : queryObj[queryTag];
           queryTerms.push(`${queryTag}:${queryVal}`);
         }
+      }
 
       if (queryObj.__text) {
         queryTerms.push(queryObj.__text);
@@ -310,6 +303,11 @@ class StreamGroup extends React.Component<Props, State> {
     const {data} = this.state;
     const {statusDetails, count} = data as GroupReprocessing;
     const {info, pendingEvents} = statusDetails;
+
+    if (!info) {
+      return null;
+    }
+
     const {totalEvents, dateCreated} = info;
 
     const remainingEventsToReprocess = totalEvents - pendingEvents;
@@ -317,8 +315,6 @@ class StreamGroup extends React.Component<Props, State> {
       remainingEventsToReprocess,
       totalEvents
     );
-
-    const value = remainingEventsToReprocessPercent || 100;
 
     return (
       <React.Fragment>
@@ -330,14 +326,14 @@ class StreamGroup extends React.Component<Props, State> {
             <Placeholder height="17px" />
           ) : (
             <React.Fragment>
-              <Count value={totalEvents} />
+              <Count value={remainingEventsToReprocess} />
               {'/'}
-              <Count value={Number(count)} />
+              <Count value={totalEvents} />
             </React.Fragment>
           )}
         </EventsReprocessedColumn>
         <ProgressColumn>
-          <ProgressBar value={value} />
+          <ProgressBar value={remainingEventsToReprocessPercent} />
         </ProgressColumn>
       </React.Fragment>
     );
@@ -681,6 +677,7 @@ const GroupCheckBoxWrapper = styled('div')`
 
 const primaryStatStyle = (theme: Theme) => css`
   font-size: ${theme.fontSizeLarge};
+  font-variant-numeric: tabular-nums;
 `;
 
 const PrimaryCount = styled(Count)`
@@ -693,6 +690,7 @@ const PrimaryPercent = styled('div')`
 
 const secondaryStatStyle = (theme: Theme) => css`
   font-size: ${theme.fontSizeLarge};
+  font-variant-numeric: tabular-nums;
 
   :before {
     content: '/';
@@ -741,6 +739,7 @@ const StyledMenuItem = styled(({to, children, ...p}: MenuItemProps) => (
 const menuItemStatStyles = css`
   text-align: right;
   font-weight: bold;
+  font-variant-numeric: tabular-nums;
   padding-left: ${space(1)};
 `;
 

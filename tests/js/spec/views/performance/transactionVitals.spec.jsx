@@ -1,14 +1,15 @@
 import {browserHistory} from 'react-router';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
+import {enforceActOnUseLegacyStoreHook, mountWithTheme} from 'sentry-test/enzyme';
 import {initializeOrg} from 'sentry-test/initializeOrg';
+import {act} from 'sentry-test/reactTestingLibrary';
 
-import ProjectsStore from 'app/stores/projectsStore';
-import TransactionVitals from 'app/views/performance/transactionSummary/transactionVitals';
+import ProjectsStore from 'sentry/stores/projectsStore';
+import TransactionVitals from 'sentry/views/performance/transactionSummary/transactionVitals';
 import {
   VITAL_GROUPS,
   ZOOM_KEYS,
-} from 'app/views/performance/transactionSummary/transactionVitals/constants';
+} from 'sentry/views/performance/transactionSummary/transactionVitals/constants';
 
 function initialize({project, features, transaction, query} = {}) {
   features = features || ['performance-view'];
@@ -29,7 +30,7 @@ function initialize({project, features, transaction, query} = {}) {
       },
     },
   });
-  ProjectsStore.loadInitialData(data.organization.projects);
+  act(() => ProjectsStore.loadInitialData(data.organization.projects));
   return data;
 }
 
@@ -66,14 +67,20 @@ const vitals = [
 ];
 
 describe('Performance > Web Vitals', function () {
+  enforceActOnUseLegacyStoreHook();
+
   beforeEach(function () {
     MockApiClient.addMockResponse({
       url: '/organizations/org-slug/projects/',
       body: [],
     });
     MockApiClient.addMockResponse({
-      url: '/organizations/org-slug/is-key-transactions/',
-      body: [],
+      url: '/organizations/org-slug/project-transaction-threshold-override/',
+      method: 'GET',
+      body: {
+        threshold: '800',
+        metric: 'lcp',
+      },
     });
     // Mock baseline measurements
     MockApiClient.addMockResponse({
@@ -107,6 +114,14 @@ describe('Performance > Web Vitals', function () {
     MockApiClient.addMockResponse({
       method: 'GET',
       url: `/organizations/org-slug/key-transactions-list/`,
+      body: [],
+    });
+    MockApiClient.addMockResponse({
+      url: '/prompts-activity/',
+      body: {},
+    });
+    MockApiClient.addMockResponse({
+      url: '/organizations/org-slug/sdk-updates/',
       body: [],
     });
   });

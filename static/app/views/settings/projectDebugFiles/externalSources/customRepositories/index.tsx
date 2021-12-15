@@ -3,21 +3,22 @@ import {InjectedRouter} from 'react-router';
 import styled from '@emotion/styled';
 import {Location} from 'history';
 
-import {addErrorMessage, addSuccessMessage} from 'app/actionCreators/indicator';
-import {openDebugFileSourceModal} from 'app/actionCreators/modal';
-import ProjectActions from 'app/actions/projectActions';
-import {Client} from 'app/api';
-import DropdownAutoComplete from 'app/components/dropdownAutoComplete';
-import DropdownButton from 'app/components/dropdownButton';
-import EmptyStateWarning from 'app/components/emptyStateWarning';
-import HookOrDefault from 'app/components/hookOrDefault';
-import MenuItem from 'app/components/menuItem';
-import {Panel, PanelBody, PanelHeader} from 'app/components/panels';
-import AppStoreConnectContext from 'app/components/projects/appStoreConnectContext';
-import {t} from 'app/locale';
-import {Organization, Project} from 'app/types';
-import {CustomRepo, CustomRepoType} from 'app/types/debugFiles';
-import {defined} from 'app/utils';
+import {addErrorMessage, addSuccessMessage} from 'sentry/actionCreators/indicator';
+import {openDebugFileSourceModal} from 'sentry/actionCreators/modal';
+import ProjectActions from 'sentry/actions/projectActions';
+import {Client} from 'sentry/api';
+import Access from 'sentry/components/acl/access';
+import DropdownAutoComplete from 'sentry/components/dropdownAutoComplete';
+import DropdownButton from 'sentry/components/dropdownButton';
+import EmptyStateWarning from 'sentry/components/emptyStateWarning';
+import HookOrDefault from 'sentry/components/hookOrDefault';
+import MenuItem from 'sentry/components/menuItem';
+import {Panel, PanelBody, PanelHeader} from 'sentry/components/panels';
+import AppStoreConnectContext from 'sentry/components/projects/appStoreConnectContext';
+import {t} from 'sentry/locale';
+import {Organization, Project} from 'sentry/types';
+import {CustomRepo, CustomRepoType} from 'sentry/types/debugFiles';
+import {defined} from 'sentry/utils';
 
 import Repository from './repository';
 import {
@@ -56,8 +57,6 @@ function CustomRepositories({
   }, [location.query, appStoreConnectContext]);
 
   const orgSlug = organization.slug;
-  const hasAppStoreConnectFeatureFlag =
-    !!organization.features?.includes('app-store-connect');
 
   const hasAppStoreConnectMultipleFeatureFlag = !!organization.features?.includes(
     'app-store-connect-multiple'
@@ -68,7 +67,6 @@ function CustomRepositories({
   );
 
   if (
-    hasAppStoreConnectFeatureFlag &&
     !appStoreConnectContext &&
     !dropDownItems.find(
       dropDownItem => dropDownItem.value === CustomRepoType.APP_STORE_CONNECT
@@ -88,7 +86,10 @@ function CustomRepositories({
       return;
     }
 
-    const itemIndex = repositories.findIndex(v => v.id === customRepository);
+    const itemIndex = repositories.findIndex(
+      repository => repository.id === customRepository
+    );
+
     const item = repositories[itemIndex];
 
     if (!item) {
@@ -98,7 +99,7 @@ function CustomRepositories({
     openDebugFileSourceModal({
       sourceConfig: item,
       sourceType: item.type,
-      appStoreConnectContext,
+      appStoreConnectStatusData: appStoreConnectContext?.[item.id],
       onSave: updatedItem =>
         persistData({updatedItem: updatedItem as CustomRepo, index: itemIndex}),
       onClose: handleCloseModal,
@@ -160,7 +161,6 @@ function CustomRepositories({
       query: {
         ...location.query,
         customRepository: undefined,
-        revalidateItunesSession: undefined,
       },
     });
   }
@@ -183,16 +183,12 @@ function CustomRepositories({
     });
   }
 
-  function handleEditRepository(
-    repoId: CustomRepo['id'],
-    revalidateItunesSession?: boolean
-  ) {
+  function handleEditRepository(repoId: CustomRepo['id']) {
     router.push({
       ...location,
       query: {
         ...location.query,
         customRepository: repoId,
-        revalidateItunesSession,
       },
     });
   }
@@ -203,6 +199,9 @@ function CustomRepositories({
         {t('Custom Repositories')}
         <DropdownAutoComplete
           alignMenu="right"
+          onSelect={item => {
+            handleAddRepository(item.value);
+          }}
           items={dropDownItems.map(dropDownItem => {
             const disabled =
               dropDownItem.value === CustomRepoType.APP_STORE_CONNECT &&
@@ -211,6 +210,8 @@ function CustomRepositories({
 
             return {
               ...dropDownItem,
+              value: dropDownItem.value,
+              disabled,
               label: (
                 <HookedAppStoreConnectItem
                   disabled={disabled}
@@ -218,13 +219,7 @@ function CustomRepositories({
                     handleAddRepository(dropDownItem.value);
                   }}
                 >
-                  <StyledMenuItem
-                    onClick={event => {
-                      event.preventDefault();
-                      handleAddRepository(dropDownItem.value);
-                    }}
-                    disabled={disabled}
-                  >
+                  <StyledMenuItem disabled={disabled}>
                     {dropDownItem.label}
                   </StyledMenuItem>
                 </HookedAppStoreConnectItem>
@@ -233,9 +228,22 @@ function CustomRepositories({
           })}
         >
           {({isOpen}) => (
-            <DropdownButton isOpen={isOpen} size="small">
-              {t('Add Repository')}
-            </DropdownButton>
+            <Access access={['project:write']}>
+              {({hasAccess}) => (
+                <DropdownButton
+                  isOpen={isOpen}
+                  title={
+                    !hasAccess
+                      ? t('You do not have permission to add custom repositories.')
+                      : undefined
+                  }
+                  disabled={!hasAccess}
+                  size="small"
+                >
+                  {t('Add Repository')}
+                </DropdownButton>
+              )}
+            </Access>
           )}
         </DropdownAutoComplete>
       </PanelHeader>
@@ -245,23 +253,21 @@ function CustomRepositories({
             <p>{t('No custom repositories configured')}</p>
           </EmptyStateWarning>
         ) : (
-          repositories.map((repository, index) => {
-            const repositoryCopy = {...repository};
-            if (
-              repositoryCopy.type === CustomRepoType.APP_STORE_CONNECT &&
-              repositoryCopy.id === appStoreConnectContext?.id
-            ) {
-              repositoryCopy.details = appStoreConnectContext;
-            }
-            return (
-              <Repository
-                key={index}
-                repository={repositoryCopy}
-                onDelete={handleDeleteRepository}
-                onEdit={handleEditRepository}
-              />
-            );
-          })
+          repositories.map((repository, index) => (
+            <Repository
+              key={index}
+              repository={
+                repository.type === CustomRepoType.APP_STORE_CONNECT
+                  ? {
+                      ...repository,
+                      details: appStoreConnectContext?.[repository.id],
+                    }
+                  : repository
+              }
+              onDelete={handleDeleteRepository}
+              onEdit={handleEditRepository}
+            />
+          ))
         )}
       </PanelBody>
     </Panel>

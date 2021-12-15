@@ -136,18 +136,6 @@ def inbox_search(
 
 class OrganizationGroupIndexEndpoint(OrganizationEventsEndpointBase):
     permission_classes = (OrganizationEventPermission,)
-    skip_snuba_fields = {
-        "query",
-        "status",
-        "bookmarked_by",
-        "assigned_to",
-        "unassigned",
-        "linked",
-        "subscribed_by",
-        "active_at",
-        "first_release",
-        "first_seen",
-    }
 
     def _search(self, request, organization, projects, environments, extra_query_kwargs=None):
         query_kwargs = build_query_params_from_request(
@@ -340,7 +328,7 @@ class OrganizationGroupIndexEndpoint(OrganizationEventsEndpointBase):
         return response
 
     @track_slo_response("workflow")
-    @rate_limit_endpoint(limit=10, window=1)
+    @rate_limit_endpoint(limit=5, window=5)
     def put(self, request, organization):
         """
         Bulk Mutate a List of Issues
@@ -423,7 +411,7 @@ class OrganizationGroupIndexEndpoint(OrganizationEventsEndpointBase):
         )
 
     @track_slo_response("workflow")
-    @rate_limit_endpoint(limit=10, window=1)
+    @rate_limit_endpoint(limit=5, window=5)
     def delete(self, request, organization):
         """
         Bulk Remove a List of Issues

@@ -2,11 +2,11 @@ import * as React from 'react';
 import {css} from '@emotion/react';
 import styled from '@emotion/styled';
 
-import Button from 'app/components/button';
-import ButtonBar from 'app/components/buttonBar';
-import {IconClose} from 'app/icons';
-import {t} from 'app/locale';
-import space from 'app/styles/space';
+import Button from 'sentry/components/button';
+import ButtonBar from 'sentry/components/buttonBar';
+import {IconClose} from 'sentry/icons';
+import {t} from 'sentry/locale';
+import space from 'sentry/styles/space';
 
 const makeKey = (prefix: string) => `${prefix}-banner-dismissed`;
 
@@ -65,7 +65,7 @@ const Banner: BannerType = ({
   return (
     <BannerWrapper backgroundImg={backgroundImg} className={className}>
       {backgroundComponent}
-      {isDismissable ? <CloseButton onClick={dismiss} /> : null}
+      {isDismissable ? <CloseButton onClick={dismiss} aria-label={t('Close')} /> : null}
       <BannerContent>
         <BannerTitle>{title}</BannerTitle>
         <BannerSubtitle>{subtitle}</BannerSubtitle>

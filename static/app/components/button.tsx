@@ -3,11 +3,11 @@ import isPropValid from '@emotion/is-prop-valid';
 import {css} from '@emotion/react';
 import styled from '@emotion/styled';
 
-import ExternalLink from 'app/components/links/externalLink';
-import Link from 'app/components/links/link';
-import Tooltip from 'app/components/tooltip';
-import mergeRefs from 'app/utils/mergeRefs';
-import {Theme} from 'app/utils/theme';
+import ExternalLink from 'sentry/components/links/externalLink';
+import Link from 'sentry/components/links/link';
+import Tooltip from 'sentry/components/tooltip';
+import mergeRefs from 'sentry/utils/mergeRefs';
+import {Theme} from 'sentry/utils/theme';
 
 /**
  * The button can actually also be an anchor or React router Link (which seems
@@ -151,15 +151,15 @@ type StyledButtonProps = ButtonProps & {theme: Theme};
 
 const getFontSize = ({size, priority, theme}: StyledButtonProps) => {
   if (priority === 'link') {
-    return 'inherit';
+    return 'font-size: inherit';
   }
 
   switch (size) {
     case 'xsmall':
     case 'small':
-      return theme.fontSizeSmall;
+      return `font-size: ${theme.fontSizeSmall}`;
     default:
-      return theme.fontSizeMedium;
+      return `font-size: ${theme.fontSizeMedium}`;
   }
 };
 
@@ -167,13 +167,18 @@ const getFontWeight = ({priority, borderless}: StyledButtonProps) =>
   `font-weight: ${priority === 'link' || borderless ? 'inherit' : 600};`;
 
 const getBoxShadow =
-  (active: boolean) =>
+  (theme: Theme) =>
   ({priority, borderless, disabled}: StyledButtonProps) => {
     if (disabled || borderless || priority === 'link') {
       return 'box-shadow: none';
     }
 
-    return `box-shadow: ${active ? 'inset' : ''} 0 2px rgba(0, 0, 0, 0.05)`;
+    return `
+      box-shadow: ${theme.dropShadowLight};
+      &:active {
+        box-shadow: inset ${theme.dropShadowLight};
+      }
+    `;
   };
 
 const getColors = ({priority, disabled, borderless, theme}: StyledButtonProps) => {
@@ -185,14 +190,14 @@ const getColors = ({priority, disabled, borderless, theme}: StyledButtonProps) =
     backgroundActive,
     border,
     borderActive,
+    focusBorder,
     focusShadow,
   } = theme.button[themeName];
 
   return css`
     color: ${color};
     background-color: ${background};
-    border: 1px solid
-      ${priority !== 'link' && !borderless && !!border ? border : 'transparent'};
+    border: 1px solid ${borderless ? 'transparent' : border};
 
     &:hover {
       color: ${color};
@@ -203,13 +208,12 @@ const getColors = ({priority, disabled, borderless, theme}: StyledButtonProps) =
     &:active {
       color: ${colorActive || color};
       background: ${backgroundActive};
-      border-color: ${priority !== 'link' && !borderless && (borderActive || border)
-        ? borderActive || border
-        : 'transparent'};
+      border-color: ${borderless ? 'transparent' : borderActive};
     }
 
     &.focus-visible {
-      ${focusShadow && `box-shadow: ${focusShadow} 0 0 0 3px;`}
+      border: 1px solid ${focusBorder};
+      box-shadow: ${focusBorder} 0 0 0 1px, ${focusShadow} 0 0 0 4px;
     }
   `;
 };
@@ -217,7 +221,7 @@ const getColors = ({priority, disabled, borderless, theme}: StyledButtonProps) =
 const StyledButton = styled(
   React.forwardRef<any, ButtonProps>(
     (
-      {forwardRef, size: _size, external, to, href, ...otherProps}: Props,
+      {forwardRef, size: _size, external, to, href, disabled, ...otherProps}: Props,
       forwardRefAlt
     ) => {
       // XXX: There may be two forwarded refs here, one potentially passed from a
@@ -234,15 +238,15 @@ const StyledButton = styled(
       // Get component to use based on existence of `to` or `href` properties
       // Can be react-router `Link`, `a`, or `button`
       if (to) {
-        return <Link ref={ref} to={to} {...props} />;
+        return <Link ref={ref} to={to} disabled={disabled} {...props} />;
       }
 
       if (!href) {
-        return <button ref={ref} {...props} />;
+        return <button ref={ref} disabled={disabled} {...props} />;
       }
 
       if (external && href) {
-        return <ExternalLink ref={ref} href={href} {...props} />;
+        return <ExternalLink ref={ref} href={href} disabled={disabled} {...props} />;
       }
 
       return <a ref={ref} {...props} href={href} />;
@@ -252,7 +256,7 @@ const StyledButton = styled(
     shouldForwardProp: prop =>
       prop === 'forwardRef' ||
       prop === 'external' ||
-      (typeof prop === 'string' && isPropValid(prop) && prop !== 'disabled'),
+      (typeof prop === 'string' && isPropValid(prop)),
   }
 )<Props>`
   display: inline-block;
@@ -261,20 +265,15 @@ const StyledButton = styled(
   padding: 0;
   text-transform: none;
   ${getFontWeight};
-  font-size: ${getFontSize};
+  ${getFontSize};
   ${getColors};
-  ${getBoxShadow(false)};
+  ${p => getBoxShadow(p.theme)};
   cursor: ${p => (p.disabled ? 'not-allowed' : 'pointer')};
   opacity: ${p => (p.busy || p.disabled) && '0.65'};
 
-  &:active {
-    ${getBoxShadow(true)};
-  }
   &:focus {
     outline: none;
   }
-
-  ${p => (p.borderless || p.priority === 'link') && 'border-color: transparent'};
 `;
 
 /**

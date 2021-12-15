@@ -42,6 +42,7 @@ from sentry.models import (
     ScheduledDeletion,
 )
 from sentry.notifications.types import NotificationSettingTypes
+from sentry.notifications.utils import has_alert_integration
 from sentry.notifications.utils.legacy_mappings import get_option_value_from_boolean
 from sentry.types.integrations import ExternalProviders
 from sentry.utils import json
@@ -228,14 +229,6 @@ class ProjectAdminSerializer(ProjectMemberSerializer):
 
         organization = self.context["project"].organization
         request = self.context["request"]
-        has_sources = features.has(
-            "organizations:custom-symbol-sources", organization, actor=request.user
-        )
-
-        if not has_sources:
-            raise serializers.ValidationError(
-                "Organization is not allowed to set custom symbol sources"
-            )
 
         try:
             # We should really only grab and parse if there are sources in sources_json whose
@@ -248,6 +241,22 @@ class ProjectAdminSerializer(ProjectMemberSerializer):
             raise serializers.ValidationError(str(e))
 
         sources_json = json.dumps(sources) if sources else ""
+
+        # If no sources are added or modified, we're either only deleting sources or doing nothing.
+        # This is always allowed.
+        added_or_modified_sources = [s for s in sources if s not in orig_sources]
+        if not added_or_modified_sources:
+            return sources_json
+
+        # Adding sources is only allowed if custom symbol sources are enabled.
+        has_sources = features.has(
+            "organizations:custom-symbol-sources", organization, actor=request.user
+        )
+
+        if not has_sources:
+            raise serializers.ValidationError(
+                "Organization is not allowed to set custom symbol sources"
+            )
 
         has_multiple_appconnect = features.has(
             "organizations:app-store-connect-multiple", organization, actor=request.user
@@ -365,9 +374,14 @@ class ProjectDetailsEndpoint(ProjectEndpoint):
         """
         data = serialize(project, request.user, DetailedProjectSerializer())
 
+        # TODO: should switch to expand and move logic into the serializer
         include = set(filter(bool, request.GET.get("include", "").split(",")))
         if "stats" in include:
             data["stats"] = {"unresolved": self._get_unresolved_count(project)}
+
+        expand = request.GET.getlist("expand", [])
+        if "hasAlertIntegration" in expand:
+            data["hasAlertIntegrationInstalled"] = has_alert_integration(project)
 
         return Response(data)
 
@@ -415,6 +429,12 @@ class ProjectDetailsEndpoint(ProjectEndpoint):
 
         allow_dynamic_sampling = features.has(
             "organizations:filters-and-sampling", project.organization, actor=request.user
+        )
+
+        allow_dynamic_sampling_error_rules = features.has(
+            "organizations:filters-and-sampling-error-rules",
+            project.organization,
+            actor=request.user,
         )
 
         if not allow_dynamic_sampling and result.get("dynamicSampling"):
@@ -598,6 +618,19 @@ class ProjectDetailsEndpoint(ProjectEndpoint):
 
         if "dynamicSampling" in result:
             raw_dynamic_sampling = result["dynamicSampling"]
+            if (
+                not allow_dynamic_sampling_error_rules
+                and self._dynamic_sampling_contains_error_rule(raw_dynamic_sampling)
+            ):
+                return Response(
+                    {
+                        "detail": [
+                            "Dynamic Sampling only accepts rules of type transaction or trace"
+                        ]
+                    },
+                    status=400,
+                )
+
             fixed_rules = self._fix_rule_ids(project, raw_dynamic_sampling)
             project.update_option("sentry:dynamic_sampling", fixed_rules)
 
@@ -726,7 +759,7 @@ class ProjectDetailsEndpoint(ProjectEndpoint):
 
         Schedules a project for deletion.
 
-        Deletion happens asynchronously and therefor is not immediate.
+        Deletion happens asynchronously and therefore is not immediate.
         However once deletion has begun the state of a project changes and
         will be hidden from most public views.
 
@@ -800,3 +833,10 @@ class ProjectDetailsEndpoint(ProjectEndpoint):
 
         raw_dynamic_sampling["next_id"] = next_id
         return raw_dynamic_sampling
+
+    def _dynamic_sampling_contains_error_rule(self, raw_dynamic_sampling):
+        if raw_dynamic_sampling is not None:
+            rules = raw_dynamic_sampling.get("rules", [])
+            for rule in rules:
+                if rule["type"] == "error":
+                    return True

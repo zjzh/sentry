@@ -2,17 +2,17 @@ import * as React from 'react';
 import styled from '@emotion/styled';
 import uniq from 'lodash/uniq';
 
-import {bulkDelete, bulkUpdate, mergeGroups} from 'app/actionCreators/group';
-import {addLoadingMessage, clearIndicators} from 'app/actionCreators/indicator';
-import {Client} from 'app/api';
-import Checkbox from 'app/components/checkbox';
-import {t, tct, tn} from 'app/locale';
-import GroupStore from 'app/stores/groupStore';
-import SelectedGroupStore from 'app/stores/selectedGroupStore';
-import space from 'app/styles/space';
-import {GlobalSelection, Group, Organization} from 'app/types';
-import {callIfFunction} from 'app/utils/callIfFunction';
-import withApi from 'app/utils/withApi';
+import {bulkDelete, bulkUpdate, mergeGroups} from 'sentry/actionCreators/group';
+import {addLoadingMessage, clearIndicators} from 'sentry/actionCreators/indicator';
+import {Client} from 'sentry/api';
+import Checkbox from 'sentry/components/checkbox';
+import {t, tct, tn} from 'sentry/locale';
+import GroupStore from 'sentry/stores/groupStore';
+import SelectedGroupStore from 'sentry/stores/selectedGroupStore';
+import space from 'sentry/styles/space';
+import {GlobalSelection, Group, Organization} from 'sentry/types';
+import {callIfFunction} from 'sentry/utils/callIfFunction';
+import withApi from 'sentry/utils/withApi';
 
 import ActionSet from './actionSet';
 import Headers from './headers';
@@ -255,7 +255,7 @@ class IssueListActions extends React.Component<Props, State> {
     return (
       <Sticky>
         <StyledFlex>
-          <ActionsCheckbox>
+          <ActionsCheckbox isReprocessingQuery={displayReprocessingActions}>
             <Checkbox
               onChange={this.handleSelectAll}
               checked={pageSelected}
@@ -349,20 +349,20 @@ const StyledFlex = styled('div')`
   margin: 0 -1px -1px;
 `;
 
-const ActionsCheckbox = styled('div')`
+const ActionsCheckbox = styled('div')<{isReprocessingQuery: boolean}>`
   padding-left: ${space(2)};
   margin-bottom: 1px;
   & input[type='checkbox'] {
     margin: 0;
     display: block;
   }
+  ${p => p.isReprocessingQuery && 'flex: 1'};
 `;
 
 const SelectAllNotice = styled('div')`
   background-color: ${p => p.theme.yellow100};
   border-top: 1px solid ${p => p.theme.yellow300};
   border-bottom: 1px solid ${p => p.theme.yellow300};
-  color: ${p => p.theme.black};
   font-size: ${p => p.theme.fontSizeMedium};
   text-align: center;
   padding: ${space(0.5)} ${space(1.5)};

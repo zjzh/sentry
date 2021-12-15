@@ -1,7 +1,7 @@
 import Reflux from 'reflux';
 
-import FormSearchActions from 'app/actions/formSearchActions';
-import {FieldObject} from 'app/views/settings/components/forms/type';
+import FormSearchActions from 'sentry/actions/formSearchActions';
+import {FieldObject} from 'sentry/views/settings/components/forms/type';
 
 /**
  * Processed form field metadata.
@@ -14,8 +14,8 @@ export type FormSearchField = {
 };
 
 type StoreInterface = {
-  reset: () => void;
-  get: () => Internals['searchMap'];
+  reset(): void;
+  get(): Internals['searchMap'];
 };
 
 type Internals = {
@@ -26,7 +26,7 @@ type Internals = {
 /**
  * Store for "form" searches, but probably will include more
  */
-const formSearchStoreConfig: Reflux.StoreDefinition & Internals & StoreInterface = {
+const storeConfig: Reflux.StoreDefinition & Internals & StoreInterface = {
   searchMap: null,
 
   init() {
@@ -57,8 +57,6 @@ const formSearchStoreConfig: Reflux.StoreDefinition & Internals & StoreInterface
   },
 };
 
-type FormSearchStore = Reflux.Store & StoreInterface;
-
-const FormSearchStore = Reflux.createStore(formSearchStoreConfig) as FormSearchStore;
+const FormSearchStore = Reflux.createStore(storeConfig) as Reflux.Store & StoreInterface;
 
 export default FormSearchStore;

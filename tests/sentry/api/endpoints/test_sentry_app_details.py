@@ -1,11 +1,13 @@
+from unittest.mock import patch
+
 from django.urls import reverse
 
 from sentry.constants import SentryAppStatus
 from sentry.models import OrganizationMember, SentryApp
+from sentry.models.integrationfeature import IntegrationTypes
 from sentry.testutils import APITestCase
 from sentry.testutils.helpers import Feature, with_feature
 from sentry.utils import json
-from sentry.utils.compat.mock import patch
 
 
 class SentryAppDetailsTest(APITestCase):
@@ -15,17 +17,26 @@ class SentryAppDetailsTest(APITestCase):
         self.org = self.create_organization(owner=self.user)
         self.project = self.create_project(organization=self.org)
         self.super_org = self.create_organization(owner=self.superuser)
+        self.popularity = 27
         self.published_app = self.create_sentry_app(
-            name="Test", organization=self.org, published=True
+            name="Test",
+            organization=self.org,
+            published=True,
+            popularity=self.popularity,
         )
 
-        self.unpublished_app = self.create_sentry_app(name="Testin", organization=self.org)
+        self.unpublished_app = self.create_sentry_app(
+            name="Testin",
+            organization=self.org,
+            popularity=self.popularity,
+        )
 
         self.unowned_unpublished_app = self.create_sentry_app(
             name="Nosee",
             organization=self.create_organization(),
             scopes=(),
             webhook_url="https://example.com",
+            popularity=self.popularity,
         )
 
         self.internal_integration = self.create_internal_integration(organization=self.org)
@@ -125,8 +136,12 @@ class UpdateSentryAppDetailsTest(SentryAppDetailsTest):
                 {
                     "description": "Test can **utilize the Sentry API** to pull data or update resources in Sentry (with permissions granted, of course).",
                     "featureGate": "integrations-api",
+                    "targetId": self.published_app.id,
+                    "targetType": IntegrationTypes.SENTRY_APP.value,
                 }
             ],
+            "popularity": self.popularity,
+            "avatars": [],
         }
 
     def test_update_unpublished_app(self):
@@ -205,6 +220,26 @@ class UpdateSentryAppDetailsTest(SentryAppDetailsTest):
             url, data={"name": "NewName", "webhookUrl": "https://newurl.com"}, format="json"
         )
         assert response.status_code == 404
+
+    def test_superusers_can_update_popularity(self):
+        self.login_as(user=self.superuser, superuser=True)
+        app = self.create_sentry_app(name="SampleApp", organization=self.org)
+        assert not app.date_published
+        url = reverse("sentry-api-0-sentry-app-details", args=[app.slug])
+        popularity = 100
+        response = self.client.put(url, data={"popularity": popularity}, format="json")
+        assert response.status_code == 200
+        assert SentryApp.objects.get(id=app.id).popularity == popularity
+
+    def test_nonsuperusers_cannot_update_popularity(self):
+        self.login_as(user=self.user)
+        app = self.create_sentry_app(
+            name="SampleApp", organization=self.org, popularity=self.popularity
+        )
+        url = reverse("sentry-api-0-sentry-app-details", args=[app.slug])
+        response = self.client.put(url, data={"popularity": 100}, format="json")
+        assert response.status_code == 200
+        assert SentryApp.objects.get(id=app.id).popularity == self.popularity
 
     def test_superusers_can_publish_apps(self):
         self.login_as(user=self.superuser, superuser=True)

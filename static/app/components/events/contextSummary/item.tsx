@@ -2,7 +2,7 @@ import * as React from 'react';
 import styled from '@emotion/styled';
 import classNames from 'classnames';
 
-import space from 'app/styles/space';
+import space from 'sentry/styles/space';
 
 type Props = {
   icon: React.ReactElement;
@@ -11,7 +11,7 @@ type Props = {
 };
 
 const Item = ({children, icon, className}: Props) => (
-  <Wrapper className={classNames('context-item', className)}>
+  <Wrapper className={classNames('context-item', className)} data-test-id="context-item">
     {icon}
     {children && <Details>{children}</Details>}
   </Wrapper>

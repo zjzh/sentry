@@ -1,43 +1,42 @@
 import isEqual from 'lodash/isEqual';
 import Reflux from 'reflux';
 
-import GlobalSelectionActions from 'app/actions/globalSelectionActions';
-import {getDefaultSelection} from 'app/components/organizations/globalSelectionHeader/utils';
-import {LOCAL_STORAGE_KEY} from 'app/constants/globalSelectionHeader';
-import OrganizationsStore from 'app/stores/organizationsStore';
-import {GlobalSelection, Organization} from 'app/types';
-import {isEqualWithDates} from 'app/utils/isEqualWithDates';
-import localStorage from 'app/utils/localStorage';
+import GlobalSelectionActions from 'sentry/actions/globalSelectionActions';
+import {getDefaultSelection} from 'sentry/components/organizations/globalSelectionHeader/utils';
+import {LOCAL_STORAGE_KEY} from 'sentry/constants/pageFilters';
+import OrganizationsStore from 'sentry/stores/organizationsStore';
+import {GlobalSelection, Organization} from 'sentry/types';
+import {isEqualWithDates} from 'sentry/utils/isEqualWithDates';
+import localStorage from 'sentry/utils/localStorage';
+
+import {CommonStoreInterface} from './types';
 
 type UpdateData = {
   project: number[];
   environment: string[];
 };
 
-type StoreState = {
+type State = {
   selection: GlobalSelection;
   isReady: boolean;
 };
 
-type GlobalSelectionStoreInterface = {
+type GlobalSelectionStoreInterface = CommonStoreInterface<State> & {
   state: GlobalSelection;
 
-  reset: (state?: GlobalSelection) => void;
-  onReset: () => void;
-  isReady: () => boolean;
-  onSetOrganization: (organization: Organization) => void;
-  onInitializeUrlState: (newSelection: GlobalSelection) => void;
-  get: () => StoreState;
-  updateProjects: (
+  reset(state?: GlobalSelection): void;
+  onReset(): void;
+  isReady(): boolean;
+  onSetOrganization(organization: Organization): void;
+  onInitializeUrlState(newSelection: GlobalSelection): void;
+  updateProjects(
     projects: GlobalSelection['projects'],
     environments: null | string[]
-  ) => void;
-  updateDateTime: (datetime: GlobalSelection['datetime']) => void;
-  updateEnvironments: (environments: string[]) => void;
-  onSave: (data: UpdateData) => void;
+  ): void;
+  updateDateTime(datetime: GlobalSelection['datetime']): void;
+  updateEnvironments(environments: string[]): void;
+  onSave(data: UpdateData): void;
 };
-
-type GlobalSelectionStore = Reflux.Store & GlobalSelectionStoreInterface;
 
 const storeConfig: Reflux.StoreDefinition & GlobalSelectionStoreInterface = {
   state: getDefaultSelection(),
@@ -74,10 +73,10 @@ const storeConfig: Reflux.StoreDefinition & GlobalSelectionStoreInterface = {
   onInitializeUrlState(newSelection) {
     this._hasInitialState = true;
     this.state = newSelection;
-    this.trigger(this.get());
+    this.trigger(this.getState());
   },
 
-  get() {
+  getState() {
     return {
       selection: this.state,
       isReady: this.isReady(),
@@ -86,7 +85,7 @@ const storeConfig: Reflux.StoreDefinition & GlobalSelectionStoreInterface = {
 
   onReset() {
     this.reset();
-    this.trigger(this.get());
+    this.trigger(this.getState());
   },
 
   updateProjects(projects = [], environments = null) {
@@ -99,7 +98,7 @@ const storeConfig: Reflux.StoreDefinition & GlobalSelectionStoreInterface = {
       projects,
       environments: environments === null ? this.state.environments : environments,
     };
-    this.trigger(this.get());
+    this.trigger(this.getState());
   },
 
   updateDateTime(datetime) {
@@ -111,7 +110,7 @@ const storeConfig: Reflux.StoreDefinition & GlobalSelectionStoreInterface = {
       ...this.state,
       datetime,
     };
-    this.trigger(this.get());
+    this.trigger(this.getState());
   },
 
   updateEnvironments(environments) {
@@ -123,7 +122,7 @@ const storeConfig: Reflux.StoreDefinition & GlobalSelectionStoreInterface = {
       ...this.state,
       environments: environments ?? [],
     };
-    this.trigger(this.get());
+    this.trigger(this.getState());
   },
 
   /**
@@ -162,6 +161,7 @@ const storeConfig: Reflux.StoreDefinition & GlobalSelectionStoreInterface = {
   },
 };
 
-const GlobalSelectionStore = Reflux.createStore(storeConfig) as GlobalSelectionStore;
+const GlobalSelectionStore = Reflux.createStore(storeConfig) as Reflux.Store &
+  GlobalSelectionStoreInterface;
 
 export default GlobalSelectionStore;

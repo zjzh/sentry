@@ -14,7 +14,17 @@ from django.db.models import Func
 from django.utils.encoding import force_text
 from pytz import UTC
 
-from sentry import buffer, eventstore, eventstream, eventtypes, features, options, quotas, tsdb
+from sentry import (
+    buffer,
+    eventstore,
+    eventstream,
+    eventtypes,
+    features,
+    options,
+    quotas,
+    reprocessing2,
+    tsdb,
+)
 from sentry.attachments import MissingAttachmentChunks, attachment_cache
 from sentry.constants import (
     DEFAULT_STORE_NORMALIZER_ARGS,
@@ -65,14 +75,12 @@ from sentry.models import (
     UserReport,
     get_crashreport_key,
 )
+from sentry.models.grouphistory import GroupHistoryStatus, record_group_history
 from sentry.plugins.base import plugins
-from sentry.reprocessing2 import (
-    delete_old_primary_hash,
-    is_reprocessed_event,
-    save_unprocessed_event,
-)
+from sentry.reprocessing2 import is_reprocessed_event, save_unprocessed_event
 from sentry.signals import first_event_received, first_transaction_received, issue_unresolved
 from sentry.tasks.integrations import kick_off_status_syncs
+from sentry.types.activity import ActivityType
 from sentry.utils import json, metrics
 from sentry.utils.cache import cache_key_for_event
 from sentry.utils.canonical import CanonicalKeyDict
@@ -513,7 +521,16 @@ class EventManager:
                 )
 
         if is_reprocessed:
-            safe_execute(delete_old_primary_hash, job["event"], _with_transaction=False)
+            safe_execute(
+                reprocessing2.buffered_delete_old_primary_hash,
+                project_id=job["event"].project_id,
+                group_id=reprocessing2.get_original_group_id(job["event"]),
+                event_id=job["event"].event_id,
+                datetime=job["event"].datetime,
+                old_primary_hash=reprocessing2.get_original_primary_hash(job["event"]),
+                current_primary_hash=job["event"].get_primary_hash(),
+                _with_transaction=False,
+            )
 
         _eventstream_insert_many(jobs)
 
@@ -1277,6 +1294,8 @@ def _handle_regression(group, event, release):
     group.status = GroupStatus.UNRESOLVED
 
     if is_regression and release:
+        resolution = None
+
         # resolutions are only valid if the state of the group is still
         # resolved -- if it were to change the resolution should get removed
         try:
@@ -1289,13 +1308,15 @@ def _handle_regression(group, event, release):
             cursor.execute("DELETE FROM sentry_groupresolution WHERE id = %s", [resolution.id])
             affected = cursor.rowcount > 0
 
-        if affected:
+        if affected and resolution:
             # if we had to remove the GroupResolution (i.e. we beat the
             # the queue to handling this) then we need to also record
             # the corresponding event
             try:
                 activity = Activity.objects.filter(
-                    group=group, type=Activity.SET_RESOLVED_IN_RELEASE, ident=resolution.id
+                    group=group,
+                    type=Activity.SET_RESOLVED_IN_RELEASE,
+                    ident=resolution.id,
                 ).order_by("-datetime")[0]
             except IndexError:
                 # XXX: handle missing data, as its not overly important
@@ -1314,13 +1335,10 @@ def _handle_regression(group, event, release):
                     activity.update(data={"version": release.version})
 
     if is_regression:
-        activity = Activity.objects.create(
-            project_id=group.project_id,
-            group=group,
-            type=Activity.SET_REGRESSION,
-            data={"version": release.version if release else ""},
+        Activity.objects.create_group_activity(
+            group, ActivityType.SET_REGRESSION, data={"version": release.version if release else ""}
         )
-        activity.send_notification()
+        record_group_history(group, GroupHistoryStatus.REGRESSED, actor=None, release=release)
 
         kick_off_status_syncs.apply_async(
             kwargs={"project_id": group.project_id, "group_id": group.id}
@@ -1697,6 +1715,27 @@ def _calculate_event_grouping(project, event, grouping_config) -> CalculatedHash
     return hashes
 
 
+@metrics.wraps("save_event.calculate_span_grouping")
+def _calculate_span_grouping(jobs, projects):
+    for job in jobs:
+        # Make sure this snippet doesn't crash ingestion
+        # as the feature is under development.
+        try:
+            event = job["event"]
+            project = projects[job["project_id"]]
+
+            if not features.has(
+                "projects:performance-suspect-spans-ingestion",
+                project=project,
+            ):
+                continue
+
+            groupings = event.get_span_groupings()
+            groupings.write_to_event(event.data)
+        except Exception:
+            sentry_sdk.capture_exception()
+
+
 @metrics.wraps("event_manager.save_transaction_events")
 def save_transaction_events(jobs, projects):
     with metrics.timer("event_manager.save_transactions.collect_organization_ids"):
@@ -1730,6 +1769,7 @@ def save_transaction_events(jobs, projects):
     _get_event_user_many(jobs, projects)
     _derive_plugin_tags_many(jobs, projects)
     _derive_interface_tags_many(jobs)
+    _calculate_span_grouping(jobs, projects)
     _materialize_metadata_many(jobs)
     _get_or_create_environment_many(jobs, projects)
     _get_or_create_release_associated_models(jobs, projects)

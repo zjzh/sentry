@@ -3,7 +3,7 @@ import {browserHistory} from 'react-router';
 import {mountWithTheme} from 'sentry-test/enzyme';
 import {initializeOrg} from 'sentry-test/initializeOrg';
 
-import GroupEventDetails from 'app/views/organizationGroupDetails/groupEventDetails/groupEventDetails';
+import GroupEventDetails from 'sentry/views/organizationGroupDetails/groupEventDetails/groupEventDetails';
 
 describe('groupEventDetails', () => {
   let org;
@@ -119,6 +119,11 @@ describe('groupEventDetails', () => {
     MockApiClient.addMockResponse({
       url: `/organizations/${org.slug}/sentry-app-components/?projectId=${project.id}`,
       body: [],
+    });
+
+    MockApiClient.addMockResponse({
+      url: '/projects/org-slug/project-slug/',
+      body: project,
     });
   });
 
@@ -421,7 +426,7 @@ describe('groupEventDetails', () => {
         body: [unpublishedInstall, internalInstall],
       });
 
-      wrapper = mountWithThemeWrapper();
+      mountWithThemeWrapper();
     });
 
     it('loads Integration UI components', () => {

@@ -1,20 +1,20 @@
 import * as React from 'react';
-import {withTheme} from '@emotion/react';
+import {useTheme} from '@emotion/react';
 import styled from '@emotion/styled';
 
-import Access from 'app/components/acl/access';
-import Alert from 'app/components/alert';
-import Button from 'app/components/button';
-import CircleIndicator from 'app/components/circleIndicator';
-import Confirm from 'app/components/confirm';
-import Tooltip from 'app/components/tooltip';
-import {IconDelete, IconFlag, IconSettings} from 'app/icons';
-import {t} from 'app/locale';
-import space from 'app/styles/space';
-import {Integration, IntegrationProvider, ObjectStatus, Organization} from 'app/types';
-import {IntegrationAnalyticsKey} from 'app/utils/analytics/integrationAnalyticsEvents';
-import {Theme} from 'app/utils/theme';
+import Access from 'sentry/components/acl/access';
+import Alert from 'sentry/components/alert';
+import Button from 'sentry/components/button';
+import CircleIndicator from 'sentry/components/circleIndicator';
+import Confirm from 'sentry/components/confirm';
+import Tooltip from 'sentry/components/tooltip';
+import {IconDelete, IconFlag, IconSettings, IconWarning} from 'sentry/icons';
+import {t} from 'sentry/locale';
+import space from 'sentry/styles/space';
+import {Integration, IntegrationProvider, ObjectStatus, Organization} from 'sentry/types';
+import {IntegrationAnalyticsKey} from 'sentry/utils/analytics/integrationAnalyticsEvents';
 
+import AddIntegrationButton from './addIntegrationButton';
 import IntegrationItem from './integrationItem';
 
 export type Props = {
@@ -25,6 +25,7 @@ export type Props = {
   onDisable: (integration: Integration) => void;
   trackIntegrationAnalytics: (eventKey: IntegrationAnalyticsKey) => void; // analytics callback
   className?: string;
+  requiresUpgrade?: boolean;
 };
 
 export default class InstalledIntegration extends React.Component<Props> {
@@ -38,19 +39,27 @@ export default class InstalledIntegration extends React.Component<Props> {
         body: aspects.removal_dialog.body,
         actionText: aspects.removal_dialog.actionText,
       };
-    } else {
-      return {
-        body: t(
-          'Deleting this integration will remove any project associated data. This action cannot be undone. Are you sure you want to delete this integration?'
-        ),
-        actionText: t('Delete'),
-      };
     }
+    return {
+      body: t(
+        'Deleting this integration will remove any project associated data. This action cannot be undone. Are you sure you want to delete this integration?'
+      ),
+      actionText: t('Delete'),
+    };
   }
 
   handleRemove(integration: Integration) {
     this.props.onRemove(integration);
     this.props.trackIntegrationAnalytics('integrations.uninstall_completed');
+  }
+
+  get integrationStatus() {
+    const {integration} = this.props;
+    // there are multiple status fields for an integration we consider
+    const statusList = [integration.status, integration.organizationIntegrationStatus];
+    const firstNotActive = statusList.find(s => s !== 'active');
+    // Active if everything is active, otherwise the first inactive status
+    return firstNotActive ?? 'active';
   }
 
   get removeConfirmProps() {
@@ -92,10 +101,10 @@ export default class InstalledIntegration extends React.Component<Props> {
   }
 
   render() {
-    const {className, integration, provider, organization} = this.props;
+    const {className, integration, organization, provider, requiresUpgrade} = this.props;
 
     const removeConfirmProps =
-      integration.status === 'active' && integration.provider.canDisable
+      this.integrationStatus === 'active' && integration.provider.canDisable
         ? this.disableConfirmProps
         : this.removeConfirmProps;
 
@@ -114,10 +123,27 @@ export default class InstalledIntegration extends React.Component<Props> {
                   'You must be an organization owner, manager or admin to configure'
                 )}
               >
+                {requiresUpgrade && (
+                  <AddIntegrationButton
+                    analyticsParams={{
+                      view: 'integrations_directory_integration_detail',
+                      already_installed: true,
+                    }}
+                    buttonText={t('Update Now')}
+                    data-test-id="integration-upgrade-button"
+                    disabled={!(hasAccess && this.integrationStatus === 'active')}
+                    icon={<IconWarning />}
+                    onAddIntegration={() => {}}
+                    organization={organization}
+                    provider={provider}
+                    priority="primary"
+                    size="small"
+                  />
+                )}
                 <StyledButton
                   borderless
                   icon={<IconSettings />}
-                  disabled={!hasAccess || integration.status !== 'active'}
+                  disabled={!(hasAccess && this.integrationStatus === 'active')}
                   to={`/settings/${organization.slug}/integrations/${provider.key}/${integration.id}/`}
                   data-test-id="integration-configure-button"
                 >
@@ -150,7 +176,11 @@ export default class InstalledIntegration extends React.Component<Props> {
               </Tooltip>
             </div>
 
-            <StyledIntegrationStatus status={integration.status} />
+            <StyledIntegrationStatus
+              status={this.integrationStatus}
+              // Let the hook handle the alert for disabled org integrations
+              hideTooltip={integration.organizationIntegrationStatus === 'disabled'}
+            />
           </IntegrationFlex>
         )}
       </Access>
@@ -171,28 +201,37 @@ const IntegrationItemBox = styled('div')`
   flex: 1;
 `;
 
-const IntegrationStatus = withTheme(
-  (
-    props: React.HTMLAttributes<HTMLDivElement> & {theme: Theme; status: ObjectStatus}
-  ) => {
-    const {theme, status, ...p} = props;
-    const color = status === 'active' ? theme.success : theme.gray300;
-    const titleText =
-      status === 'active'
-        ? t('This Integration can be disabled by clicking the Uninstall button')
-        : t('This Integration has been disconnected from the external provider');
-    return (
-      <Tooltip title={titleText}>
-        <div {...p}>
-          <CircleIndicator size={6} color={color} />
-          <IntegrationStatusText>{`${
-            status === 'active' ? t('enabled') : t('disabled')
-          }`}</IntegrationStatusText>
-        </div>
-      </Tooltip>
-    );
+const IntegrationStatus = (
+  props: React.HTMLAttributes<HTMLDivElement> & {
+    status: ObjectStatus;
+    hideTooltip?: boolean;
   }
-);
+) => {
+  const theme = useTheme();
+  const {status, hideTooltip, ...p} = props;
+  const color = status === 'active' ? theme.success : theme.gray300;
+  const inner = (
+    <div {...p}>
+      <CircleIndicator size={6} color={color} />
+      <IntegrationStatusText>{`${
+        status === 'active' ? t('enabled') : t('disabled')
+      }`}</IntegrationStatusText>
+    </div>
+  );
+  return hideTooltip ? (
+    inner
+  ) : (
+    <Tooltip
+      title={
+        status === 'active'
+          ? t('This Integration can be disabled by clicking the Uninstall button')
+          : t('This Integration has been disconnected from the external provider')
+      }
+    >
+      {inner}
+    </Tooltip>
+  );
+};
 
 const StyledIntegrationStatus = styled(IntegrationStatus)`
   display: flex;

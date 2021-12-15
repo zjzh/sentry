@@ -1,8 +1,8 @@
 import {Fragment} from 'react';
 import styled from '@emotion/styled';
 
-import {Organization, Project} from 'app/types';
-import {ImageCandidate} from 'app/types/debugImage';
+import {Organization, Project} from 'sentry/types';
+import {ImageCandidate} from 'sentry/types/debugImage';
 
 import {INTERNAL_SOURCE} from '../utils';
 
@@ -13,7 +13,7 @@ import Information from './information';
 type Props = {
   candidate: ImageCandidate;
   organization: Organization;
-  projectId: Project['slug'];
+  projSlug: Project['slug'];
   baseUrl: string;
   haveCandidatesAtLeastOneAction: boolean;
   hasReprocessWarning: boolean;
@@ -24,7 +24,7 @@ type Props = {
 function Candidate({
   candidate,
   organization,
-  projectId,
+  projSlug,
   baseUrl,
   haveCandidatesAtLeastOneAction,
   hasReprocessWarning,
@@ -54,7 +54,7 @@ function Candidate({
           <Actions
             onDelete={onDelete}
             baseUrl={baseUrl}
-            projectId={projectId}
+            projSlug={projSlug}
             organization={organization}
             candidate={candidate}
             isInternalSource={isInternalSource}

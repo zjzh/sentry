@@ -3,15 +3,15 @@ import memoize from 'lodash/memoize';
 import partition from 'lodash/partition';
 import uniqBy from 'lodash/uniqBy';
 
-import ProjectActions from 'app/actions/projectActions';
-import {Client} from 'app/api';
-import ProjectsStore from 'app/stores/projectsStore';
-import {AvatarProject, Project} from 'app/types';
-import {defined} from 'app/utils';
-import parseLinkHeader from 'app/utils/parseLinkHeader';
-import RequestError from 'app/utils/requestError/requestError';
-import withApi from 'app/utils/withApi';
-import withProjects from 'app/utils/withProjects';
+import ProjectActions from 'sentry/actions/projectActions';
+import {Client} from 'sentry/api';
+import ProjectsStore from 'sentry/stores/projectsStore';
+import {AvatarProject, Project} from 'sentry/types';
+import {defined} from 'sentry/utils';
+import parseLinkHeader from 'sentry/utils/parseLinkHeader';
+import RequestError from 'sentry/utils/requestError/requestError';
+import withApi from 'sentry/utils/withApi';
+import withProjects from 'sentry/utils/withProjects';
 
 type ProjectPlaceholder = AvatarProject;
 
@@ -142,10 +142,37 @@ class Projects extends React.Component<Props, State> {
   componentDidMount() {
     const {slugs} = this.props;
 
-    if (slugs && !!slugs.length) {
+    if (!!slugs?.length) {
       this.loadSpecificProjects();
     } else {
       this.loadAllProjects();
+    }
+  }
+
+  componentDidUpdate(prevProps: Props) {
+    const {projects} = this.props;
+
+    if (projects !== prevProps.projects) {
+      this.updateProjectsFromStore();
+    }
+  }
+
+  /**
+   * Function to update projects when the store emits updates
+   */
+  updateProjectsFromStore() {
+    const {allProjects, projects, slugs} = this.props;
+
+    if (allProjects) {
+      this.setState({fetchedProjects: projects});
+      return;
+    }
+
+    if (!!slugs?.length) {
+      // Extract the requested projects from the store based on props.slugs
+      const projectsMap = this.getProjectsMap(projects);
+      const projectsFromStore = slugs.map(slug => projectsMap.get(slug)).filter(defined);
+      this.setState({projectsFromStore});
     }
   }
 
@@ -423,7 +450,8 @@ async function fetchProjects(
   }
 
   if (allProjects) {
-    const {loading, projects} = ProjectsStore.getState();
+    const projects = ProjectsStore.getAll();
+    const loading = ProjectsStore.isLoading();
     // If the projects store is loaded then return all projects from the store
     if (!loading) {
       return {

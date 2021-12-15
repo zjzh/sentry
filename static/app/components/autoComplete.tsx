@@ -10,7 +10,7 @@
  */
 import * as React from 'react';
 
-import DropdownMenu, {GetActorArgs, GetMenuArgs} from 'app/components/dropdownMenu';
+import DropdownMenu, {GetActorArgs, GetMenuArgs} from 'sentry/components/dropdownMenu';
 
 const defaultProps = {
   itemToString: () => '',
@@ -29,6 +29,11 @@ const defaultProps = {
    * Can select autocomplete item with "Tab" key
    */
   shouldSelectWithTab: false,
+};
+
+type Item = {
+  disabled?: boolean;
+  'data-test-id'?: string;
 };
 
 type GetInputArgs<E extends HTMLInputElement> = {
@@ -99,7 +104,7 @@ type Props<T> = typeof defaultProps & {
   onMenuOpen?: () => void;
 };
 
-class AutoComplete<T> extends React.Component<Props<T>, State<T>> {
+class AutoComplete<T extends Item> extends React.Component<Props<T>, State<T>> {
   static defaultProps = defaultProps;
 
   state: State<T> = this.getInitialState();
@@ -219,7 +224,12 @@ class AutoComplete<T> extends React.Component<Props<T>, State<T>> {
       const canSelectWithTab = this.props.shouldSelectWithTab && e.key === 'Tab';
 
       if (hasHighlightedItem && (canSelectWithEnter || canSelectWithTab)) {
-        this.handleSelect(this.items.get(this.state.highlightedIndex), e);
+        const item = this.items.get(this.state.highlightedIndex);
+
+        if (!item.disabled) {
+          this.handleSelect(item, e);
+        }
+
         e.preventDefault();
       }
 
@@ -241,14 +251,18 @@ class AutoComplete<T> extends React.Component<Props<T>, State<T>> {
     };
 
   handleItemClick =
-    ({onClick, item, index}: GetItemArgs<T>) =>
+    ({item, index}: GetItemArgs<T>) =>
     (e: React.MouseEvent) => {
+      if (item.disabled) {
+        return;
+      }
+
       if (this.blurTimer) {
         clearTimeout(this.blurTimer);
       }
+
       this.setState({highlightedIndex: index});
       this.handleSelect(item, e);
-      onClick?.(item)(e);
     };
 
   handleMenuMouseDown = () => {
@@ -361,6 +375,7 @@ class AutoComplete<T> extends React.Component<Props<T>, State<T>> {
 
     return {
       ...props,
+      'data-test-id': item['data-test-id'],
       onClick: this.handleItemClick({item, index: newIndex, ...props}),
     };
   };

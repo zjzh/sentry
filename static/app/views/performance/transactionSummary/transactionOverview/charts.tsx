@@ -2,29 +2,28 @@ import {Component} from 'react';
 import {browserHistory} from 'react-router';
 import {Location} from 'history';
 
-import OptionSelector from 'app/components/charts/optionSelector';
+import OptionSelector from 'sentry/components/charts/optionSelector';
 import {
   ChartContainer,
   ChartControls,
   InlineContainer,
   SectionHeading,
   SectionValue,
-} from 'app/components/charts/styles';
-import {Panel} from 'app/components/panels';
-import Placeholder from 'app/components/placeholder';
-import {t} from 'app/locale';
-import {OrganizationSummary, SelectValue} from 'app/types';
-import EventView from 'app/utils/discover/eventView';
-import {removeHistogramQueryStrings} from 'app/utils/performance/histogram';
-import {decodeScalar} from 'app/utils/queryString';
-import {TransactionsListOption} from 'app/views/releases/detail/overview';
-import {YAxis} from 'app/views/releases/detail/overview/chart/releaseChartControls';
+} from 'sentry/components/charts/styles';
+import {Panel} from 'sentry/components/panels';
+import Placeholder from 'sentry/components/placeholder';
+import {t} from 'sentry/locale';
+import {OrganizationSummary, SelectValue} from 'sentry/types';
+import EventView from 'sentry/utils/discover/eventView';
+import {removeHistogramQueryStrings} from 'sentry/utils/performance/histogram';
+import {decodeScalar} from 'sentry/utils/queryString';
+import {TransactionsListOption} from 'sentry/views/releases/detail/overview';
 
 import {TrendColumnField, TrendFunctionField} from '../../trends/types';
 import {
   generateTrendFunctionAsString,
-  getTrendsParameters,
   TRENDS_FUNCTIONS,
+  TRENDS_PARAMETERS,
 } from '../../trends/utils';
 import {SpanOperationBreakdownFilter} from '../filter';
 
@@ -120,12 +119,12 @@ class TransactionSummaryCharts extends Component<Props> {
       withoutZerofill,
     } = this.props;
 
-    const TREND_PARAMETERS_OPTIONS: SelectValue<string>[] = getTrendsParameters({
-      canSeeSpanOpTrends: organization.features.includes('performance-ops-breakdown'),
-    }).map(({column, label}) => ({
-      value: column,
-      label,
-    }));
+    const TREND_PARAMETERS_OPTIONS: SelectValue<string>[] = TRENDS_PARAMETERS.map(
+      ({column, label}) => ({
+        value: column,
+        label,
+      })
+    );
 
     let display = decodeScalar(location.query.display, DisplayModes.DURATION);
     let trendFunction = decodeScalar(
@@ -148,7 +147,7 @@ class TransactionSummaryCharts extends Component<Props> {
     }
 
     const releaseQueryExtra = {
-      yAxis: display === DisplayModes.VITALS ? YAxis.COUNT_VITAL : YAxis.COUNT_DURATION,
+      yAxis: display === DisplayModes.VITALS ? 'countVital' : 'countDuration',
       showTransactions:
         display === DisplayModes.VITALS
           ? TransactionsListOption.SLOW_LCP

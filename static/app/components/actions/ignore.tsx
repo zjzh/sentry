@@ -2,32 +2,33 @@ import * as React from 'react';
 import {css} from '@emotion/react';
 import styled from '@emotion/styled';
 
-import {openModal} from 'app/actionCreators/modal';
-import ActionLink from 'app/components/actions/actionLink';
-import ButtonBar from 'app/components/buttonBar';
-import CustomIgnoreCountModal from 'app/components/customIgnoreCountModal';
-import CustomIgnoreDurationModal from 'app/components/customIgnoreDurationModal';
-import DropdownLink from 'app/components/dropdownLink';
-import Duration from 'app/components/duration';
-import Tooltip from 'app/components/tooltip';
-import {IconChevron, IconMute} from 'app/icons';
-import {t, tn} from 'app/locale';
-import space from 'app/styles/space';
+import {openModal} from 'sentry/actionCreators/modal';
+import ActionLink from 'sentry/components/actions/actionLink';
+import ButtonBar from 'sentry/components/buttonBar';
+import CustomIgnoreCountModal from 'sentry/components/customIgnoreCountModal';
+import CustomIgnoreDurationModal from 'sentry/components/customIgnoreDurationModal';
+import DropdownLink from 'sentry/components/dropdownLink';
+import Duration from 'sentry/components/duration';
+import Tooltip from 'sentry/components/tooltip';
+import {IconChevron, IconMute} from 'sentry/icons';
+import {t, tn} from 'sentry/locale';
+import space from 'sentry/styles/space';
 import {
   ResolutionStatus,
   ResolutionStatusDetails,
+  SelectValue,
   UpdateResolutionStatus,
-} from 'app/types';
+} from 'sentry/types';
 
 import ActionButton from './button';
 import MenuHeader from './menuHeader';
 
 const IGNORE_DURATIONS = [30, 120, 360, 60 * 24, 60 * 24 * 7];
 const IGNORE_COUNTS = [1, 10, 100, 1000, 10000, 100000];
-const IGNORE_WINDOWS: [number, string][] = [
-  [60, t('per hour')],
-  [24 * 60, t('per day')],
-  [24 * 7 * 60, t('per week')],
+const IGNORE_WINDOWS: SelectValue<number>[] = [
+  {value: 60, label: t('per hour')},
+  {value: 24 * 60, label: t('per day')},
+  {value: 24 * 7 * 60, label: t('per week')},
 ];
 
 type Props = {
@@ -87,7 +88,7 @@ const IgnoreActions = ({
       />
     ));
 
-  const openCustomIngoreCount = () =>
+  const openCustomIgnoreCount = () =>
     openModal(deps => (
       <CustomIgnoreCountModal
         {...deps}
@@ -96,7 +97,7 @@ const IgnoreActions = ({
         countLabel={t('Number of times')}
         countName="ignoreCount"
         windowName="ignoreWindow"
-        windowChoices={IGNORE_WINDOWS}
+        windowOptions={IGNORE_WINDOWS}
       />
     ));
 
@@ -109,21 +110,29 @@ const IgnoreActions = ({
         countLabel={t('Number of users')}
         countName="ignoreUserCount"
         windowName="ignoreUserWindow"
-        windowChoices={IGNORE_WINDOWS}
+        windowOptions={IGNORE_WINDOWS}
       />
     ));
 
   return (
     <ButtonBar merged>
-      <ActionLink
-        {...actionLinkProps}
-        type="button"
-        title={t('Ignore')}
-        onAction={() => onUpdate({status: ResolutionStatus.IGNORED})}
-        icon={<IconMute size="xs" />}
+      <Tooltip
+        disabled={actionLinkProps.disabled}
+        title={t(
+          'Silences alerts for this issue and removes it from the issue stream by default.'
+        )}
+        delay={300}
       >
-        {t('Ignore')}
-      </ActionLink>
+        <ActionLink
+          {...actionLinkProps}
+          type="button"
+          title={t('Ignore')}
+          onAction={() => onUpdate({status: ResolutionStatus.IGNORED})}
+          icon={<IconMute size="xs" />}
+        >
+          {t('Ignore')}
+        </ActionLink>
+      </Tooltip>
       <StyledDropdownLink
         customTitle={
           <ActionButton
@@ -209,14 +218,14 @@ const IgnoreActions = ({
                       {t('from now')}
                     </StyledActionLink>
                   </DropdownMenuItem>
-                  {IGNORE_WINDOWS.map(([hours, label]) => (
-                    <DropdownMenuItem key={hours}>
+                  {IGNORE_WINDOWS.map(({value, label}) => (
+                    <DropdownMenuItem key={value}>
                       <StyledActionLink
                         {...actionLinkProps}
                         onAction={() =>
                           onIgnore({
                             ignoreCount: count,
-                            ignoreWindow: hours,
+                            ignoreWindow: value,
                           })
                         }
                       >
@@ -229,7 +238,7 @@ const IgnoreActions = ({
             ))}
             <DropdownMenuItem>
               <ActionSubMenu>
-                <a onClick={openCustomIngoreCount}>{t('Custom')}</a>
+                <a onClick={openCustomIgnoreCount}>{t('Custom')}</a>
               </ActionSubMenu>
             </DropdownMenuItem>
           </DropdownLink>
@@ -271,14 +280,14 @@ const IgnoreActions = ({
                       {t('from now')}
                     </StyledActionLink>
                   </DropdownMenuItem>
-                  {IGNORE_WINDOWS.map(([hours, label]) => (
-                    <DropdownMenuItem key={hours}>
+                  {IGNORE_WINDOWS.map(({value, label}) => (
+                    <DropdownMenuItem key={value}>
                       <StyledActionLink
                         {...actionLinkProps}
                         onAction={() =>
                           onIgnore({
                             ignoreUserCount: count,
-                            ignoreUserWindow: hours,
+                            ignoreUserWindow: value,
                           })
                         }
                       >

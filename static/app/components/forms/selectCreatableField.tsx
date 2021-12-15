@@ -1,11 +1,11 @@
 import styled from '@emotion/styled';
 
-import {StyledForm} from 'app/components/forms/form';
-import SelectControl from 'app/components/forms/selectControl';
-import SelectField from 'app/components/forms/selectField';
-import {SelectValue} from 'app/types';
-import {defined} from 'app/utils';
-import convertFromSelect2Choices from 'app/utils/convertFromSelect2Choices';
+import {StyledForm} from 'sentry/components/forms/form';
+import SelectControl from 'sentry/components/forms/selectControl';
+import SelectField from 'sentry/components/forms/selectField';
+import {SelectValue} from 'sentry/types';
+import {defined} from 'sentry/utils';
+import convertFromSelect2Choices from 'sentry/utils/convertFromSelect2Choices';
 
 /**
  * This is a <SelectField> that allows the user to create new options if one does't exist.
@@ -58,7 +58,7 @@ export default class SelectCreatableField extends SelectField {
   }
 
   getField() {
-    const {placeholder, disabled, required, clearable, name} = this.props;
+    const {placeholder, disabled, clearable, name} = this.props;
 
     return (
       <StyledSelectControl
@@ -67,7 +67,6 @@ export default class SelectCreatableField extends SelectField {
         options={this.options}
         placeholder={placeholder}
         disabled={disabled}
-        required={required}
         value={this.state.value}
         onChange={this.onChange}
         clearable={clearable}

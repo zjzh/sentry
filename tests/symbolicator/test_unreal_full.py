@@ -1,5 +1,6 @@
 import zipfile
 from io import BytesIO
+from unittest.mock import patch
 
 import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -8,7 +9,6 @@ from django.urls import reverse
 from sentry.lang.native.utils import STORE_CRASH_REPORTS_ALL
 from sentry.models import EventAttachment, File
 from sentry.testutils import RelayStoreHelper, TransactionTestCase
-from sentry.utils.compat.mock import patch
 from tests.symbolicator import get_fixture_path
 
 # IMPORTANT:
@@ -27,6 +27,8 @@ def get_unreal_crash_apple_file():
 class SymbolicatorUnrealIntegrationTest(RelayStoreHelper, TransactionTestCase):
     # For these tests to run, write `symbolicator.enabled: true` into your
     # `~/.sentry/config.yml` and run `sentry devservices up`
+    # Also running locally, it might be necessary to set the
+    # `system.internal-url-prefix` option instead of `system.url-prefix`.
 
     @pytest.fixture(autouse=True)
     def initialize(self, live_server):

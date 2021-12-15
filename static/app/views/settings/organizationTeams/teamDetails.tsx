@@ -3,24 +3,24 @@ import {browserHistory, RouteComponentProps} from 'react-router';
 import styled from '@emotion/styled';
 import isEqual from 'lodash/isEqual';
 
-import {addErrorMessage, addSuccessMessage} from 'app/actionCreators/indicator';
-import {fetchTeamDetails, joinTeam} from 'app/actionCreators/teams';
-import {Client} from 'app/api';
-import Alert from 'app/components/alert';
-import Button from 'app/components/button';
-import IdBadge from 'app/components/idBadge';
-import ListLink from 'app/components/links/listLink';
-import LoadingError from 'app/components/loadingError';
-import LoadingIndicator from 'app/components/loadingIndicator';
-import NavTabs from 'app/components/navTabs';
-import SentryDocumentTitle from 'app/components/sentryDocumentTitle';
-import {t, tct} from 'app/locale';
-import TeamStore from 'app/stores/teamStore';
-import {Organization, Team} from 'app/types';
-import recreateRoute from 'app/utils/recreateRoute';
-import withApi from 'app/utils/withApi';
-import withOrganization from 'app/utils/withOrganization';
-import withTeams from 'app/utils/withTeams';
+import {addErrorMessage, addSuccessMessage} from 'sentry/actionCreators/indicator';
+import {fetchTeamDetails, joinTeam} from 'sentry/actionCreators/teams';
+import {Client} from 'sentry/api';
+import Alert from 'sentry/components/alert';
+import Button from 'sentry/components/button';
+import IdBadge from 'sentry/components/idBadge';
+import ListLink from 'sentry/components/links/listLink';
+import LoadingError from 'sentry/components/loadingError';
+import LoadingIndicator from 'sentry/components/loadingIndicator';
+import NavTabs from 'sentry/components/navTabs';
+import SentryDocumentTitle from 'sentry/components/sentryDocumentTitle';
+import {t, tct} from 'sentry/locale';
+import TeamStore from 'sentry/stores/teamStore';
+import {Organization, Team} from 'sentry/types';
+import recreateRoute from 'sentry/utils/recreateRoute';
+import withApi from 'sentry/utils/withApi';
+import withOrganization from 'sentry/utils/withOrganization';
+import withTeams from 'sentry/utils/withTeams';
 
 type Props = {
   api: Client;
@@ -138,7 +138,7 @@ class TeamDetails extends React.Component<Props, State> {
   };
 
   render() {
-    const {children, organization, params, routes} = this.props;
+    const {children, params, routes} = this.props;
     const {team, loading, requesting, error} = this.state;
 
     if (loading) {
@@ -180,20 +180,13 @@ class TeamDetails extends React.Component<Props, State> {
       <ListLink key={1} to={`${routePrefix}projects/`}>
         {t('Projects')}
       </ListLink>,
-      <ListLink key={2} to={`${routePrefix}settings/`}>
+      <ListLink key={2} to={`${routePrefix}notifications/`}>
+        {t('Notifications')}
+      </ListLink>,
+      <ListLink key={3} to={`${routePrefix}settings/`}>
         {t('Settings')}
       </ListLink>,
     ];
-
-    if (organization.features.includes('notification-platform')) {
-      navigationTabs.splice(
-        2,
-        0,
-        <ListLink key="x" to={`${routePrefix}notifications/`}>
-          {t('Notifications')}
-        </ListLink>
-      );
-    }
 
     return (
       <div>
@@ -214,6 +207,7 @@ class TeamDetails extends React.Component<Props, State> {
   }
 }
 
+// TODO(davidenwang): change to functional component and replace withTeams with useTeams
 export default withApi(withOrganization(withTeams(TeamDetails)));
 
 const RequestAccessWrapper = styled('div')`

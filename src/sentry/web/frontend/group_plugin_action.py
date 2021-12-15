@@ -2,6 +2,7 @@ from django.http import Http404, HttpResponseRedirect
 from django.shortcuts import get_object_or_404
 from django.utils.http import is_safe_url
 
+from sentry.api.serializers.models.plugin import is_plugin_deprecated
 from sentry.models import Group, GroupMeta
 from sentry.plugins.base import plugins
 from sentry.web.frontend.base import ProjectView
@@ -15,6 +16,8 @@ class GroupPluginActionView(ProjectView):
 
         try:
             plugin = plugins.get(slug)
+            if is_plugin_deprecated(plugin, project):
+                raise Http404("Plugin not found")
         except KeyError:
             raise Http404("Plugin not found")
 

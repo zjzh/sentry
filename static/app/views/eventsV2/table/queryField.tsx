@@ -4,23 +4,24 @@ import {components, OptionProps, SingleValueProps} from 'react-select';
 import styled from '@emotion/styled';
 import cloneDeep from 'lodash/cloneDeep';
 
-import SelectControl, {ControlProps} from 'app/components/forms/selectControl';
-import Tag from 'app/components/tag';
-import Tooltip from 'app/components/tooltip';
-import {IconWarning} from 'app/icons';
-import {t} from 'app/locale';
-import {pulse} from 'app/styles/animations';
-import space from 'app/styles/space';
-import {SelectValue} from 'app/types';
+import SelectControl, {ControlProps} from 'sentry/components/forms/selectControl';
+import Tag from 'sentry/components/tag';
+import Tooltip from 'sentry/components/tooltip';
+import {IconWarning} from 'sentry/icons';
+import {t} from 'sentry/locale';
+import {pulse} from 'sentry/styles/animations';
+import space from 'sentry/styles/space';
+import {SelectValue} from 'sentry/types';
 import {
   AggregateParameter,
   AggregationKey,
   Column,
   ColumnType,
+  DEPRECATED_FIELDS,
   QueryFieldValue,
   ValidateColumnTypes,
-} from 'app/utils/discover/fields';
-import Input from 'app/views/settings/components/forms/controls/input';
+} from 'sentry/utils/discover/fields';
+import Input from 'sentry/views/settings/components/forms/controls/input';
 
 import ArithmeticInput from './arithmeticInput';
 import {FieldValue, FieldValueColumns, FieldValueKind} from './types';
@@ -101,18 +102,22 @@ type OptionType = {
 
 class QueryField extends React.Component<Props> {
   FieldSelectComponents = {
-    Option: ({label, data, ...props}: OptionProps<OptionType>) => (
-      <components.Option label={label} data={data} {...props}>
-        <span data-test-id="label">{label}</span>
-        {this.renderTag(data.value.kind)}
-      </components.Option>
-    ),
-    SingleValue: ({data, ...props}: SingleValueProps<OptionType>) => (
-      <components.SingleValue data={data} {...props}>
-        <span data-test-id="label">{data.label}</span>
-        {this.renderTag(data.value.kind)}
-      </components.SingleValue>
-    ),
+    Option: ({label, data, ...props}: OptionProps<OptionType>) => {
+      return (
+        <components.Option label={label} data={data} {...props}>
+          <span data-test-id="label">{label}</span>
+          {data.value && this.renderTag(data.value.kind, label)}
+        </components.Option>
+      );
+    },
+    SingleValue: ({data, ...props}: SingleValueProps<OptionType>) => {
+      return (
+        <components.SingleValue data={data} {...props}>
+          <span data-test-id="label">{data.label}</span>
+          {data.value && this.renderTag(data.value.kind, data.label)}
+        </components.SingleValue>
+      );
+    },
   };
 
   FieldSelectStyles = {
@@ -348,7 +353,8 @@ class QueryField extends React.Component<Props> {
                   validateColumnTypes(param.columnTypes as ValidateColumnTypes, value)
               ),
             };
-          } else if (param.kind === 'dropdown') {
+          }
+          if (param.kind === 'dropdown') {
             return {
               kind: 'dropdown',
               options: param.options,
@@ -495,7 +501,7 @@ class QueryField extends React.Component<Props> {
     return inputs;
   }
 
-  renderTag(kind) {
+  renderTag(kind: FieldValueKind, label: string) {
     const {shouldRenderTag} = this.props;
     if (shouldRenderTag === false) {
       return null;
@@ -519,7 +525,7 @@ class QueryField extends React.Component<Props> {
         tagType = 'warning';
         break;
       case FieldValueKind.FIELD:
-        text = kind;
+        text = DEPRECATED_FIELDS.includes(label) ? 'deprecated' : kind;
         tagType = 'highlight';
         break;
       default:
@@ -671,7 +677,11 @@ class BufferedInput extends React.Component<InputProps, InputState> {
   }
 
   handleBlur = () => {
-    if (this.isValid) {
+    if (this.props.required && this.state.value === '') {
+      // Handle empty strings separately because we don't pass required
+      // to input elements, causing isValid to return true
+      this.setState({value: this.props.value});
+    } else if (this.isValid) {
       this.props.onUpdate(this.state.value);
     } else {
       this.setState({value: this.props.value});

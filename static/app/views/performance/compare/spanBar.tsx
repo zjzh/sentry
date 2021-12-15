@@ -2,20 +2,27 @@ import * as React from 'react';
 import {withTheme} from '@emotion/react';
 import styled from '@emotion/styled';
 
-import Count from 'app/components/count';
-import * as DividerHandlerManager from 'app/components/events/interfaces/spans/dividerHandlerManager';
-import {TreeDepthType} from 'app/components/events/interfaces/spans/types';
+import Count from 'sentry/components/count';
+import * as DividerHandlerManager from 'sentry/components/events/interfaces/spans/dividerHandlerManager';
+import {TreeDepthType} from 'sentry/components/events/interfaces/spans/types';
 import {
   isOrphanTreeDepth,
   unwrapTreeDepth,
-} from 'app/components/events/interfaces/spans/utils';
-import {ROW_HEIGHT, ROW_PADDING} from 'app/components/performance/waterfall/constants';
-import {Row, RowCell, RowCellContainer} from 'app/components/performance/waterfall/row';
+} from 'sentry/components/events/interfaces/spans/utils';
+import {ROW_HEIGHT, ROW_PADDING} from 'sentry/components/performance/waterfall/constants';
+import {
+  Row,
+  RowCell,
+  RowCellContainer,
+} from 'sentry/components/performance/waterfall/row';
 import {
   DividerLine,
   DividerLineGhostContainer,
-} from 'app/components/performance/waterfall/rowDivider';
-import {RowTitle, RowTitleContainer} from 'app/components/performance/waterfall/rowTitle';
+} from 'sentry/components/performance/waterfall/rowDivider';
+import {
+  RowTitle,
+  RowTitleContainer,
+} from 'sentry/components/performance/waterfall/rowTitle';
 import {
   ConnectorBar,
   TOGGLE_BORDER_BOX,
@@ -23,16 +30,16 @@ import {
   TreeToggle,
   TreeToggleContainer,
   TreeToggleIcon,
-} from 'app/components/performance/waterfall/treeConnector';
+} from 'sentry/components/performance/waterfall/treeConnector';
 import {
   getBackgroundColor,
   getHatchPattern,
   getHumanDuration,
   toPercent,
-} from 'app/components/performance/waterfall/utils';
-import {t} from 'app/locale';
-import space from 'app/styles/space';
-import {Theme} from 'app/utils/theme';
+} from 'sentry/components/performance/waterfall/utils';
+import {t} from 'sentry/locale';
+import space from 'sentry/styles/space';
+import {Theme} from 'sentry/utils/theme';
 
 import SpanDetail from './spanDetail';
 import {SpanBarRectangle} from './styles';
@@ -86,7 +93,7 @@ class SpanBar extends React.Component<Props, State> {
       if (hasToggler) {
         return (
           <ConnectorBar
-            style={{right: '16px', height: '10px', bottom: '-5px', top: 'auto'}}
+            style={{right: '15px', height: '10px', bottom: '-5px', top: 'auto'}}
             key={`${spanID}-last`}
             orphanBranch={false}
           />
@@ -105,7 +112,7 @@ class SpanBar extends React.Component<Props, State> {
         // which does not exist.
         return null;
       }
-      const left = ((spanTreeDepth - depth) * (TOGGLE_BORDER_BOX / 2) + 1) * -1;
+      const left = ((spanTreeDepth - depth) * (TOGGLE_BORDER_BOX / 2) + 2) * -1;
 
       return (
         <ConnectorBar
@@ -122,9 +129,9 @@ class SpanBar extends React.Component<Props, State> {
       connectorBars.push(
         <ConnectorBar
           style={{
-            right: '16px',
+            right: '15px',
             height: '10px',
-            bottom: isLast ? `-${ROW_HEIGHT / 2}px` : '0',
+            bottom: isLast ? `-${ROW_HEIGHT / 2 + 1}px` : '0',
             top: 'auto',
           }}
           key={`${spanID}-last`}

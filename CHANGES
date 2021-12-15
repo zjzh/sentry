@@ -1,3 +1,106 @@
+21.12.0
+-------
+
+### Frontend Deploys (ongoing)
+
+By: @billyvg (#28878)
+
+### Python: Add support for Apple arm64 development (ongoing)
+
+Apple started moving away from their Intel based chipset to arm64 chipsets (aka as Apple Silicon).
+In order to do Sentry development on this new architecture we need to do various changes to Sentry's development environment. Some of these changes include using a different Python version (arm64 support was added on Python 3.8.10), upgrading Python packages and hosting some Python wheels that third-party maintainers are not yet releasing.
+
+By: @armenzg (#30071, #29739, #29449, #29315, #29013, #28769, #28607)
+
+### Docker: Add support for Apple arm64 development (ongoing)
+
+In order to do development for Sentry, we need to spin up various Docker containers.
+Apple is moving away from Intel based chipset to arm64 chipsets (aka Apple Silicon).
+
+This milestones track all work required to make sure we can still use these development services on Apple's arm64 architecture.
+
+By: @armenzg (#29494, #29293, #29284, #29157, #29081, #29117, #29084, #28672, #28724)
+
+### Connecting Dashboards and Discover (ongoing)
+
+Open a Dashboard widget in Discover. Add a Discover Query to a Dashboard.
+
+By: @edwardgou-sentry (#28699, #28827, #28745, #28637)
+
+### Various fixes & improvements
+
+_Listing 64 out of 1670_
+
+- feat(cra-metrics): Adds crash rate alerts over metrics [INGEST-629] [INGEST-632] (#30400) by @ahmedetefy
+- fix(perf): Re-add onboarding for landing v3 (#30675) by @k-fish
+- fix(performance-metrics): Handle null serie values (#30594) by @priscilawebdev
+- feat(snql): Enable snql on facets performance endpoints (#30557) by @wmak
+- fix(discover): Updates Discover widget modal to propagate global header selection to the dashboard view when submitting (#30641) by @edwardgou-sentry
+- feat(suspect-spans): Allow specifying certain columns (#30576) by @Zylphrex
+- fix(chart-unfurl): Fix daily top5 rendering (#30669) by @shruthilayaj
+- ref(projectconfig_cache): Delete redis-blaster implementation, execute deletes faster (#30636) by @untitaker
+- feat(dashboards): Open Library Modal in edit mode (#30591) by @shruthilayaj
+- ref(js): Cleanup GSH getParams / utils (#30658) by @evanpurkhiser
+- style(js): Improve comments formatting in AsyncComponent (#30667) by @evanpurkhiser
+- ref(js): Convert (some of) redirectDeprecatedProjectRoute to a FC (#30640) by @evanpurkhiser
+- ref(js): Convert ScrollToTop to a hook (#30652) by @evanpurkhiser
+- ref(js): Remove UNSAFE_componentWillReceiveProps (#30663) by @evanpurkhiser
+- ref(js): Remove unused getEndpoint (#30659) by @evanpurkhiser
+- fix(ui): Span tree connector design (#30498) by @vuluongj20
+- fix(js): Remove double `- Sentry` in Activity route title (#30626) by @evanpurkhiser
+- feat(teamStats): Remove some team unresolved issue age buckets (#30650) by @scttcper
+- style: Hover & focus state for buttons (#30654) by @vuluongj20
+- fix(ui): Fix undefined markline data error (#30655) by @taylangocmen
+- ref(js): Convert OrganizationCreate to a FC (#30638) by @evanpurkhiser
+- chore(deps): bump typescript from 4.4.4 to 4.5.4 (#30615) by @dependabot
+- feat(teamStats): Add team-insights-age-unresolved flag (#30644) by @scttcper
+- ref(js): Rename constants/{globalSelectionHeader -> pageFilters} (#30618) by @evanpurkhiser
+- feat(ui): Load more teams on organization teams page (#30395) by @davidenwang
+- ref(js): Convert NewsletterConsent to a FC (#30639) by @evanpurkhiser
+- ref(js): Convert SettingsWrapper to a FC (#30623) by @evanpurkhiser
+- feat(u2f): deprecated u2f-api for sign-in flow - FE (#30614) by @maxiuyuan
+- chore: Add workflow as the codeowner of team insights (#30649) by @scttcper
+- fix(ui): Fix data series value error in release adoption charts (#30642) by @taylangocmen
+- fix(performance): adds optional to vital list item in performance landing page (#30647) by @edwardgou-sentry
+- feat(u2f): deprecated u2f-api for sign-in flow - BE (#30612) by @maxiuyuan
+- feat(team): Add cursor to team store (#30307) by @davidenwang
+- adds growth as codeowner to notifications (#30646) by @scefali
+- adds secondary analytics event optionally (#30645) by @scefali
+- include recipient type in referrer (#30643) by @scefali
+- fix(ui): dark theme for code chunk in instrumentation docs (#30598) by @vuluongj20
+- convert resolve analytics (#30605) by @scefali
+- ref(analytics): convert sdk updates analytics (#30603) by @scefali
+- feat(teamStats): Add team oldest groups endpoint (WOR-1524) (#30519) by @scttcper
+- fix(post_process): Prevent auto assignments from ping-ponging between teams. (#30609) by @wedamija
+- debug views use notification logic (#30619) by @scefali
+- feat(ui): Remove formatting on paste into smart search bar (#30479) by @scttcper
+- fix(teamStats): Adjust overflow on team misery table (#30580) by @scttcper
+- fix(async-csv): Separate transaction for separate dbs in exports (#30617) by @Zylphrex
+- feat(metrics): Rename all metrics extracted by Relay (#30472) by @jjbayer
+- ref(js): Convert AlertsContainer to a FC (#30624) by @evanpurkhiser
+- ref(js): Convert OrganizationRoot to a FC + RTL (#30630) by @evanpurkhiser
+- ref(js): Add missing label for settings nav 'Close the menu' (#30634) by @evanpurkhiser
+- ref(js): Convert auth Layout to a FC (#30633) by @evanpurkhiser
+- ref(js): Simplify GettingStarted component (#30631) by @evanpurkhiser
+- ref(js): Convert SettingsLayout to a FC (#30629) by @evanpurkhiser
+- ref(js): Convert PerformanceContainer to a FC (#30628) by @evanpurkhiser
+- ref(js): Convert DiscoverContainer to a FC (#30627) by @evanpurkhiser
+- fix(js): Correct label on alerts list header settings (#30622) by @evanpurkhiser
+- ref(ui): Cleanup releases index route (#30621) by @matejminar
+- ref(js): Remove unused {MonitorsContainer} export (#30625) by @evanpurkhiser
+- ref(ui): Cleanup organizationStats header w/ Layout.* components (#30606) by @evanpurkhiser
+- ref(ui): Use Layout.* components in Alerts list (#30607) by @evanpurkhiser
+- ref(ui): Fix t() parameterization in issueList header (#30601) by @evanpurkhiser
+- ref(performance-metrics): Not fire metrics request with transaction.duration (#30535) by @priscilawebdev
+- feat(ui): Sort most slow/frozen frames transactions in descending order (#30589) by @matejminar
+- feat(metrics): Run metrics consumer in snuba when indexer is enabled (#30539) by @jjbayer
+- fix(ui): Fix fetching of 3 worst metrics web vital transactions (#30565) by @matejminar
+
+21.9.0
+------
+
+- No documented changes.
+
 21.8.0
 ------
 

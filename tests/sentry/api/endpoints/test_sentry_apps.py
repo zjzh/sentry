@@ -1,4 +1,5 @@
 import re
+from unittest.mock import patch
 
 from django.urls import reverse
 
@@ -11,11 +12,11 @@ from sentry.models import (
     SentryAppInstallation,
     SentryAppInstallationToken,
 )
+from sentry.models.integrationfeature import IntegrationTypes
 from sentry.models.sentryapp import MASKED_VALUE
 from sentry.testutils import APITestCase
 from sentry.testutils.helpers import Feature, with_feature
 from sentry.utils import json
-from sentry.utils.compat.mock import patch
 
 
 class SentryAppsTest(APITestCase):
@@ -46,6 +47,7 @@ class SentryAppsTest(APITestCase):
         self.install = self.internal_app.installations.first()
 
         self.url = reverse("sentry-api-0-sentry-apps")
+        self.default_popularity = SentryApp._meta.get_field("popularity").default
 
 
 class GetSentryAppsTest(SentryAppsTest):
@@ -87,8 +89,12 @@ class GetSentryAppsTest(SentryAppsTest):
                 {
                     "featureGate": "integrations-api",
                     "description": "Test can **utilize the Sentry API** to pull data or update resources in Sentry (with permissions granted, of course).",
+                    "targetId": self.published_app.id,
+                    "targetType": IntegrationTypes.SENTRY_APP.value,
                 }
             ],
+            "popularity": self.default_popularity,
+            "avatars": [],
         } in json.loads(response.content)
 
     def test_users_filter_on_internal_apps(self):
@@ -116,6 +122,8 @@ class GetSentryAppsTest(SentryAppsTest):
             "clientSecret": self.internal_app.application.client_secret,
             "owner": {"id": self.internal_org.id, "slug": self.internal_org.slug},
             "featureData": [],
+            "popularity": self.default_popularity,
+            "avatars": [],
         } in json.loads(response.content)
 
         response_uuids = {o["uuid"] for o in response.data}
@@ -153,6 +161,8 @@ class GetSentryAppsTest(SentryAppsTest):
             "clientSecret": self.internal_app.application.client_secret,
             "owner": {"id": self.internal_org.id, "slug": self.internal_org.slug},
             "featureData": [],
+            "popularity": self.default_popularity,
+            "avatars": [],
         } in json.loads(response.content)
 
         response_uuids = {o["uuid"] for o in response.data}
@@ -189,8 +199,12 @@ class GetSentryAppsTest(SentryAppsTest):
                 {
                     "featureGate": "integrations-api",
                     "description": "Test can **utilize the Sentry API** to pull data or update resources in Sentry (with permissions granted, of course).",
+                    "targetId": self.published_app.id,
+                    "targetType": IntegrationTypes.SENTRY_APP.value,
                 }
             ],
+            "popularity": self.default_popularity,
+            "avatars": [],
         } in json.loads(response.content)
 
         response_uuids = {o["uuid"] for o in response.data}
@@ -236,8 +250,12 @@ class GetSentryAppsTest(SentryAppsTest):
                 {
                     "featureGate": "integrations-api",
                     "description": "Testin can **utilize the Sentry API** to pull data or update resources in Sentry (with permissions granted, of course).",
+                    "targetId": self.unpublished_app.id,
+                    "targetType": IntegrationTypes.SENTRY_APP.value,
                 }
             ],
+            "popularity": self.default_popularity,
+            "avatars": [],
         } in json.loads(response.content)
 
         response_uuids = {o["uuid"] for o in response.data}
@@ -287,8 +305,12 @@ class GetSentryAppsTest(SentryAppsTest):
                 {
                     "featureGate": "integrations-api",
                     "description": "Boo Far can **utilize the Sentry API** to pull data or update resources in Sentry (with permissions granted, of course).",
+                    "targetId": sentry_app.id,
+                    "targetType": IntegrationTypes.SENTRY_APP.value,
                 }
             ],
+            "popularity": self.default_popularity,
+            "avatars": [],
         } in json.loads(response.content)
 
     def test_users_dont_see_unpublished_apps_their_org_owns(self):
@@ -402,6 +424,24 @@ class PostSentryAppsTest(SentryAppsTest):
             "organization": "Organization 'some-non-existent-org' does not exist.",
         }
 
+    def test_superuser_can_create_with_popularity(self):
+        self.login_as(user=self.superuser, superuser=True)
+        popularity = 27
+        response = self._post(popularity=popularity)
+
+        assert response.status_code == 201, response.content
+        assert {"popularity": popularity}.items() <= json.loads(response.content).items()
+
+    def test_nonsuperuser_cannot_create_with_popularity(self):
+        self.login_as(user=self.user)
+        popularity = 27
+        response = self._post(popularity=popularity)
+
+        assert response.status_code == 201, response.content
+        assert {"popularity": self.default_popularity}.items() <= json.loads(
+            response.content
+        ).items()
+
     def test_internal_sentry_app_cannot_create_app(self):
         self.create_project(organization=self.internal_org)
         sentry_app = self.internal_app
@@ -474,7 +514,37 @@ class PostSentryAppsTest(SentryAppsTest):
         assert response.status_code == 400
         assert response.data == {"events": ["issue webhooks require the event:read permission."]}
 
+    def test_create_alert_rule_action_without_feature_flag(self):
+        self.login_as(user=self.user)
+
+        response = self._post(**{"schema": {"elements": [self.create_alert_rule_action_schema()]}})
+
+        assert response.status_code == 400
+        assert response.data == {
+            "schema": [
+                "Element has type 'alert-rule-action'. Type must be one of the following: ['issue-link', 'issue-media', 'stacktrace-link']"
+            ]
+        }
+
+    @with_feature("organizations:alert-rule-ui-component")
+    def test_create_alert_rule_action_with_feature_flag(self):
+        self.login_as(user=self.user)
+
+        response = self._post(**{"schema": {"elements": [self.create_alert_rule_action_schema()]}})
+
+        expected = {
+            "name": "MyApp",
+            "scopes": ["project:read", "event:read"],
+            "events": ["issue"],
+            "webhookUrl": "https://example.com",
+            "schema": {"elements": [self.create_alert_rule_action_schema()]},
+        }
+
+        assert response.status_code == 201, response.content
+        assert expected.items() <= json.loads(response.content).items()
+
     @patch("sentry.analytics.record")
+    @with_feature("organizations:alert-rule-ui-component")
     def test_wrong_schema_format(self, record):
         self.login_as(user=self.user)
         kwargs = {
@@ -653,7 +723,7 @@ class PostSentryAppsTest(SentryAppsTest):
 
         url = reverse("sentry-api-0-organization-projects", args=[self.org.slug])
         response = self.client.get(
-            url, HTTP_ORIGIN="http://example.com", HTTP_AUTHORIZATION="Bearer %s" % (token.token)
+            url, HTTP_ORIGIN="http://example.com", HTTP_AUTHORIZATION=f"Bearer {token.token}"
         )
         assert response.status_code == 200
 
@@ -670,7 +740,7 @@ class PostSentryAppsTest(SentryAppsTest):
 
         url = reverse("sentry-api-0-organization-projects", args=[self.org.slug])
         response = self.client.get(
-            url, HTTP_ORIGIN="http://example.com", HTTP_AUTHORIZATION="Bearer %s" % (token.token)
+            url, HTTP_ORIGIN="http://example.com", HTTP_AUTHORIZATION=f"Bearer {token.token}"
         )
         assert response.status_code == 400
 

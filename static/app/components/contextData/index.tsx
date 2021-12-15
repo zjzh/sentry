@@ -4,11 +4,11 @@ import isArray from 'lodash/isArray';
 import isNumber from 'lodash/isNumber';
 import isString from 'lodash/isString';
 
-import AnnotatedText from 'app/components/events/meta/annotatedText';
-import ExternalLink from 'app/components/links/externalLink';
-import {IconOpen} from 'app/icons';
-import {Meta} from 'app/types';
-import {isUrl} from 'app/utils';
+import AnnotatedText from 'sentry/components/events/meta/annotatedText';
+import ExternalLink from 'sentry/components/links/externalLink';
+import {IconOpen} from 'sentry/icons';
+import {Meta} from 'sentry/types';
+import {isUrl} from 'sentry/utils';
 
 import Toggle from './toggle';
 import {analyzeStringForRepr, naturalCaseInsensitiveSort} from './utils';
@@ -29,6 +29,10 @@ type State = {
   withAnnotatedText: boolean;
 };
 
+function getValueWithAnnotatedText(v: Value, meta?: Meta) {
+  return <AnnotatedText value={v} meta={meta} />;
+}
+
 class ContextData extends React.Component<Props, State> {
   static defaultProps = {
     data: null,
@@ -40,11 +44,7 @@ class ContextData extends React.Component<Props, State> {
       this.props;
     const maxDepth = maxDefaultDepth ?? 2;
 
-    function getValueWithAnnotatedText(v: Value, meta?: Meta) {
-      return <AnnotatedText value={v} meta={meta} />;
-    }
-
-    /* eslint no-shadow:0 */
+    // eslint-disable-next-line @typescript-eslint/no-shadow
     function walk(value: Value, depth: number) {
       let i = 0;
       const children: React.ReactNode[] = [];

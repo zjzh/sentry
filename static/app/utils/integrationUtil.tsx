@@ -8,25 +8,27 @@ import {
   IconGitlab,
   IconJira,
   IconVsts,
-} from 'app/icons';
-import HookStore from 'app/stores/hookStore';
+} from 'sentry/icons';
+import {t} from 'sentry/locale';
+import HookStore from 'sentry/stores/hookStore';
 import {
   AppOrProviderOrPlugin,
   DocumentIntegration,
+  Integration,
   IntegrationFeature,
   IntegrationInstallationStatus,
   IntegrationType,
-  LightWeightOrganization,
+  Organization,
   PluginWithProjectList,
   SentryApp,
   SentryAppInstallation,
-} from 'app/types';
-import {Hooks} from 'app/types/hooks';
+} from 'sentry/types';
+import {Hooks} from 'sentry/types/hooks';
 import {
   integrationEventMap,
   IntegrationEventParameters,
-} from 'app/utils/analytics/integrationAnalyticsEvents';
-import makeAnalyticsFunction from 'app/utils/analytics/makeAnalyticsFunction';
+} from 'sentry/utils/analytics/integrationAnalyticsEvents';
+import makeAnalyticsFunction from 'sentry/utils/analytics/makeAnalyticsFunction';
 
 const mapIntegrationParams = analyticsParams => {
   // Reload expects integration_status even though it's not relevant for non-sentry apps
@@ -40,7 +42,7 @@ const mapIntegrationParams = analyticsParams => {
 
 export const trackIntegrationAnalytics = makeAnalyticsFunction<
   IntegrationEventParameters,
-  {organization: LightWeightOrganization} // org is required
+  {organization: Organization} // org is required
 >(integrationEventMap, {
   mapValuesFn: mapIntegrationParams,
 });
@@ -207,7 +209,22 @@ export const getIntegrationIcon = (integrationType?: string, size?: string) => {
 
 // used for project creation and onboarding
 // determines what integration maps to what project platform
-export const platfromToIntegrationMap = {
+export const platformToIntegrationMap = {
   'node-awslambda': 'aws_lambda',
   'python-awslambda': 'aws_lambda',
+};
+
+export const isSlackIntegrationUpToDate = (integrations: Integration[]): boolean => {
+  return integrations.every(
+    integration =>
+      integration.provider.key !== 'slack' || integration.scopes?.includes('commands')
+  );
+};
+
+export const getAlertText = (integrations?: Integration[]): string | undefined => {
+  return isSlackIntegrationUpToDate(integrations || [])
+    ? undefined
+    : t(
+        'Update to the latest version of our Slack app to get access to personal and team notifications.'
+      );
 };

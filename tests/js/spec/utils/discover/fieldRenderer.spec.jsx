@@ -1,10 +1,11 @@
 import {mountWithTheme} from 'sentry-test/enzyme';
 import {initializeOrg} from 'sentry-test/initializeOrg';
+import {act} from 'sentry-test/reactTestingLibrary';
 
-import ConfigStore from 'app/stores/configStore';
-import ProjectsStore from 'app/stores/projectsStore';
-import {getFieldRenderer} from 'app/utils/discover/fieldRenderers';
-import {SPAN_OP_RELATIVE_BREAKDOWN_FIELD} from 'app/utils/discover/fields';
+import ConfigStore from 'sentry/stores/configStore';
+import ProjectsStore from 'sentry/stores/projectsStore';
+import {getFieldRenderer} from 'sentry/utils/discover/fieldRenderers';
+import {SPAN_OP_RELATIVE_BREAKDOWN_FIELD} from 'sentry/utils/discover/fields';
 
 describe('getFieldRenderer', function () {
   let location, context, project, organization, data, user;
@@ -15,7 +16,7 @@ describe('getFieldRenderer', function () {
     });
     organization = context.organization;
     project = context.project;
-    ProjectsStore.loadInitialData([project]);
+    act(() => ProjectsStore.loadInitialData([project]));
     user = 'email:text@example.com';
 
     location = {
@@ -23,7 +24,6 @@ describe('getFieldRenderer', function () {
       query: {},
     };
     data = {
-      key_transaction: 1,
       team_key_transaction: 1,
       title: 'ValueError: something bad',
       transaction: 'api.do_things',
@@ -197,56 +197,6 @@ describe('getFieldRenderer', function () {
     expect(value.text()).toEqual(project.slug);
   });
 
-  it('can render key transaction as a star', async function () {
-    const renderer = getFieldRenderer('key_transaction', {key_transaction: 'boolean'});
-    delete data.project;
-
-    const wrapper = mountWithTheme(
-      renderer(data, {location, organization}),
-      context.routerContext
-    );
-
-    const value = wrapper.find('StyledKey');
-    expect(value).toHaveLength(1);
-    expect(value.props().isSolid).toBeTruthy();
-
-    // Since there is not project column, it's not clickable
-    expect(wrapper.find('KeyColumn')).toHaveLength(0);
-  });
-
-  it('can render key transaction as a clickable star', async function () {
-    const renderer = getFieldRenderer('key_transaction', {key_transaction: 'boolean'});
-
-    const wrapper = mountWithTheme(
-      renderer(data, {location, organization}),
-      context.routerContext
-    );
-    await tick();
-    wrapper.update();
-
-    let value;
-
-    value = wrapper.find('StyledKey');
-    expect(value).toHaveLength(1);
-    expect(value.props().isSolid).toBeTruthy();
-
-    wrapper.find('KeyColumn').simulate('click');
-    await tick();
-    wrapper.update();
-
-    value = wrapper.find('StyledKey');
-    expect(value).toHaveLength(1);
-    expect(value.props().isSolid).toBeFalsy();
-
-    wrapper.find('KeyColumn').simulate('click');
-    await tick();
-    wrapper.update();
-
-    value = wrapper.find('StyledKey');
-    expect(value).toHaveLength(1);
-    expect(value.props().isSolid).toBeTruthy();
-  });
-
   it('can render team key transaction as a star with the dropdown', async function () {
     const renderer = getFieldRenderer('team_key_transaction', {
       team_key_transaction: 'boolean',
@@ -281,6 +231,24 @@ describe('getFieldRenderer', function () {
 
     // Since there is no project column, it is not wrapped with the dropdown
     expect(wrapper.find('TeamKeyTransaction')).toHaveLength(0);
+  });
+
+  it('can render issue assignees', function () {
+    const renderer = getFieldRenderer('assignee');
+    expect(renderer).toBeInstanceOf(Function);
+    const wrapper = mountWithTheme(
+      renderer(
+        {
+          'assignee.type': 'user',
+          'assignee.id': '1',
+          'assignee.name': 'sentry user',
+          'assignee.email': 'user@sentry.io',
+        },
+        {location, organization}
+      )
+    );
+
+    expect(wrapper.find('Tooltip').props().title).toEqual('Assigned to sentry user');
   });
 
   describe('ops breakdown', () => {
