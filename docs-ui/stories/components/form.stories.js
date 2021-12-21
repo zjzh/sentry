@@ -5,8 +5,8 @@ import Form from 'sentry/views/settings/components/forms/form';
 import SelectField from 'sentry/views/settings/components/forms/selectField';
 
 const Circle = styled('div')`
-  width: 1rem;
-  height: 1rem;
+  width: 0.75rem;
+  height: 0.75rem;
   border-radius: 50%;
   background: ${p => p.theme[p.color]};
 `;
@@ -117,18 +117,21 @@ export const Default = ({...fieldProps}) => {
                 value: '1',
                 details: "Here's some additional details",
                 leadingItems: <CircleEl color="blue300" />,
+                trailingItems: <Link />,
               },
               {
                 label: 'Choice Two',
                 value: '2',
                 details: "Here's some additional details",
                 leadingItems: <CircleEl color="red300" />,
+                trailingItems: <Link />,
               },
               {
                 label: 'Choice Three',
                 value: '3',
                 details: "Here's some additional details",
                 leadingItems: <CircleEl color="green300" />,
+                trailingItems: <Link />,
               },
             ],
           },
