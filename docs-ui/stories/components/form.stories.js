@@ -1,13 +1,40 @@
-import NewBooleanField from 'sentry/views/settings/components/forms/booleanField';
+import styled from '@emotion/styled';
+
+import {IconOpen} from 'sentry/icons';
 import Form from 'sentry/views/settings/components/forms/form';
-import RadioField from 'sentry/views/settings/components/forms/radioField';
-import RangeField from 'sentry/views/settings/components/forms/rangeField';
 import SelectField from 'sentry/views/settings/components/forms/selectField';
-import TextField from 'sentry/views/settings/components/forms/textField';
+
+const Circle = styled('div')`
+  width: 1rem;
+  height: 1rem;
+  border-radius: 50%;
+  background: ${p => p.theme[p.color]};
+`;
+
+const CircleEl = ({color}) => <Circle color={color} />;
+
+const Link = () => (
+  <StyledLink href="/">
+    <IconOpen size="xs" />
+  </StyledLink>
+);
+
+const StyledLink = styled('a')`
+  width: 1.4rem;
+  height: 1.4rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: ${p => p.theme.subText};
+  &:hover {
+    color: ${p => p.theme.textColor};
+  }
+`;
 
 export default {
   title: 'Components/Forms/Form',
   args: {
+    showDividers: false,
     alignRight: false,
     required: false,
     visible: true,
@@ -21,43 +48,99 @@ export default {
 export const Default = ({...fieldProps}) => {
   return (
     <Form>
-      <TextField
-        name="textfieldflexiblecontrol"
-        label="Text Field With Flexible Control State Size"
-        placeholder="Type text and then delete it"
-        {...fieldProps}
-      />
-      <NewBooleanField name="field" label="New Boolean Field" {...fieldProps} />
-      <RadioField
-        name="radio"
-        label="Radio Field"
-        choices={[
-          ['choice_one', 'Choice One'],
-          ['choice_two', 'Choice Two'],
-          ['choice_three', 'Choice Three'],
+      <SelectField
+        name="select"
+        label="Select Field"
+        options={[
+          {
+            label: 'Group 1',
+            options: [
+              {
+                label: 'Choice One',
+                value: '1',
+                details: "Here's some additional details",
+                leadingItems: <CircleEl color="blue300" />,
+                trailingItems: <Link />,
+              },
+              {
+                label: 'Choice Two',
+                value: '2',
+                details: "Here's some additional details",
+                leadingItems: <CircleEl color="red300" />,
+                trailingItems: <Link />,
+              },
+              {
+                label: 'Choice Three',
+                value: '3',
+                details: "Here's some additional details",
+                leadingItems: <CircleEl color="green300" />,
+                trailingItems: <Link />,
+              },
+            ],
+          },
+          {
+            label: 'Group 2',
+            options: [
+              {
+                label: 'Choice One',
+                value: '12',
+                leadingItems: <CircleEl color="blue300" />,
+                trailingItems: <Link />,
+              },
+              {
+                label: 'Choice Two',
+                value: '22',
+                leadingItems: <CircleEl color="red300" />,
+                trailingItems: <Link />,
+              },
+              {
+                label: 'Choice Three',
+                value: '32',
+                leadingItems: <CircleEl color="green300" />,
+                trailingItems: <Link />,
+              },
+            ],
+          },
         ]}
         {...fieldProps}
       />
       <SelectField
-        name="select"
-        label="Select Field"
-        choices={[
-          ['choice_one', 'Choice One'],
-          ['choice_two', 'Choice Two'],
-          ['choice_three', 'Choice Three'],
+        name="select2"
+        label="Select Field - Multiple"
+        multiple
+        options={[
+          {
+            label: 'Group 1',
+            options: [
+              {
+                label: 'Choice One',
+                value: '1',
+                details: "Here's some additional details",
+                leadingItems: <CircleEl color="blue300" />,
+              },
+              {
+                label: 'Choice Two',
+                value: '2',
+                details: "Here's some additional details",
+                leadingItems: <CircleEl color="red300" />,
+              },
+              {
+                label: 'Choice Three',
+                value: '3',
+                details: "Here's some additional details",
+                leadingItems: <CircleEl color="green300" />,
+              },
+            ],
+          },
+          {
+            label: 'Group 2',
+            options: [
+              {label: 'Choice One', value: '12'},
+              {label: 'Choice Two', value: '22'},
+              {label: 'Choice Three', value: '32'},
+            ],
+          },
         ]}
-        {...fieldProps}
-      />
-      <RangeField
-        name="rangeField"
-        label="Range Field"
-        min={1}
-        max={10}
-        step={1}
-        value={1}
-        formatLabel={value => {
-          return `${value} Toaster Strudle${value > 1 ? 's' : ''}`;
-        }}
         {...fieldProps}
       />
     </Form>
