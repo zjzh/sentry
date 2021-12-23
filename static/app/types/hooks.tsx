@@ -143,7 +143,6 @@ export type FeatureDisabledHooks = {
   'feature-disabled:alerts-page': FeatureDisabledHook;
   'feature-disabled:configure-distributed-tracing': FeatureDisabledHook;
   'feature-disabled:custom-inbound-filters': FeatureDisabledHook;
-  'feature-disabled:custom-symbol-sources': FeatureDisabledHook;
   'feature-disabled:data-forwarding': FeatureDisabledHook;
   'feature-disabled:discard-groups': FeatureDisabledHook;
   'feature-disabled:discover-page': FeatureDisabledHook;
