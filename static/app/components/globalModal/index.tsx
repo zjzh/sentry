@@ -5,6 +5,7 @@ import {css} from '@emotion/react';
 import styled from '@emotion/styled';
 import {createFocusTrap, FocusTrap} from 'focus-trap';
 import {AnimatePresence, motion} from 'framer-motion';
+import {CSSTransition} from 'react-transition-group';
 
 import {closeModal as actionCloseModal} from 'sentry/actionCreators/modal';
 import {ROOT_ELEMENT} from 'sentry/constants';
@@ -98,7 +99,13 @@ type Props = {
   onClose?: () => void;
 };
 
-function GlobalModal({visible = false, options = {}, children, onClose}: Props) {
+function GlobalModal({
+  visible = false,
+  options = {},
+  children,
+  onClose,
+  easing = 'quart',
+}: Props) {
   const closeModal = React.useCallback(() => {
     // Option close callback, from the thing which opened the modal
     options.onClose?.();
@@ -183,6 +190,7 @@ function GlobalModal({visible = false, options = {}, children, onClose}: Props) 
   return ReactDOM.createPortal(
     <React.Fragment>
       <Backdrop
+        easing={easing}
         style={backdrop && visible ? {opacity: 0.5, pointerEvents: 'auto'} : {}}
       />
       <Container
@@ -190,13 +198,11 @@ function GlobalModal({visible = false, options = {}, children, onClose}: Props) 
         style={{pointerEvents: visible ? 'auto' : 'none'}}
         onClick={backdrop === true ? clickClose : undefined}
       >
-        <AnimatePresence>
-          {visible && (
-            <Modal role="dialog" css={options.modalCss}>
-              <Content role="document">{renderedChild}</Content>
-            </Modal>
-          )}
-        </AnimatePresence>
+        <CSSTransition in={visible} timeout={500} unmountOnExit mountOnEntry>
+          <Modal role="dialog" easing={easing}>
+            <Content role="document">{renderedChild}</Content>
+          </Modal>
+        </CSSTransition>
       </Container>
     </React.Fragment>,
     portal
@@ -211,12 +217,12 @@ const fullPageCss = css`
   left: 0;
 `;
 
-const Backdrop = styled('div')`
+const Backdrop = styled('div')<{easing: string}>`
   ${fullPageCss};
   z-index: ${p => p.theme.zIndex.modal};
   background: ${p => p.theme.gray500};
   will-change: opacity;
-  transition: opacity 200ms;
+  transition: opacity ${p => p.theme.animation[p.easing].mediumOut};
   pointer-events: none;
   opacity: 0;
 `;
@@ -230,21 +236,27 @@ const Container = styled('div')`
   overflow-y: auto;
 `;
 
-const Modal = styled(motion.div)`
+const Modal = styled(motion.div)<{easing: string}>`
   width: 640px;
   pointer-events: auto;
   padding: 80px ${space(2)} ${space(4)} ${space(2)};
-`;
 
-Modal.defaultProps = {
-  initial: {opacity: 0, y: -10},
-  animate: {opacity: 1, y: 0},
-  exit: {opacity: 0, y: 15},
-  transition: testableTransition({
-    opacity: {duration: 0.2},
-    y: {duration: 0.25},
-  }),
-};
+  opacity: 0;
+  transform: translateY(-4em);
+  transition: opacity ${p => p.theme.animation[p.easing].mediumOut},
+    transform ${p => p.theme.animation[p.easing].mediumOut};
+
+  &.enter-active,
+  &.enter-done {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  &.exit-active {
+    opacity: 0;
+    transform: translateY(0);
+  }
+`;
 
 const Content = styled('div')`
   padding: ${space(4)};

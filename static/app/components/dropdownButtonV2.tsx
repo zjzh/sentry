@@ -49,7 +49,7 @@ const DropdownButton = ({
     >
       {prefix && <LabelText>{prefix}</LabelText>}
       {children}
-      {showChevron && <StyledChevron size="10px" direction={isOpen ? 'up' : 'down'} />}
+      {showChevron && <StyledChevron size="10px" direction={'down'} />}
     </StyledButton>
   );
 };

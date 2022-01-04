@@ -31,8 +31,14 @@ function Menu({closeMenuOnAction = true, onAction, close, ...props}: Props) {
 
   return (
     <MenuWrap ref={menuRef} {...menuProps}>
-      {[...treeState.collection].map(item => (
-        <MenuItem key={item.key} item={item} state={treeState} onAction={onMenuAction} />
+      {[...treeState.collection].map((item, i) => (
+        <MenuItem
+          key={item.key}
+          item={item}
+          state={treeState}
+          onAction={onMenuAction}
+          nextItem={[...treeState.collection][i + 1]}
+        />
       ))}
     </MenuWrap>
   );
@@ -46,5 +52,8 @@ const MenuWrap = styled('ul')`
   border: solid 1px ${p => p.theme.border};
   border-radius: ${p => p.theme.borderRadius};
   box-shadow: ${p => p.theme.dropShadowHeavy};
+  background: ${p => p.theme.backgroundElevated};
+  z-index: ${p => p.theme.zIndex.dropdownAutocomplete.menu};
   font-size: ${p => p.theme.fontSizeMedium};
+  margin: 0;
 `;

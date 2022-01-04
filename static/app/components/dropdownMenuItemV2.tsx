@@ -19,15 +19,17 @@ export type Item = {
 
 type Props = {
   item: Item;
+  nextItem: Item;
   state: any;
   onAction: () => void;
 };
 
-function MenuItem({item, state, onAction}: Props) {
+function MenuItem({item, nextItem, state, onAction}: Props) {
   const ref = useRef(null);
   const isDisabled = state.disabledKeys.has(item.key);
   const isFocused = state.selectionManager.focusedKey === item.key;
   const actionHandler = item.props.onAction ?? onAction;
+  const nextItemIsFocused = state.selectionManager?.state?.focusedKey === nextItem?.key;
 
   const {menuItemProps} = useMenuItem(
     {
@@ -46,7 +48,11 @@ function MenuItem({item, state, onAction}: Props) {
     <Wrap ref={ref} {...menuItemProps}>
       <InnerWrap isFocused={isFocused}>
         {leadingItems && <LeadingItems>{leadingItems}</LeadingItems>}
-        <ContentWrap isFocused={isFocused} showDividers={showDividers}>
+        <ContentWrap
+          isFocused={isFocused}
+          nextItemIsFocused={nextItemIsFocused}
+          showDividers={showDividers}
+        >
           <div>
             <Label>{label}</Label>
             {details && <Details>{details}</Details>}
@@ -77,6 +83,7 @@ const InnerWrap = styled('div')<{isFocused: boolean}>`
   padding: 0 ${space(1)};
   border-radius: ${p => p.theme.borderRadius};
   box-sizing: border-box;
+  background: ${p => p.theme.backgroundElevated};
 
   ${p => p.isFocused && `background: ${p.theme.hover};`}
 `;
@@ -91,7 +98,11 @@ const LeadingItems = styled('div')`
   margin-top: ${space(1)};
 `;
 
-const ContentWrap = styled('div')<{isFocused: boolean; showDividers?: boolean}>`
+const ContentWrap = styled('div')<{
+  isFocused: boolean;
+  nextItemIsFocused: boolean;
+  showDividers?: boolean;
+}>`
   position: relative;
   width: 100%;
   display: flex;
@@ -102,8 +113,8 @@ const ContentWrap = styled('div')<{isFocused: boolean; showDividers?: boolean}>`
   ${p =>
     p.showDividers &&
     !p.isFocused &&
+    !p.nextItemIsFocused &&
     `
-      z-index: -1;
       box-shadow: 0 1px 0 0 ${p.theme.innerBorder};
 
       ${Wrap}:last-of-type & {
