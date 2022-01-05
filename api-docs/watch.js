@@ -19,7 +19,9 @@ const makeApiDocsCommand = function () {
   console.log('rebuilding...');
   try {
     isCurrentlyRunning = true;
-    output = execSync('make build-api-docs', {stdio: 'inherit'});
+    output = execSync('SENTRY_DEVENV_NO_REPORT=1 make build-api-docs', {
+      stdio: 'inherit',
+    });
   } catch (e) {
     isCurrentlyRunning = false;
     return;
