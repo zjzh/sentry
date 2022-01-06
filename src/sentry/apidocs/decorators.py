@@ -1,4 +1,5 @@
 from .preprocessor import PUBLIC_ENDPOINTS
+from .schemaserializer import PUBLIC_SERIALIZERS
 
 
 def declare_public(methods):
@@ -11,3 +12,8 @@ def declare_public(methods):
         return view_cls
 
     return decorate
+
+
+def mark_serializer_public(serializer_cls):
+    PUBLIC_SERIALIZERS.add(f"{serializer_cls.__module__}.{serializer_cls.__name__}")
+    return serializer_cls
