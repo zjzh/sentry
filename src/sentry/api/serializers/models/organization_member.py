@@ -1,8 +1,9 @@
 from collections import defaultdict
-from typing import Any, List, Mapping, MutableMapping, Optional, Sequence, Set
+from typing import Any, List, Mapping, MutableMapping, Optional, Sequence, Set, TypedDict
 
 from sentry import roles
 from sentry.api.serializers import Serializer, register, serialize
+from sentry.apidocs.decorators import declare_public, mark_serializer_public
 from sentry.models import (
     ExternalActor,
     OrganizationMember,
@@ -192,13 +193,39 @@ class OrganizationMemberWithProjectsSerializer(OrganizationMemberSerializer):
         return d
 
 
+class SCIMName(TypedDict):
+    givenName: str
+    familyName: str
+
+
+class SCIMEmail(TypedDict):
+    primary: bool
+    value: str
+    type: str
+
+
+class SCIMMeta(TypedDict):
+    resourceType: str
+
+
+class OrganizationMemberSCIMSerializerResponse(TypedDict, total=False):
+    schemas: List[str]
+    id: str
+    userName: str
+    name: SCIMName
+    emails: List[SCIMEmail]
+    active: Optional[bool]
+    meta: SCIMMeta
+
+
+@mark_serializer_public
 class OrganizationMemberSCIMSerializer(Serializer):  # type: ignore
     def __init__(self, expand: Optional[Sequence[str]] = None) -> None:
         self.expand = expand or []
 
     def serialize(
         self, obj: OrganizationMember, attrs: Mapping[str, Any], user: Any, **kwargs: Any
-    ) -> MutableMapping[str, JSONData]:
+    ) -> OrganizationMemberSCIMSerializerResponse:
 
         result = {
             "schemas": [SCIM_SCHEMA_USER],
