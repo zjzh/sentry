@@ -1,8 +1,12 @@
+from typing import Iterable, Literal
+
 from .preprocessor import PUBLIC_ENDPOINTS
 from .schemaserializer import PUBLIC_SERIALIZERS
 
+http_methods = Literal["GET", "POST", "PUT", "PATCH", "DELETE"]
 
-def declare_public(methods):
+
+def declare_public(methods: Iterable[http_methods]):
     def decorate(view_cls):
         PUBLIC_ENDPOINTS[view_cls.__name__] = {
             "callback": view_cls,
