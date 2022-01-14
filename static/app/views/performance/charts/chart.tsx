@@ -212,6 +212,8 @@ function Chart({
       }
     : undefined;
 
+  const __series = disableXAxis ? [series[0]] : series;
+
   return (
     <ChartZoom
       router={router}
@@ -227,7 +229,7 @@ function Chart({
             <LineChart
               height={height}
               {...zoomRenderProps}
-              series={series}
+              series={__series}
               previousPeriod={previousData}
               xAxis={xAxis}
             />
@@ -238,7 +240,7 @@ function Chart({
           <AreaChart
             height={height}
             {...zoomRenderProps}
-            series={series}
+            series={__series}
             previousPeriod={previousData}
             xAxis={xAxis}
             {...areaChartProps}

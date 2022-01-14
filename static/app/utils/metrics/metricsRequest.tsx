@@ -110,7 +110,7 @@ class MetricsRequest extends React.Component<Props, State> {
       orderBy,
       limit,
       interval: interval ? interval : getInterval({start, end, period: statsPeriod}),
-      datasource: getMetricsDataSource(),
+      datasource: 'snuba',
     };
 
     if (!previousPeriod) {
