@@ -26,7 +26,7 @@ export type CursorHandler = (
 type Props = WithRouterProps & {
   pageLinks?: string | null;
   to?: string;
-  caption?: React.ReactElement;
+  caption?: React.ReactNode;
   size?: 'zero' | 'xsmall' | 'small';
   onCursor?: CursorHandler;
   disabled?: boolean;

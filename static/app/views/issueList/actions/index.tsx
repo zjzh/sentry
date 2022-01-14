@@ -30,7 +30,7 @@ type Props = {
   statsPeriod: string;
   query: string;
   queryCount: number;
-  displayCount: React.ReactElement;
+  displayCount: React.ReactNode;
   displayReprocessingActions: boolean;
   onMarkReviewed?: (itemIds: string[]) => void;
 };

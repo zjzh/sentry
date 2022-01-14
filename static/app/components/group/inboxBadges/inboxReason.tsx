@@ -93,7 +93,7 @@ function InboxReason({inbox, fontSize = 'sm', showDateAdded}: Props) {
     tagType: React.ComponentProps<typeof Tag>['type'];
     reasonBadgeText: string;
     tooltipText?: string;
-    tooltipDescription?: string | React.ReactElement;
+    tooltipDescription?: string | React.ReactNode;
   } {
     switch (reason) {
       case GroupInboxReason.UNIGNORED:
