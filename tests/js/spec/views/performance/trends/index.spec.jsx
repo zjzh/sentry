@@ -5,6 +5,7 @@ import {initializeOrg} from 'sentry-test/initializeOrg';
 import {act} from 'sentry-test/reactTestingLibrary';
 
 import ProjectsStore from 'sentry/stores/projectsStore';
+import {WebVital} from 'sentry/utils/discover/fields';
 import TrendsIndex from 'sentry/views/performance/trends/';
 import {
   DEFAULT_MAX_DURATION,
@@ -385,7 +386,7 @@ describe('Performance > Trends', function () {
     }
   }, 10000);
 
-  it('choosing a parameter changes location', async function () {
+  it('choosing a parameter changes location and, for web vitals parameters, adds them as additional conditions to the query', async function () {
     const projects = [TestStubs.Project()];
     const data = initializeTrendsData(projects, {project: ['-1']});
     wrapper = mountWithTheme(
@@ -397,6 +398,7 @@ describe('Performance > Trends', function () {
     wrapper.update();
 
     for (const parameter of TRENDS_PARAMETERS) {
+      trendsStatsMock.mockReset();
       selectTrendParameter(wrapper, parameter.label);
 
       await tick();
@@ -407,6 +409,32 @@ describe('Performance > Trends', function () {
           trendParameter: parameter.label,
         }),
       });
+
+      if (Object.values(WebVital).includes(parameter.column)) {
+        expect(trendsStatsMock).toHaveBeenCalledTimes(2);
+
+        // Improved transactions call
+        expect(trendsStatsMock).toHaveBeenNthCalledWith(
+          1,
+          expect.anything(),
+          expect.objectContaining({
+            query: expect.objectContaining({
+              query: expect.stringContaining(`has:${parameter.column}`),
+            }),
+          })
+        );
+
+        // Regression transactions call
+        expect(trendsStatsMock).toHaveBeenNthCalledWith(
+          2,
+          expect.anything(),
+          expect.objectContaining({
+            query: expect.objectContaining({
+              query: expect.stringContaining(`has:${parameter.column}`),
+            }),
+          })
+        );
+      }
     }
   }, 10000);
 
