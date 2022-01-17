@@ -1,10 +1,11 @@
 import {browserHistory} from 'react-router';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
+import {enforceActOnUseLegacyStoreHook, mountWithTheme} from 'sentry-test/enzyme';
 import {initializeOrg} from 'sentry-test/initializeOrg';
+import {act} from 'sentry-test/reactTestingLibrary';
 
-import ProjectsStore from 'app/stores/projectsStore';
-import Results from 'app/views/eventsV2/results';
+import ProjectsStore from 'sentry/stores/projectsStore';
+import Results from 'sentry/views/eventsV2/results';
 
 const FIELDS = [
   {
@@ -26,9 +27,11 @@ const generateFields = () => ({
 });
 
 describe('EventsV2 > Results', function () {
+  enforceActOnUseLegacyStoreHook();
+
   const eventTitle = 'Oh no something bad';
   const features = ['discover-basic'];
-  let eventResultsMock, mockSaved, eventsStatsMock;
+  let eventResultsMock, mockSaved, eventsStatsMock, mockVisit;
 
   beforeEach(function () {
     MockApiClient.addMockResponse({
@@ -112,13 +115,23 @@ describe('EventsV2 > Results', function () {
       body: [
         {
           key: 'release',
-          topValues: [{count: 2, value: 'abcd123', name: 'abcd123'}],
+          topValues: [{count: 3, value: 'abcd123', name: 'abcd123'}],
         },
         {
           key: 'environment',
-          topValues: [{count: 2, value: 'abcd123', name: 'abcd123'}],
+          topValues: [{count: 2, value: 'dev', name: 'dev'}],
+        },
+        {
+          key: 'foo',
+          topValues: [{count: 1, value: 'bar', name: 'bar'}],
         },
       ],
+    });
+    mockVisit = MockApiClient.addMockResponse({
+      url: '/organizations/org-slug/discover/saved/1/visit/',
+      method: 'POST',
+      body: [],
+      statusCode: 200,
     });
     mockSaved = MockApiClient.addMockResponse({
       url: '/organizations/org-slug/discover/saved/1/',
@@ -146,13 +159,12 @@ describe('EventsV2 > Results', function () {
 
   afterEach(function () {
     MockApiClient.clearMockResponses();
-    ProjectsStore.reset();
+    act(() => ProjectsStore.reset());
   });
 
   it('loads data when moving from an invalid to valid EventView', async function () {
     const organization = TestStubs.Organization({
       features,
-      projects: [TestStubs.Project()],
     });
 
     // Start off with an invalid view (empty is invalid)
@@ -163,6 +175,8 @@ describe('EventsV2 > Results', function () {
       },
     });
 
+    ProjectsStore.loadInitialData([TestStubs.Project()]);
+
     const wrapper = mountWithTheme(
       <Results
         organization={organization}
@@ -172,9 +186,9 @@ describe('EventsV2 > Results', function () {
       initialData.routerContext
     );
 
-    ProjectsStore.loadInitialData(initialData.organization.projects);
     await tick();
     wrapper.update();
+
     // No request as eventview was invalid.
     expect(eventResultsMock).not.toHaveBeenCalled();
 
@@ -196,56 +210,9 @@ describe('EventsV2 > Results', function () {
     expect(eventResultsMock).toHaveBeenCalled();
   });
 
-  it('pushes to router when user id is wrong', async function () {
-    const organization = TestStubs.Organization({
-      features,
-      projects: [TestStubs.Project()],
-    });
-
-    const initialData = initializeOrg({
-      organization,
-      router: {
-        location: {query: {...generateFields(), cursor: '0%3A50%3A0', user: '2'}},
-      },
-    });
-
-    ProjectsStore.loadInitialData(initialData.organization.projects);
-
-    const wrapper = mountWithTheme(
-      <Results
-        organization={organization}
-        location={initialData.router.location}
-        router={initialData.router}
-      />,
-      initialData.routerContext
-    );
-
-    await tick();
-    wrapper.update();
-
-    expect(initialData.router.location).toEqual({
-      query: {
-        ...generateFields(),
-        cursor: '0%3A50%3A0',
-        user: '2',
-      },
-    });
-
-    expect(initialData.router.push).toHaveBeenCalledWith({
-      pathname: undefined,
-      query: {
-        ...generateFields(),
-        cursor: '0%3A50%3A0',
-        user: '1',
-      },
-    });
-    wrapper.unmount();
-  });
-
   it('pagination cursor should be cleared when making a search', async function () {
     const organization = TestStubs.Organization({
       features,
-      projects: [TestStubs.Project()],
     });
 
     const initialData = initializeOrg({
@@ -255,7 +222,7 @@ describe('EventsV2 > Results', function () {
       },
     });
 
-    ProjectsStore.loadInitialData(initialData.organization.projects);
+    ProjectsStore.loadInitialData([TestStubs.Project()]);
 
     const wrapper = mountWithTheme(
       <Results
@@ -285,6 +252,9 @@ describe('EventsV2 > Results', function () {
     });
     await tick();
 
+    // should only be called with saved queries
+    expect(mockVisit).not.toHaveBeenCalled();
+
     // cursor query string should be omitted from the query string
     expect(initialData.router.push).toHaveBeenCalledWith({
       pathname: undefined,
@@ -300,7 +270,6 @@ describe('EventsV2 > Results', function () {
   it('renders a y-axis selector', async function () {
     const organization = TestStubs.Organization({
       features,
-      projects: [TestStubs.Project()],
     });
 
     const initialData = initializeOrg({
@@ -309,6 +278,8 @@ describe('EventsV2 > Results', function () {
         location: {query: {...generateFields(), yAxis: 'count()'}},
       },
     });
+
+    ProjectsStore.loadInitialData([TestStubs.Project()]);
 
     const wrapper = mountWithTheme(
       <Results
@@ -330,20 +301,19 @@ describe('EventsV2 > Results', function () {
     wrapper.update();
 
     const eventsRequest = wrapper.find('EventsChart');
-    expect(eventsRequest.props().yAxis).toEqual('count()');
+    expect(eventsRequest.props().yAxis).toEqual(['count()']);
     wrapper.unmount();
   });
 
   it('renders a display selector', async function () {
     const organization = TestStubs.Organization({
       features,
-      projects: [TestStubs.Project()],
     });
 
     const initialData = initializeOrg({
       organization,
       router: {
-        location: {query: {...generateFields(), display: 'previoux'}},
+        location: {query: {...generateFields(), display: 'default', yAxis: 'count'}},
       },
     });
 
@@ -356,7 +326,7 @@ describe('EventsV2 > Results', function () {
       initialData.routerContext
     );
 
-    ProjectsStore.loadInitialData(initialData.organization.projects);
+    act(() => ProjectsStore.loadInitialData([TestStubs.Project()]));
     await tick();
     wrapper.update();
 
@@ -383,15 +353,16 @@ describe('EventsV2 > Results', function () {
   it('excludes top5 options when plan does not include discover-query', async function () {
     const organization = TestStubs.Organization({
       features: ['discover-basic'],
-      projects: [TestStubs.Project()],
     });
 
     const initialData = initializeOrg({
       organization,
       router: {
-        location: {query: {...generateFields(), display: 'previoux'}},
+        location: {query: {...generateFields(), display: 'previous'}},
       },
     });
+
+    ProjectsStore.loadInitialData([TestStubs.Project()]);
 
     const wrapper = mountWithTheme(
       <Results
@@ -421,7 +392,6 @@ describe('EventsV2 > Results', function () {
   it('needs confirmation on long queries', async function () {
     const organization = TestStubs.Organization({
       features: ['discover-basic'],
-      projects: [TestStubs.Project()],
     });
 
     const initialData = initializeOrg({
@@ -451,7 +421,6 @@ describe('EventsV2 > Results', function () {
   it('needs confirmation on long query with explicit projects', async function () {
     const organization = TestStubs.Organization({
       features: ['discover-basic'],
-      projects: [TestStubs.Project()],
     });
 
     const initialData = initializeOrg({
@@ -487,7 +456,6 @@ describe('EventsV2 > Results', function () {
   it('does not need confirmation on short queries', async function () {
     const organization = TestStubs.Organization({
       features: ['discover-basic'],
-      projects: [TestStubs.Project()],
     });
 
     const initialData = initializeOrg({
@@ -517,7 +485,6 @@ describe('EventsV2 > Results', function () {
   it('does not need confirmation with to few projects', async function () {
     const organization = TestStubs.Organization({
       features: ['discover-basic'],
-      projects: [TestStubs.Project()],
     });
 
     const initialData = initializeOrg({
@@ -549,7 +516,6 @@ describe('EventsV2 > Results', function () {
   it('retrieves saved query', async function () {
     const organization = TestStubs.Organization({
       features,
-      projects: [TestStubs.Project()],
       slug: 'org-slug',
     });
     const initialData = initializeOrg({
@@ -583,13 +549,13 @@ describe('EventsV2 > Results', function () {
     expect(savedQuery.projects).toEqual([]);
     expect(savedQuery.range).toEqual('24h');
     expect(mockSaved).toHaveBeenCalled();
+    expect(mockVisit).toHaveBeenCalledTimes(1);
     wrapper.unmount();
   });
 
   it('creates event view from saved query', async function () {
     const organization = TestStubs.Organization({
       features,
-      projects: [TestStubs.Project()],
       slug: 'org-slug',
     });
     const initialData = initializeOrg({
@@ -623,7 +589,6 @@ describe('EventsV2 > Results', function () {
   it('overrides saved query params with location query params', async function () {
     const organization = TestStubs.Organization({
       features,
-      projects: [TestStubs.Project()],
       slug: 'org-slug',
     });
     const initialData = initializeOrg({
@@ -658,13 +623,13 @@ describe('EventsV2 > Results', function () {
     expect(eventView.project).toEqual([2]);
     expect(eventView.statsPeriod).toEqual('7d');
     expect(eventView.environment).toEqual(['production']);
+    expect(mockVisit).toHaveBeenCalledTimes(1);
     wrapper.unmount();
   });
 
   it('updates chart whenever yAxis parameter changes', async function () {
     const organization = TestStubs.Organization({
       features,
-      projects: [TestStubs.Project()],
     });
 
     const initialData = initializeOrg({
@@ -673,6 +638,8 @@ describe('EventsV2 > Results', function () {
         location: {query: {...generateFields(), yAxis: 'count()'}},
       },
     });
+
+    ProjectsStore.loadInitialData([TestStubs.Project()]);
 
     const wrapper = mountWithTheme(
       <Results
@@ -683,10 +650,6 @@ describe('EventsV2 > Results', function () {
       initialData.routerContext
     );
 
-    ProjectsStore.loadInitialData(initialData.organization.projects);
-    await tick();
-    wrapper.update();
-
     // Should load events once
     expect(eventsStatsMock).toHaveBeenCalledTimes(1);
     expect(eventsStatsMock).toHaveBeenNthCalledWith(
@@ -695,7 +658,7 @@ describe('EventsV2 > Results', function () {
       expect.objectContaining({
         query: expect.objectContaining({
           statsPeriod: '14d',
-          yAxis: 'count()',
+          yAxis: ['count()'],
         }),
       })
     );
@@ -717,7 +680,7 @@ describe('EventsV2 > Results', function () {
       expect.objectContaining({
         query: expect.objectContaining({
           statsPeriod: '14d',
-          yAxis: 'count_unique(user)',
+          yAxis: ['count_unique(user)'],
         }),
       })
     );
@@ -727,15 +690,16 @@ describe('EventsV2 > Results', function () {
   it('updates chart whenever display parameter changes', async function () {
     const organization = TestStubs.Organization({
       features,
-      projects: [TestStubs.Project()],
     });
 
     const initialData = initializeOrg({
       organization,
       router: {
-        location: {query: {...generateFields(), display: 'default'}},
+        location: {query: {...generateFields(), display: 'default', yAxis: 'count()'}},
       },
     });
+
+    ProjectsStore.loadInitialData([TestStubs.Project()]);
 
     const wrapper = mountWithTheme(
       <Results
@@ -746,10 +710,6 @@ describe('EventsV2 > Results', function () {
       initialData.routerContext
     );
 
-    ProjectsStore.loadInitialData(initialData.organization.projects);
-    await tick();
-    wrapper.update();
-
     // Should load events once
     expect(eventsStatsMock).toHaveBeenCalledTimes(1);
     expect(eventsStatsMock).toHaveBeenNthCalledWith(
@@ -758,7 +718,7 @@ describe('EventsV2 > Results', function () {
       expect.objectContaining({
         query: expect.objectContaining({
           statsPeriod: '14d',
-          yAxis: 'count()',
+          yAxis: ['count()'],
         }),
       })
     );
@@ -766,7 +726,7 @@ describe('EventsV2 > Results', function () {
     // Update location simulating a browser back button action
     wrapper.setProps({
       location: {
-        query: {...generateFields(), display: 'previous'},
+        query: {...generateFields(), display: 'previous', yAxis: 'count()'},
       },
     });
     await tick();
@@ -780,7 +740,7 @@ describe('EventsV2 > Results', function () {
       expect.objectContaining({
         query: expect.objectContaining({
           statsPeriod: '28d',
-          yAxis: 'count()',
+          yAxis: ['count()'],
         }),
       })
     );
@@ -790,7 +750,6 @@ describe('EventsV2 > Results', function () {
   it('updates chart whenever display and yAxis parameters change', async function () {
     const organization = TestStubs.Organization({
       features,
-      projects: [TestStubs.Project()],
     });
 
     const initialData = initializeOrg({
@@ -799,6 +758,8 @@ describe('EventsV2 > Results', function () {
         location: {query: {...generateFields(), display: 'default', yAxis: 'count()'}},
       },
     });
+
+    ProjectsStore.loadInitialData([TestStubs.Project()]);
 
     const wrapper = mountWithTheme(
       <Results
@@ -809,10 +770,6 @@ describe('EventsV2 > Results', function () {
       initialData.routerContext
     );
 
-    ProjectsStore.loadInitialData(initialData.organization.projects);
-    await tick();
-    wrapper.update();
-
     // Should load events once
     expect(eventsStatsMock).toHaveBeenCalledTimes(1);
     expect(eventsStatsMock).toHaveBeenNthCalledWith(
@@ -821,7 +778,7 @@ describe('EventsV2 > Results', function () {
       expect.objectContaining({
         query: expect.objectContaining({
           statsPeriod: '14d',
-          yAxis: 'count()',
+          yAxis: ['count()'],
         }),
       })
     );
@@ -843,10 +800,51 @@ describe('EventsV2 > Results', function () {
       expect.objectContaining({
         query: expect.objectContaining({
           statsPeriod: '28d',
-          yAxis: 'count_unique(user)',
+          yAxis: ['count_unique(user)'],
         }),
       })
     );
     wrapper.unmount();
+  });
+
+  it('appends tag value to existing query when clicked', async function () {
+    const organization = TestStubs.Organization({
+      features,
+    });
+
+    const initialData = initializeOrg({
+      organization,
+      router: {
+        location: {query: {...generateFields(), display: 'default', yAxis: 'count'}},
+      },
+    });
+
+    const wrapper = mountWithTheme(
+      <Results
+        organization={organization}
+        location={initialData.router.location}
+        router={initialData.router}
+      />,
+      initialData.routerContext
+    );
+
+    act(() => ProjectsStore.loadInitialData([TestStubs.Project()]));
+    await tick();
+    wrapper.update();
+
+    wrapper.find('[data-test-id="toggle-show-tags"]').first().simulate('click');
+    await tick();
+    wrapper.update();
+
+    // since environment collides with the environment field, it is wrapped with `tags[...]`
+    const envSegment = wrapper.find(
+      '[data-test-id="tag-environment-segment-dev"] Segment'
+    );
+    const envTarget = envSegment.props().to;
+    expect(envTarget.query.query).toEqual('tags[environment]:dev');
+
+    const fooSegment = wrapper.find('[data-test-id="tag-foo-segment-bar"] Segment');
+    const fooTarget = fooSegment.props().to;
+    expect(fooTarget.query.query).toEqual('foo:bar');
   });
 });

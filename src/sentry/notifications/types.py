@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from enum import Enum
 from typing import Optional
 
@@ -10,7 +12,7 @@ integers to their string values.
 """
 
 
-def get_notification_setting_type_name(value: int) -> Optional[str]:
+def get_notification_setting_type_name(value: int | NotificationSettingTypes) -> Optional[str]:
     return NOTIFICATION_SETTING_TYPES.get(NotificationSettingTypes(value))
 
 
@@ -41,12 +43,16 @@ class NotificationSettingTypes(Enum):
     # Notifications for changes in assignment, resolution, comments, etc.
     WORKFLOW = 30
 
+    # Notifications that require approval like a request to invite a member
+    APPROVAL = 40
+
 
 NOTIFICATION_SETTING_TYPES = {
     NotificationSettingTypes.DEFAULT: "default",
     NotificationSettingTypes.DEPLOY: "deploy",
     NotificationSettingTypes.ISSUE_ALERTS: "alerts",
     NotificationSettingTypes.WORKFLOW: "workflow",
+    NotificationSettingTypes.APPROVAL: "approval",
 }
 
 
@@ -100,6 +106,7 @@ NOTIFICATION_SCOPE_TYPE = {
 
 class FineTuningAPIKey(Enum):
     ALERTS = "alerts"
+    APPROVAL = "approval"
     DEPLOY = "deploy"
     EMAIL = "email"
     REPORTS = "reports"
@@ -112,9 +119,14 @@ class UserOptionsSettingsKey(Enum):
     SELF_ASSIGN = "selfAssignOnResolve"
     SUBSCRIBE_BY_DEFAULT = "subscribeByDefault"
     WORKFLOW = "workflowNotifications"
+    APPROVAL = "approvalNotifications"
 
 
 VALID_VALUES_FOR_KEY = {
+    NotificationSettingTypes.APPROVAL: {
+        NotificationSettingOptionValues.ALWAYS,
+        NotificationSettingOptionValues.NEVER,
+    },
     NotificationSettingTypes.DEPLOY: {
         NotificationSettingOptionValues.ALWAYS,
         NotificationSettingOptionValues.COMMITTED_ONLY,

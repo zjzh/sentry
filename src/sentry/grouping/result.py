@@ -1,41 +1,25 @@
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Dict, Optional, Sequence, Union
+from typing import Any, Dict, List, Optional, Sequence, TypedDict, Union
 
 from sentry.utils.safe import get_path, safe_execute, set_path
-
-# TODO(3.8): This is a hack so we can get TypedDicts before 3.8
-if TYPE_CHECKING:
-    from mypy_extensions import TypedDict
-else:
-
-    def TypedDict(*args, **kwargs):
-        pass
-
 
 EventData = Dict[str, Any]
 EventMetadata = Dict[str, Any]
 
 
-TreeLabelPart = TypedDict(
-    "TreeLabelPart",
-    {
-        "function": str,
-        "package": str,
-        "is_sentinel": bool,
-        "is_prefix": bool,
-        "datapath": Sequence[Union[str, int]],
-    },
-)
+class TreeLabelPart(TypedDict):
+    function: str
+    package: str
+    is_sentinel: bool
+    is_prefix: bool
+    datapath: Sequence[Union[str, int]]
 
-StrippedTreeLabelPart = TypedDict(
-    "StrippedTreeLabelPart",
-    {
-        "function": str,
-        "package": str,
-        "is_sentinel": bool,
-        "is_prefix": bool,
-    },
-)
+
+class StrippedTreeLabelPart(TypedDict):
+    function: str
+    package: str
+    is_sentinel: bool
+    is_prefix: bool
 
 
 TreeLabel = Sequence[TreeLabelPart]
@@ -79,10 +63,15 @@ def _strip_tree_label(tree_label: TreeLabel, truncate: bool = False) -> Stripped
     return rv
 
 
-def _write_tree_labels(tree_labels: Sequence[TreeLabel], event_data: EventData) -> None:
-    event_data["hierarchical_tree_labels"] = event_labels = []
+def _write_tree_labels(tree_labels: Sequence[Optional[TreeLabel]], event_data: EventData) -> None:
+    event_labels: List[Optional[StrippedTreeLabel]] = []
+    event_data["hierarchical_tree_labels"] = event_labels
 
     for level, tree_label in enumerate(tree_labels):
+        if tree_label is None:
+            event_labels.append(None)
+            continue
+
         event_labels.append(_strip_tree_label(tree_label))
 
         for part in tree_label:

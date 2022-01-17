@@ -1,5 +1,6 @@
 from django.db.models import Case, When
 from rest_framework.exceptions import ParseError
+from rest_framework.request import Request
 from rest_framework.response import Response
 
 from sentry import features
@@ -20,7 +21,7 @@ class DiscoverSavedQueriesEndpoint(OrganizationEndpoint):
             "organizations:discover", organization, actor=request.user
         ) or features.has("organizations:discover-query", organization, actor=request.user)
 
-    def get(self, request, organization):
+    def get(self, request: Request, organization) -> Response:
         """
         List saved queries for organization
         """
@@ -47,22 +48,41 @@ class DiscoverSavedQueriesEndpoint(OrganizationEndpoint):
                     queryset = queryset.none()
 
         sort_by = request.query_params.get("sortBy")
-        if sort_by in ("name", "-name"):
+        if sort_by and sort_by.startswith("-"):
+            sort_by, desc = sort_by[1:], True
+        else:
+            desc = False
+
+        if sort_by == "name":
             order_by = [
-                "-lower_name" if sort_by.startswith("-") else "lower_name",
+                "-lower_name" if desc else "lower_name",
                 "-date_created",
             ]
-        elif sort_by in ("dateCreated", "-dateCreated"):
-            order_by = "-date_created" if sort_by.startswith("-") else "date_created"
-        elif sort_by in ("dateUpdated", "-dateUpdated"):
-            order_by = "-date_updated" if sort_by.startswith("-") else "date_updated"
+
+        elif sort_by == "dateCreated":
+            order_by = "-date_created" if desc else "date_created"
+
+        elif sort_by == "dateUpdated":
+            order_by = "-date_updated" if desc else "date_updated"
+
+        elif sort_by == "mostPopular":
+            order_by = [
+                "visits" if desc else "-visits",
+                "-date_updated",
+            ]
+
+        elif sort_by == "recentlyViewed":
+            order_by = "last_visited" if desc else "-last_visited"
+
         elif sort_by == "myqueries":
             order_by = [
                 Case(When(created_by_id=request.user.id, then=-1), default="created_by_id"),
                 "-date_created",
             ]
+
         else:
             order_by = "lower_name"
+
         if not isinstance(order_by, list):
             order_by = [order_by]
         queryset = queryset.order_by(*order_by)
@@ -82,7 +102,7 @@ class DiscoverSavedQueriesEndpoint(OrganizationEndpoint):
             default_per_page=25,
         )
 
-    def post(self, request, organization):
+    def post(self, request: Request, organization) -> Response:
         """
         Create a saved query
         """

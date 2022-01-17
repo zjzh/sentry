@@ -2,18 +2,17 @@ import * as React from 'react';
 import styled from '@emotion/styled';
 import {Observer} from 'mobx-react';
 
-import {APIRequestMethod} from 'app/api';
-import Button from 'app/components/button';
-import Panel from 'app/components/panels/panel';
-import {t} from 'app/locale';
-import space from 'app/styles/space';
-import {isRenderFunc} from 'app/utils/isRenderFunc';
+import {APIRequestMethod} from 'sentry/api';
+import Button from 'sentry/components/button';
+import Panel from 'sentry/components/panels/panel';
+import {t} from 'sentry/locale';
+import space from 'sentry/styles/space';
+import {isRenderFunc} from 'sentry/utils/isRenderFunc';
 import FormContext, {
   FormContextData,
-} from 'app/views/settings/components/forms/formContext';
-import FormModel, {FormOptions} from 'app/views/settings/components/forms/model';
-
-type Data = Record<string, any>;
+} from 'sentry/views/settings/components/forms/formContext';
+import FormModel, {FormOptions} from 'sentry/views/settings/components/forms/model';
+import {Data, OnSubmitCallback} from 'sentry/views/settings/components/forms/type';
 
 type RenderProps = {
   model: FormModel;
@@ -22,11 +21,20 @@ type RenderProps = {
 type RenderFunc = (props: RenderProps) => React.ReactNode;
 
 type Props = {
+  /**
+   * The HTTP method to use.
+   */
   apiMethod?: APIRequestMethod;
+  /**
+   * The URL to the API endpoint this form submits to.
+   */
   apiEndpoint?: string;
   children?: React.ReactNode | RenderFunc;
   className?: string;
   cancelLabel?: string;
+  /**
+   * Should the submit button be disabled.
+   */
   submitDisabled?: boolean;
   submitLabel?: string;
   submitPriority?: React.ComponentProps<typeof Button>['priority'];
@@ -34,29 +42,50 @@ type Props = {
   footerStyle?: React.CSSProperties;
   extraButton?: React.ReactNode;
   initialData?: Data;
-  // Require changes before able to submit form
+  /**
+   * Are changed required before the form can be submitted.
+   */
   requireChanges?: boolean;
-  // Reset form when there are errors; after submit
+  /**
+   * Should the form reset its state when there are errors after submission.
+   */
   resetOnError?: boolean;
   hideFooter?: boolean;
   allowUndo?: boolean;
-  // Save field on control blur
+  /**
+   * Should fields save individually as they are blurred.
+   */
   saveOnBlur?: boolean;
+  /**
+   * A FormModel instance. If undefined a FormModel will be created for you.
+   */
   model?: FormModel;
-  // if set to true, preventDefault is not called
+  /**
+   * If set to true, preventDefault is not called
+   */
   skipPreventDefault?: boolean;
   additionalFieldProps?: {[key: string]: any};
   'data-test-id'?: string;
 
+  /**
+   * Callback fired when the form is cancelled via the cancel button.
+   */
   onCancel?: (e: React.MouseEvent) => void;
-  onSubmit?: (
-    data: Data,
-    onSubmitSuccess: (data: Data) => void,
-    onSubmitError: (error: any) => void,
-    e: React.FormEvent,
-    model: FormModel
-  ) => void;
+  /**
+   * Callback to handle form submission.
+   *
+   * Defining this prop will replace the normal API submission behavior
+   * and instead only call the provided callback.
+   *
+   * Your callback is expected to call `onSubmitSuccess` when the action succeeds and
+   * `onSubmitError` when the action fails.
+   */
+  onSubmit?: OnSubmitCallback;
   onPreSubmit?: () => void;
+  /**
+   * Ensure the form model isn't reset when the form unmounts
+   */
+  preventFormResetOnUnmount?: boolean;
 } & Pick<FormOptions, 'onSubmitSuccess' | 'onSubmitError' | 'onFieldChange'>;
 
 export default class Form extends React.Component<Props> {
@@ -88,7 +117,7 @@ export default class Form extends React.Component<Props> {
   }
 
   componentWillUnmount() {
-    this.model.reset();
+    !this.props.preventFormResetOnUnmount && this.model.reset();
   }
 
   model: FormModel = this.props.model || new FormModel();
@@ -224,7 +253,7 @@ const StyledFooter = styled('div')<{saveOnBlur?: boolean}>`
   display: flex;
   justify-content: flex-end;
   margin-top: 25px;
-  border-top: 1px solid #e9ebec;
+  border-top: 1px solid ${p => p.theme.innerBorder};
   background: none;
   padding: 16px 0 0;
   margin-bottom: 16px;
@@ -251,7 +280,7 @@ const StyledFooter = styled('div')<{saveOnBlur?: boolean}>`
 
 const DefaultButtons = styled('div')`
   display: grid;
-  grid-gap: ${space(1)};
+  gap: ${space(1)};
   grid-auto-flow: column;
   justify-content: flex-end;
   flex: 1;

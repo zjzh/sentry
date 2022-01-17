@@ -1,7 +1,7 @@
-import {addErrorMessage} from 'app/actionCreators/indicator';
-import {Client} from 'app/api';
-import {t} from 'app/locale';
-import {NewQuery, SavedQuery} from 'app/types';
+import {addErrorMessage} from 'sentry/actionCreators/indicator';
+import {Client} from 'sentry/api';
+import {t} from 'sentry/locale';
+import {NewQuery, SavedQuery} from 'sentry/types';
 
 export function fetchSavedQueries(
   api: Client,
@@ -75,6 +75,22 @@ export function updateSavedQuery(
   promise.catch(() => {
     addErrorMessage(t('Unable to update your saved query'));
   });
+  return promise;
+}
+
+export function updateSavedQueryVisit(
+  orgId: string,
+  queryId: string | string[]
+): Promise<void> {
+  // Create a new client so the request is not cancelled
+  const api = new Client();
+  const promise = api.requestPromise(
+    `/organizations/${orgId}/discover/saved/${queryId}/visit/`,
+    {
+      method: 'POST',
+    }
+  );
+
   return promise;
 }
 

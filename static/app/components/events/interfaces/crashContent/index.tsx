@@ -1,9 +1,9 @@
 import * as React from 'react';
 
-import {ExceptionType, ExceptionValue, PlatformType} from 'app/types';
+import {ExceptionType, ExceptionValue, PlatformType} from 'sentry/types';
 
 import Exception from './exception';
-import Stacktrace from './stacktrace';
+import Stacktrace from './stackTrace';
 
 type ExceptionProps = React.ComponentProps<typeof Exception>;
 type Props = Pick<
@@ -20,7 +20,7 @@ type Props = Pick<
   stacktrace?: ExceptionValue['stacktrace'];
 };
 
-const CrashContent = ({
+function CrashContent({
   event,
   stackView,
   stackType,
@@ -30,7 +30,7 @@ const CrashContent = ({
   hasHierarchicalGrouping,
   exception,
   stacktrace,
-}: Props) => {
+}: Props) {
   const platform = (event.platform ?? 'other') as PlatformType;
 
   if (exception) {
@@ -43,8 +43,8 @@ const CrashContent = ({
         event={event}
         platform={platform}
         values={exception.values}
-        hasHierarchicalGrouping={hasHierarchicalGrouping}
         groupingCurrentLevel={groupingCurrentLevel}
+        hasHierarchicalGrouping={hasHierarchicalGrouping}
       />
     );
   }
@@ -57,13 +57,13 @@ const CrashContent = ({
         newestFirst={newestFirst}
         event={event}
         platform={platform}
-        hasHierarchicalGrouping={hasHierarchicalGrouping}
         groupingCurrentLevel={groupingCurrentLevel}
+        hasHierarchicalGrouping={hasHierarchicalGrouping}
       />
     );
   }
 
   return null;
-};
+}
 
 export default CrashContent;

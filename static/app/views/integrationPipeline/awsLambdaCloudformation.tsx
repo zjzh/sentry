@@ -3,16 +3,16 @@ import styled from '@emotion/styled';
 import debounce from 'lodash/debounce';
 import * as qs from 'query-string';
 
-import {addErrorMessage, addLoadingMessage} from 'app/actionCreators/indicator';
-import Button from 'app/components/actions/button';
-import List from 'app/components/list';
-import ListItem from 'app/components/list/listItem';
-import {t} from 'app/locale';
-import {Organization} from 'app/types';
-import {uniqueId} from 'app/utils/guid';
-import {trackIntegrationEvent} from 'app/utils/integrationUtil';
-import SelectField from 'app/views/settings/components/forms/selectField';
-import TextField from 'app/views/settings/components/forms/textField';
+import {addErrorMessage, addLoadingMessage} from 'sentry/actionCreators/indicator';
+import Button from 'sentry/components/actions/button';
+import List from 'sentry/components/list';
+import ListItem from 'sentry/components/list/listItem';
+import {t} from 'sentry/locale';
+import {Organization} from 'sentry/types';
+import {uniqueId} from 'sentry/utils/guid';
+import {trackIntegrationAnalytics} from 'sentry/utils/integrationUtil';
+import SelectField from 'sentry/views/settings/components/forms/selectField';
+import TextField from 'sentry/views/settings/components/forms/textField';
 
 import FooterWithButtons from './components/footerWithButtons';
 import HeaderWithHelp from './components/headerWithHelp';
@@ -152,7 +152,7 @@ export default class AwsLambdaCloudformation extends React.Component<Props, Stat
 
   handleChangeShowInputs = () => {
     this.setState({showInputs: true});
-    trackIntegrationEvent('integrations.installation_input_value_changed', {
+    trackIntegrationAnalytics('integrations.installation_input_value_changed', {
       integration: 'aws_lambda',
       integration_type: 'first_party',
       field_name: 'showInputs',
@@ -167,7 +167,7 @@ export default class AwsLambdaCloudformation extends React.Component<Props, Stat
 
   // debounce so we don't send a request on every input change
   debouncedTrackValueChanged = debounce((fieldName: string) => {
-    trackIntegrationEvent('integrations.installation_input_value_changed', {
+    trackIntegrationAnalytics('integrations.installation_input_value_changed', {
       integration: 'aws_lambda',
       integration_type: 'first_party',
       field_name: fieldName,
@@ -176,7 +176,7 @@ export default class AwsLambdaCloudformation extends React.Component<Props, Stat
   }, 200);
 
   trackOpenCloudFormation = () => {
-    trackIntegrationEvent('integrations.cloudformation_link_clicked', {
+    trackIntegrationAnalytics('integrations.cloudformation_link_clicked', {
       integration: 'aws_lambda',
       integration_type: 'first_party',
       organization: this.props.organization,

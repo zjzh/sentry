@@ -1,10 +1,18 @@
 import {mountWithTheme} from 'sentry-test/enzyme';
 import {initializeOrg} from 'sentry-test/initializeOrg';
+import {
+  act,
+  mountWithTheme as rtlMountWithTheme,
+  screen,
+  userEvent,
+} from 'sentry-test/reactTestingLibrary';
 
-import ConfigStore from 'app/stores/configStore';
-import ProjectsStore from 'app/stores/projectsStore';
-import {getFieldRenderer} from 'app/utils/discover/fieldRenderers';
-import {SPAN_OP_RELATIVE_BREAKDOWN_FIELD} from 'app/utils/discover/fields';
+import ConfigStore from 'sentry/stores/configStore';
+import GroupStore from 'sentry/stores/groupStore';
+import MemberListStore from 'sentry/stores/memberListStore';
+import ProjectsStore from 'sentry/stores/projectsStore';
+import {getFieldRenderer} from 'sentry/utils/discover/fieldRenderers';
+import {SPAN_OP_RELATIVE_BREAKDOWN_FIELD} from 'sentry/utils/discover/fields';
 
 describe('getFieldRenderer', function () {
   let location, context, project, organization, data, user;
@@ -15,7 +23,7 @@ describe('getFieldRenderer', function () {
     });
     organization = context.organization;
     project = context.project;
-    ProjectsStore.loadInitialData([project]);
+    act(() => ProjectsStore.loadInitialData([project]));
     user = 'email:text@example.com';
 
     location = {
@@ -23,7 +31,7 @@ describe('getFieldRenderer', function () {
       query: {},
     };
     data = {
-      key_transaction: 1,
+      id: '1',
       team_key_transaction: 1,
       title: 'ValueError: something bad',
       transaction: 'api.do_things',
@@ -88,7 +96,7 @@ describe('getFieldRenderer', function () {
     expect(renderer).toBeInstanceOf(Function);
     const wrapper = mountWithTheme(renderer(data, {location, organization}));
 
-    const value = wrapper.find('StyledDateTime');
+    const value = wrapper.find('FieldDateTime');
     expect(value).toHaveLength(1);
     expect(value.props().date).toEqual(data.createdAt);
   });
@@ -97,7 +105,7 @@ describe('getFieldRenderer', function () {
     const renderer = getFieldRenderer('nope', {nope: 'date'});
     const wrapper = mountWithTheme(renderer(data, {location, organization}));
 
-    const value = wrapper.find('StyledDateTime');
+    const value = wrapper.find('FieldDateTime');
     expect(value).toHaveLength(0);
     expect(wrapper.text()).toEqual('n/a');
   });
@@ -197,56 +205,6 @@ describe('getFieldRenderer', function () {
     expect(value.text()).toEqual(project.slug);
   });
 
-  it('can render key transaction as a star', async function () {
-    const renderer = getFieldRenderer('key_transaction', {key_transaction: 'boolean'});
-    delete data.project;
-
-    const wrapper = mountWithTheme(
-      renderer(data, {location, organization}),
-      context.routerContext
-    );
-
-    const value = wrapper.find('StyledKey');
-    expect(value).toHaveLength(1);
-    expect(value.props().isSolid).toBeTruthy();
-
-    // Since there is not project column, it's not clickable
-    expect(wrapper.find('KeyColumn')).toHaveLength(0);
-  });
-
-  it('can render key transaction as a clickable star', async function () {
-    const renderer = getFieldRenderer('key_transaction', {key_transaction: 'boolean'});
-
-    const wrapper = mountWithTheme(
-      renderer(data, {location, organization}),
-      context.routerContext
-    );
-    await tick();
-    wrapper.update();
-
-    let value;
-
-    value = wrapper.find('StyledKey');
-    expect(value).toHaveLength(1);
-    expect(value.props().isSolid).toBeTruthy();
-
-    wrapper.find('KeyColumn').simulate('click');
-    await tick();
-    wrapper.update();
-
-    value = wrapper.find('StyledKey');
-    expect(value).toHaveLength(1);
-    expect(value.props().isSolid).toBeFalsy();
-
-    wrapper.find('KeyColumn').simulate('click');
-    await tick();
-    wrapper.update();
-
-    value = wrapper.find('StyledKey');
-    expect(value).toHaveLength(1);
-    expect(value.props().isSolid).toBeTruthy();
-  });
-
   it('can render team key transaction as a star with the dropdown', async function () {
     const renderer = getFieldRenderer('team_key_transaction', {
       team_key_transaction: 'boolean',
@@ -325,6 +283,52 @@ describe('getFieldRenderer', function () {
       expect(getWidth(value, 1)).toEqual('20.000%');
       expect(getWidth(value, 2)).toEqual('13.333%');
       expect(getWidth(value, 3)).toEqual('26.667%');
+    });
+  });
+
+  describe('Issue fields', () => {
+    it('can render assignee', async function () {
+      MemberListStore.loadInitialData([
+        {
+          id: '1',
+          name: 'Test User',
+          email: 'test@sentry.io',
+          avatar: {
+            avatarType: 'letter_avatar',
+            avatarUuid: null,
+          },
+        },
+      ]);
+
+      const group = TestStubs.Group({project});
+      GroupStore.add([
+        {
+          ...group,
+          owners: [{owner: 'user:1', type: 'suspectCommit'}],
+          assignedTo: {
+            email: 'test@sentry.io',
+            type: 'user',
+            id: '1',
+            name: 'Test User',
+          },
+        },
+      ]);
+      const renderer = getFieldRenderer('assignee', {
+        assignee: 'string',
+      });
+
+      rtlMountWithTheme(
+        renderer(data, {
+          location,
+          organization,
+        })
+      );
+      expect(screen.getByText('TU')).toBeInTheDocument();
+      userEvent.hover(screen.getByText('TU'));
+      expect(await screen.findByText('Assigned to')).toBeInTheDocument();
+      expect(await screen.findByText('Test User')).toBeInTheDocument();
+      expect(await screen.findByText('Based on')).toBeInTheDocument();
+      expect(await screen.findByText('commit data')).toBeInTheDocument();
     });
   });
 });

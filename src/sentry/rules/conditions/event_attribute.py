@@ -46,6 +46,7 @@ ATTR_CHOICES = [
     "user.ip_address",
     "http.method",
     "http.url",
+    "sdk.name",
     "stacktrace.code",
     "stacktrace.module",
     "stacktrace.filename",
@@ -102,7 +103,7 @@ class EventAttributeCondition(EventCondition):
         if path[0] == "message":
             if len(path) != 1:
                 return []
-            return [event.message]
+            return [event.message, event.search_message]
         elif path[0] == "environment":
             return [event.get_tag("environment")]
 
@@ -144,6 +145,11 @@ class EventAttributeCondition(EventCondition):
                 return []
 
             return [getattr(event.interfaces["request"], path[1])]
+
+        elif path[0] == "sdk":
+            if path[1] != "name":
+                return []
+            return [event.data["sdk"].get(path[1])]
 
         elif path[0] == "stacktrace":
             stacks = event.interfaces.get("stacktrace")

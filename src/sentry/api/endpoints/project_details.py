@@ -1,13 +1,12 @@
-import logging
 import math
 import time
 from datetime import timedelta
 from itertools import chain
-from uuid import uuid4
 
 from django.db import IntegrityError, transaction
 from django.utils import timezone
 from rest_framework import serializers, status
+from rest_framework.request import Request
 from rest_framework.response import Response
 from sentry_relay.processing import validate_sampling_condition, validate_sampling_configuration
 
@@ -24,7 +23,12 @@ from sentry.datascrubbing import validate_pii_config_update
 from sentry.grouping.enhancer import Enhancements, InvalidEnhancerConfig
 from sentry.grouping.fingerprinting import FingerprintingRules, InvalidFingerprintingConfig
 from sentry.ingest.inbound_filters import FilterTypes
-from sentry.lang.native.symbolicator import InvalidSourcesError, parse_sources
+from sentry.lang.native.symbolicator import (
+    InvalidSourcesError,
+    parse_backfill_sources,
+    parse_sources,
+    redact_source_secrets,
+)
 from sentry.lang.native.utils import convert_crashreport_count
 from sentry.models import (
     AuditLogEntryEvent,
@@ -36,15 +40,14 @@ from sentry.models import (
     ProjectRedirect,
     ProjectStatus,
     ProjectTeam,
+    ScheduledDeletion,
 )
 from sentry.notifications.types import NotificationSettingTypes
+from sentry.notifications.utils import has_alert_integration
 from sentry.notifications.utils.legacy_mappings import get_option_value_from_boolean
-from sentry.tasks.deletion import delete_project
 from sentry.types.integrations import ExternalProviders
 from sentry.utils import json
 from sentry.utils.compat import filter
-
-delete_logger = logging.getLogger("sentry.deletions.api")
 
 
 def clean_newline_inputs(value, case_insensitive=True):
@@ -227,6 +230,26 @@ class ProjectAdminSerializer(ProjectMemberSerializer):
 
         organization = self.context["project"].organization
         request = self.context["request"]
+
+        try:
+            # We should really only grab and parse if there are sources in sources_json whose
+            # secrets are set to {"hidden-secret":true}
+            orig_sources = parse_sources(
+                self.context["project"].get_option("sentry:symbol_sources")
+            )
+            sources = parse_backfill_sources(sources_json.strip(), orig_sources)
+        except InvalidSourcesError as e:
+            raise serializers.ValidationError(str(e))
+
+        sources_json = json.dumps(sources) if sources else ""
+
+        # If no sources are added or modified, we're either only deleting sources or doing nothing.
+        # This is always allowed.
+        added_or_modified_sources = [s for s in sources if s not in orig_sources]
+        if not added_or_modified_sources:
+            return sources_json
+
+        # Adding sources is only allowed if custom symbol sources are enabled.
         has_sources = features.has(
             "organizations:custom-symbol-sources", organization, actor=request.user
         )
@@ -235,12 +258,6 @@ class ProjectAdminSerializer(ProjectMemberSerializer):
             raise serializers.ValidationError(
                 "Organization is not allowed to set custom symbol sources"
             )
-
-        try:
-            sources = parse_sources(sources_json.strip(), filter_appconnect=False)
-            sources_json = json.dumps(sources) if sources else ""
-        except InvalidSourcesError as e:
-            raise serializers.ValidationError(str(e))
 
         has_multiple_appconnect = features.has(
             "organizations:app-store-connect-multiple", organization, actor=request.user
@@ -344,7 +361,7 @@ class ProjectDetailsEndpoint(ProjectEndpoint):
 
         return queryset.count()
 
-    def get(self, request, project):
+    def get(self, request: Request, project) -> Response:
         """
         Retrieve a Project
         ``````````````````
@@ -358,13 +375,18 @@ class ProjectDetailsEndpoint(ProjectEndpoint):
         """
         data = serialize(project, request.user, DetailedProjectSerializer())
 
+        # TODO: should switch to expand and move logic into the serializer
         include = set(filter(bool, request.GET.get("include", "").split(",")))
         if "stats" in include:
             data["stats"] = {"unresolved": self._get_unresolved_count(project)}
 
+        expand = request.GET.getlist("expand", [])
+        if "hasAlertIntegration" in expand:
+            data["hasAlertIntegrationInstalled"] = has_alert_integration(project)
+
         return Response(data)
 
-    def put(self, request, project):
+    def put(self, request: Request, project) -> Response:
         """
         Update a Project
         ````````````````
@@ -408,6 +430,12 @@ class ProjectDetailsEndpoint(ProjectEndpoint):
 
         allow_dynamic_sampling = features.has(
             "organizations:filters-and-sampling", project.organization, actor=request.user
+        )
+
+        allow_dynamic_sampling_error_rules = features.has(
+            "organizations:filters-and-sampling-error-rules",
+            project.organization,
+            actor=request.user,
         )
 
         if not allow_dynamic_sampling and result.get("dynamicSampling"):
@@ -553,7 +581,14 @@ class ProjectDetailsEndpoint(ProjectEndpoint):
                 ]
         if result.get("symbolSources") is not None:
             if project.update_option("sentry:symbol_sources", result["symbolSources"]):
-                changed_proj_settings["sentry:symbol_sources"] = result["symbolSources"] or None
+                # Redact secrets so they don't get logged directly to the Audit Log
+                sources_json = result["symbolSources"] or None
+                try:
+                    sources = parse_sources(sources_json)
+                except Exception:
+                    sources = []
+                redacted_sources = redact_source_secrets(sources)
+                changed_proj_settings["sentry:symbol_sources"] = redacted_sources
         if "defaultEnvironment" in result:
             if result["defaultEnvironment"] is None:
                 project.delete_option("sentry:default_environment")
@@ -584,6 +619,19 @@ class ProjectDetailsEndpoint(ProjectEndpoint):
 
         if "dynamicSampling" in result:
             raw_dynamic_sampling = result["dynamicSampling"]
+            if (
+                not allow_dynamic_sampling_error_rules
+                and self._dynamic_sampling_contains_error_rule(raw_dynamic_sampling)
+            ):
+                return Response(
+                    {
+                        "detail": [
+                            "Dynamic Sampling only accepts rules of type transaction or trace"
+                        ]
+                    },
+                    status=400,
+                )
+
             fixed_rules = self._fix_rule_ids(project, raw_dynamic_sampling)
             project.update_option("sentry:dynamic_sampling", fixed_rules)
 
@@ -705,14 +753,14 @@ class ProjectDetailsEndpoint(ProjectEndpoint):
         return Response(data)
 
     @sudo_required
-    def delete(self, request, project):
+    def delete(self, request: Request, project) -> Response:
         """
         Delete a Project
         ````````````````
 
         Schedules a project for deletion.
 
-        Deletion happens asynchronously and therefor is not immediate.
+        Deletion happens asynchronously and therefore is not immediate.
         However once deletion has begun the state of a project changes and
         will be hidden from most public views.
 
@@ -731,11 +779,7 @@ class ProjectDetailsEndpoint(ProjectEndpoint):
             status=ProjectStatus.PENDING_DELETION
         )
         if updated:
-            transaction_id = uuid4().hex
-
-            delete_project.apply_async(
-                kwargs={"object_id": project.id, "transaction_id": transaction_id}, countdown=3600
-            )
+            scheduled = ScheduledDeletion.schedule(project, days=0, actor=request.user)
 
             self.create_audit_entry(
                 request=request,
@@ -743,18 +787,8 @@ class ProjectDetailsEndpoint(ProjectEndpoint):
                 target_object=project.id,
                 event=AuditLogEntryEvent.PROJECT_REMOVE,
                 data=project.get_audit_log_data(),
-                transaction_id=transaction_id,
+                transaction_id=scheduled.id,
             )
-
-            delete_logger.info(
-                "object.delete.queued",
-                extra={
-                    "object_id": project.id,
-                    "transaction_id": transaction_id,
-                    "model": type(project).__name__,
-                },
-            )
-
             project.rename_on_pending_deletion()
 
         return Response(status=204)
@@ -800,3 +834,10 @@ class ProjectDetailsEndpoint(ProjectEndpoint):
 
         raw_dynamic_sampling["next_id"] = next_id
         return raw_dynamic_sampling
+
+    def _dynamic_sampling_contains_error_rule(self, raw_dynamic_sampling):
+        if raw_dynamic_sampling is not None:
+            rules = raw_dynamic_sampling.get("rules", [])
+            for rule in rules:
+                if rule["type"] == "error":
+                    return True

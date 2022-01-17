@@ -27,6 +27,7 @@ from .deletedproject import *  # NOQA
 from .deletedteam import *  # NOQA
 from .deploy import *  # NOQA
 from .distribution import *  # NOQA
+from .docintegrationavatar import *  # NOQA
 from .email import *  # NOQA
 from .environment import *  # NOQA
 from .event import *  # NOQA
@@ -44,6 +45,7 @@ from .groupcommitresolution import *  # NOQA
 from .groupemailthread import *  # NOQA
 from .groupenvironment import *  # NOQA
 from .grouphash import *  # NOQA
+from .grouphistory import *  # NOQA
 from .groupinbox import *  # NOQA
 from .grouplink import *  # NOQA
 from .groupmeta import *  # NOQA
@@ -72,6 +74,7 @@ from .organization import *  # NOQA
 from .organizationaccessrequest import *  # NOQA
 from .organizationavatar import *  # NOQA
 from .organizationmember import *  # NOQA
+from .organizationmemberteam import *  # NOQA
 from .organizationonboardingtask import *  # NOQA
 from .organizationoption import *  # NOQA
 from .platformexternalissue import *  # NOQA
@@ -85,6 +88,7 @@ from .projectoption import *  # NOQA
 from .projectownership import *  # NOQA
 from .projectplatform import *  # NOQA
 from .projectredirect import *  # NOQA
+from .projectteam import *  # NOQA
 from .promptsactivity import *  # NOQA
 from .pullrequest import *  # NOQA
 from .rawevent import *  # NOQA
@@ -107,6 +111,8 @@ from .sentryapp import *  # NOQA
 from .sentryappavatar import *  # NOQA
 from .sentryappcomponent import *  # NOQA
 from .sentryappinstallation import *  # NOQA
+from .sentryappinstallationforprovider import *  # NOQA
+from .sentryappinstallationtoken import *  # NOQA
 from .servicehook import *  # NOQA
 from .team import *  # NOQA
 from .teamavatar import *  # NOQA
@@ -118,3 +124,4 @@ from .userip import *  # NOQA
 from .useroption import *  # NOQA
 from .userpermission import *  # NOQA
 from .userreport import *  # NOQA
+from .userrole import *  # NOQA

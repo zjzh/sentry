@@ -1,22 +1,22 @@
-import {WithRouterProps} from 'react-router';
+import {RouteComponentProps} from 'react-router';
 import styled from '@emotion/styled';
 
 import {
   addErrorMessage,
   addLoadingMessage,
   addSuccessMessage,
-} from 'app/actionCreators/indicator';
-import {disablePlugin, enablePlugin} from 'app/actionCreators/plugins';
-import Button from 'app/components/button';
-import ExternalLink from 'app/components/links/externalLink';
-import PluginConfig from 'app/components/pluginConfig';
-import {t} from 'app/locale';
-import space from 'app/styles/space';
-import {Organization, Plugin, Project} from 'app/types';
-import {trackIntegrationEvent} from 'app/utils/integrationUtil';
-import withPlugins from 'app/utils/withPlugins';
-import AsyncView from 'app/views/asyncView';
-import SettingsPageHeader from 'app/views/settings/components/settingsPageHeader';
+} from 'sentry/actionCreators/indicator';
+import {disablePlugin, enablePlugin} from 'sentry/actionCreators/plugins';
+import Button from 'sentry/components/button';
+import ExternalLink from 'sentry/components/links/externalLink';
+import PluginConfig from 'sentry/components/pluginConfig';
+import {t} from 'sentry/locale';
+import space from 'sentry/styles/space';
+import {Organization, Plugin, Project} from 'sentry/types';
+import {trackIntegrationAnalytics} from 'sentry/utils/integrationUtil';
+import withPlugins from 'sentry/utils/withPlugins';
+import AsyncView from 'sentry/views/asyncView';
+import SettingsPageHeader from 'sentry/views/settings/components/settingsPageHeader';
 
 type Props = {
   organization: Organization;
@@ -24,7 +24,7 @@ type Props = {
   plugins: {
     plugins: Plugin[];
   };
-} & WithRouterProps<{orgId: string; projectId: string; pluginId: string}>;
+} & RouteComponentProps<{orgId: string; projectId: string; pluginId: string}, {}>;
 
 type State = {
   pluginDetails?: Plugin;
@@ -40,8 +40,8 @@ type State = {
  *    PluginsStore
  */
 class ProjectPluginDetails extends AsyncView<Props, State> {
-  componentDidUpdate(prevProps: Props, prevContext: any) {
-    super.componentDidUpdate(prevProps, prevContext);
+  componentDidUpdate(prevProps: Props, prevState: State) {
+    super.componentDidUpdate(prevProps, prevState);
     if (prevProps.params.pluginId !== this.props.params.pluginId) {
       this.recordDetailsViewed();
     }
@@ -53,7 +53,7 @@ class ProjectPluginDetails extends AsyncView<Props, State> {
   recordDetailsViewed() {
     const {pluginId} = this.props.params;
 
-    trackIntegrationEvent('integrations.details_viewed', {
+    trackIntegrationAnalytics('integrations.details_viewed', {
       integration: pluginId,
       integration_type: 'plugin',
       view: 'plugin_details',
@@ -65,9 +65,8 @@ class ProjectPluginDetails extends AsyncView<Props, State> {
     const {plugin} = this.state;
     if (plugin && plugin.name) {
       return plugin.name;
-    } else {
-      return 'Sentry';
     }
+    return 'Sentry';
   }
 
   getEndpoints(): ReturnType<AsyncView['getEndpoints']> {
@@ -83,7 +82,7 @@ class ProjectPluginDetails extends AsyncView<Props, State> {
     const {projectId, orgId, pluginId} = this.props.params;
 
     addLoadingMessage(t('Saving changes\u2026'));
-    trackIntegrationEvent('integrations.uninstall_clicked', {
+    trackIntegrationAnalytics('integrations.uninstall_clicked', {
       integration: pluginId,
       integration_type: 'plugin',
       view: 'plugin_details',
@@ -96,7 +95,7 @@ class ProjectPluginDetails extends AsyncView<Props, State> {
       success: pluginDetails => {
         this.setState({pluginDetails});
         addSuccessMessage(t('Plugin was reset'));
-        trackIntegrationEvent('integrations.uninstall_completed', {
+        trackIntegrationAnalytics('integrations.uninstall_completed', {
           integration: pluginId,
           integration_type: 'plugin',
           view: 'plugin_details',
@@ -122,7 +121,7 @@ class ProjectPluginDetails extends AsyncView<Props, State> {
   analyticsChangeEnableStatus = (enabled: boolean) => {
     const {pluginId} = this.props.params;
     const eventKey = enabled ? 'integrations.enabled' : 'integrations.disabled';
-    trackIntegrationEvent(eventKey, {
+    trackIntegrationAnalytics(eventKey, {
       integration: pluginId,
       integration_type: 'plugin',
       view: 'plugin_details',

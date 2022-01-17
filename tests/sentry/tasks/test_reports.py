@@ -1,6 +1,7 @@
 import copy
 import functools
 from datetime import datetime, timedelta
+from unittest import mock
 
 import pytest
 import pytz
@@ -37,7 +38,6 @@ from sentry.tasks.reports import (
 from sentry.testutils.cases import OutcomesSnubaTest, SnubaTestCase, TestCase
 from sentry.testutils.factories import DEFAULT_EVENT_DATA
 from sentry.testutils.helpers.datetime import iso_format
-from sentry.utils.compat import map, mock
 from sentry.utils.dates import floor_to_utc_day, to_datetime, to_timestamp
 from sentry.utils.outcomes import Outcome
 
@@ -277,6 +277,9 @@ class ReportTestCase(TestCase, SnubaTestCase):
 
         set_option_value([organization.id])
         assert user_subscribed_to_organization_reports(user, organization) is False
+
+        set_option_value("")
+        assert user_subscribed_to_organization_reports(user, organization) is True
 
     @mock.patch("sentry.tasks.reports.BATCH_SIZE", 1)
     def test_paginates_project_issue_summaries_and_reassembles_result(self):

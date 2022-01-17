@@ -1,12 +1,16 @@
 import styled from '@emotion/styled';
 
-import Button from 'app/components/button';
-import ButtonBar from 'app/components/buttonBar';
-import {t} from 'app/locale';
-import space from 'app/styles/space';
-import {ExceptionType, ExceptionValue} from 'app/types';
-import {Thread} from 'app/types/events';
-import {STACK_TYPE, STACK_VIEW} from 'app/types/stacktrace';
+import Button from 'sentry/components/button';
+import ButtonBar from 'sentry/components/buttonBar';
+import {t} from 'sentry/locale';
+import space from 'sentry/styles/space';
+import {
+  ExceptionType,
+  ExceptionValue,
+  STACK_TYPE,
+  STACK_VIEW,
+  Thread,
+} from 'sentry/types';
 
 type NotifyOptions = {
   stackView?: STACK_VIEW;
@@ -79,8 +83,15 @@ const CrashActions = ({
             barId={STACK_VIEW.APP}
             size="xsmall"
             onClick={setStackView(STACK_VIEW.APP)}
+            title={
+              hasHierarchicalGrouping
+                ? t(
+                    'The stack trace only shows application frames and frames responsible for grouping this issue'
+                  )
+                : undefined
+            }
           >
-            {hasHierarchicalGrouping ? t('Most Revelant') : t('App Only')}
+            {hasHierarchicalGrouping ? t('Most Relevant') : t('App Only')}
           </Button>
         )}
         <Button

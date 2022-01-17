@@ -1,14 +1,16 @@
 import {browserHistory} from 'react-router';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
+import {enforceActOnUseLegacyStoreHook, mountWithTheme} from 'sentry-test/enzyme';
 import {initializeOrg} from 'sentry-test/initializeOrg';
+import {act} from 'sentry-test/reactTestingLibrary';
 
-import ProjectsStore from 'app/stores/projectsStore';
-import TransactionVitals from 'app/views/performance/transactionSummary/transactionVitals';
+import ProjectsStore from 'sentry/stores/projectsStore';
+import {OrganizationContext} from 'sentry/views/organizationContext';
+import TransactionVitals from 'sentry/views/performance/transactionSummary/transactionVitals';
 import {
   VITAL_GROUPS,
   ZOOM_KEYS,
-} from 'app/views/performance/transactionSummary/transactionVitals/constants';
+} from 'sentry/views/performance/transactionSummary/transactionVitals/constants';
 
 function initialize({project, features, transaction, query} = {}) {
   features = features || ['performance-view'];
@@ -29,9 +31,17 @@ function initialize({project, features, transaction, query} = {}) {
       },
     },
   });
-  ProjectsStore.loadInitialData(data.organization.projects);
+  act(() => ProjectsStore.loadInitialData(data.organization.projects));
   return data;
 }
+
+const WrappedComponent = ({organization, ...props}) => {
+  return (
+    <OrganizationContext.Provider value={organization}>
+      <TransactionVitals organization={organization} {...props} />
+    </OrganizationContext.Provider>
+  );
+};
 
 /**
  * These values are what we expect to see on the page based on the
@@ -66,14 +76,20 @@ const vitals = [
 ];
 
 describe('Performance > Web Vitals', function () {
+  enforceActOnUseLegacyStoreHook();
+
   beforeEach(function () {
     MockApiClient.addMockResponse({
       url: '/organizations/org-slug/projects/',
       body: [],
     });
     MockApiClient.addMockResponse({
-      url: '/organizations/org-slug/is-key-transactions/',
-      body: [],
+      url: '/organizations/org-slug/project-transaction-threshold-override/',
+      method: 'GET',
+      body: {
+        threshold: '800',
+        metric: 'lcp',
+      },
     });
     // Mock baseline measurements
     MockApiClient.addMockResponse({
@@ -109,6 +125,14 @@ describe('Performance > Web Vitals', function () {
       url: `/organizations/org-slug/key-transactions-list/`,
       body: [],
     });
+    MockApiClient.addMockResponse({
+      url: '/prompts-activity/',
+      body: {},
+    });
+    MockApiClient.addMockResponse({
+      url: '/organizations/org-slug/sdk-updates/',
+      body: [],
+    });
   });
 
   it('render no access without feature', async function () {
@@ -117,7 +141,7 @@ describe('Performance > Web Vitals', function () {
     });
 
     const wrapper = mountWithTheme(
-      <TransactionVitals organization={organization} location={router.location} />
+      <WrappedComponent organization={organization} location={router.location} />
     );
 
     await tick();
@@ -130,7 +154,7 @@ describe('Performance > Web Vitals', function () {
     const {organization, router, routerContext} = initialize();
 
     const wrapper = mountWithTheme(
-      <TransactionVitals
+      <WrappedComponent
         organization={organization}
         location={router.location}
         router={router}
@@ -150,7 +174,7 @@ describe('Performance > Web Vitals', function () {
     const {organization, router, routerContext} = initialize();
 
     const wrapper = mountWithTheme(
-      <TransactionVitals
+      <WrappedComponent
         organization={organization}
         location={router.location}
         router={router}
@@ -170,7 +194,7 @@ describe('Performance > Web Vitals', function () {
     const {organization, router, routerContext} = initialize();
 
     const wrapper = mountWithTheme(
-      <TransactionVitals
+      <WrappedComponent
         organization={organization}
         location={router.location}
         router={router}
@@ -198,7 +222,7 @@ describe('Performance > Web Vitals', function () {
       const {project, organization, router, routerContext} = initialize();
 
       const wrapper = mountWithTheme(
-        <TransactionVitals
+        <WrappedComponent
           organization={organization}
           location={router.location}
           router={router}
@@ -240,7 +264,7 @@ describe('Performance > Web Vitals', function () {
       const {organization, router, routerContext} = initialize({query});
 
       const wrapper = mountWithTheme(
-        <TransactionVitals
+        <WrappedComponent
           organization={organization}
           location={router.location}
           router={router}
@@ -279,7 +303,7 @@ describe('Performance > Web Vitals', function () {
       const {organization, router, routerContext} = initialize({query});
 
       const wrapper = mountWithTheme(
-        <TransactionVitals
+        <WrappedComponent
           organization={organization}
           location={router.location}
           router={router}
@@ -323,7 +347,7 @@ describe('Performance > Web Vitals', function () {
       const {organization, router, routerContext} = initialize({query});
 
       const wrapper = mountWithTheme(
-        <TransactionVitals
+        <WrappedComponent
           organization={organization}
           location={router.location}
           router={router}
@@ -365,7 +389,7 @@ describe('Performance > Web Vitals', function () {
       const {organization, router, routerContext} = initialize();
 
       const wrapper = mountWithTheme(
-        <TransactionVitals
+        <WrappedComponent
           organization={organization}
           location={router.location}
           router={router}
@@ -389,7 +413,7 @@ describe('Performance > Web Vitals', function () {
       });
 
       const wrapper = mountWithTheme(
-        <TransactionVitals
+        <WrappedComponent
           organization={organization}
           location={router.location}
           router={router}
@@ -413,7 +437,7 @@ describe('Performance > Web Vitals', function () {
       });
 
       const wrapper = mountWithTheme(
-        <TransactionVitals
+        <WrappedComponent
           organization={organization}
           location={router.location}
           router={router}
@@ -438,7 +462,7 @@ describe('Performance > Web Vitals', function () {
       });
 
       const wrapper = mountWithTheme(
-        <TransactionVitals
+        <WrappedComponent
           organization={organization}
           location={router.location}
           router={router}
@@ -463,7 +487,7 @@ describe('Performance > Web Vitals', function () {
       });
 
       const wrapper = mountWithTheme(
-        <TransactionVitals
+        <WrappedComponent
           organization={organization}
           location={router.location}
           router={router}

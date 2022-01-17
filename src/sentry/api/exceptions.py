@@ -97,6 +97,12 @@ class TwoFactorRequired(SentryAPIException):
     message = "Organization requires two-factor authentication to be enabled"
 
 
+class AppConnectForbiddenError(SentryAPIException):
+    status_code = status.HTTP_403_FORBIDDEN
+    code = "app-connect-forbidden-error"
+    message = "App connect Forbidden error"
+
+
 class AppConnectAuthenticationError(SentryAPIException):
     status_code = status.HTTP_401_UNAUTHORIZED
     code = "app-connect-authentication-error"
@@ -107,18 +113,6 @@ class AppConnectMultipleSourcesError(SentryAPIException):
     status_code = status.HTTP_401_UNAUTHORIZED
     code = "app-connect-multiple-sources-error"
     message = "Only one Apple App Store Connect application is allowed in this project"
-
-
-class ItunesAuthenticationError(SentryAPIException):
-    status_code = status.HTTP_401_UNAUTHORIZED
-    code = "itunes-authentication-error"
-    message = "Itunes authentication error"
-
-
-class ItunesTwoFactorAuthenticationRequired(SentryAPIException):
-    status_code = status.HTTP_401_UNAUTHORIZED
-    code = "itunes-2fa-required"
-    message = "Itunes requires two-factor authentication to be enabled"
 
 
 class ConflictError(APIException):

@@ -1,16 +1,16 @@
 import * as React from 'react';
-import {WithRouterProps} from 'react-router';
+import {RouteComponentProps} from 'react-router';
 import {FuseOptions} from 'fuse.js';
 import flattenDepth from 'lodash/flattenDepth';
 
-import {Organization, Project} from 'app/types';
-import {createFuzzySearch} from 'app/utils/createFuzzySearch';
-import replaceRouterParams from 'app/utils/replaceRouterParams';
-import withLatestContext from 'app/utils/withLatestContext';
-import accountSettingsNavigation from 'app/views/settings/account/navigationConfiguration';
-import organizationSettingsNavigation from 'app/views/settings/organization/navigationConfiguration';
-import projectSettingsNavigation from 'app/views/settings/project/navigationConfiguration';
-import {NavigationItem} from 'app/views/settings/types';
+import {Organization, Project} from 'sentry/types';
+import {createFuzzySearch} from 'sentry/utils/createFuzzySearch';
+import replaceRouterParams from 'sentry/utils/replaceRouterParams';
+import withLatestContext from 'sentry/utils/withLatestContext';
+import accountSettingsNavigation from 'sentry/views/settings/account/navigationConfiguration';
+import organizationSettingsNavigation from 'sentry/views/settings/organization/navigationConfiguration';
+import projectSettingsNavigation from 'sentry/views/settings/project/navigationConfiguration';
+import {NavigationItem} from 'sentry/views/settings/types';
 
 import {ChildProps, Result} from './types';
 
@@ -51,7 +51,7 @@ type DefaultProps = {
   searchOptions: FuseOptions<NavigationItem>;
 };
 
-type Props = WithRouterProps &
+type Props = RouteComponentProps<{}, {}> &
   DefaultProps & {
     organization?: Organization;
     project?: Project;

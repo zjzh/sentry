@@ -1,3 +1,5 @@
+import responses
+
 from sentry.utils.compat import zip
 
 __all__ = (
@@ -22,12 +24,15 @@ __all__ = (
     "SCIMAzureTestCase",
 )
 
+import hashlib
 import inspect
 import os
 import os.path
 import time
 from contextlib import contextmanager
 from datetime import datetime
+from unittest import mock
+from unittest.mock import patch
 from urllib.parse import urlencode
 from uuid import uuid4
 
@@ -64,26 +69,41 @@ from sentry.auth.superuser import ORG_ID as SU_ORG_ID
 from sentry.auth.superuser import Superuser
 from sentry.constants import MODULE_ROOT
 from sentry.eventstream.snuba import SnubaEventStream
+from sentry.mail import mail_adapter
 from sentry.models import AuthProvider as AuthProviderModel
 from sentry.models import (
+    Commit,
+    CommitAuthor,
     Dashboard,
     DashboardWidget,
     DashboardWidgetDisplayTypes,
     DashboardWidgetQuery,
     DeletedOrganization,
+    Deploy,
     GroupMeta,
+    Identity,
+    IdentityProvider,
+    IdentityStatus,
+    NotificationSetting,
     Organization,
     ProjectOption,
+    Release,
+    ReleaseCommit,
     Repository,
+    UserEmail,
+    UserOption,
 )
+from sentry.notifications.types import NotificationSettingOptionValues, NotificationSettingTypes
 from sentry.plugins.base import plugins
 from sentry.rules import EventState
+from sentry.sentry_metrics import indexer
+from sentry.sentry_metrics.sessions import SessionMetricKey
 from sentry.tagstore.snuba import SnubaTagStorage
 from sentry.testutils.helpers.datetime import iso_format
+from sentry.testutils.helpers.slack import install_slack
+from sentry.types.integrations import ExternalProviders
 from sentry.utils import json
-from sentry.utils.auth import SSO_SESSION_KEY
-from sentry.utils.compat import mock
-from sentry.utils.compat.mock import patch
+from sentry.utils.auth import SsoSession
 from sentry.utils.pytest.selenium import Browser
 from sentry.utils.retries import TimedRetryPolicy
 from sentry.utils.snuba import _snuba_pool
@@ -92,7 +112,7 @@ from . import assert_status_code
 from .factories import Factories
 from .fixtures import Fixtures
 from .helpers import AuthProvider, Feature, TaskRunner, override_options, parse_queries
-from .skips import requires_snuba
+from .skips import requires_snuba, requires_snuba_metrics
 
 DEFAULT_USER_AGENT = "Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2228.0 Safari/537.36"
 
@@ -160,21 +180,23 @@ class BaseTestCase(Fixtures, Exam):
         self.client.cookies[name] = value
         self.client.cookies[name].update({k.replace("_", "-"): v for k, v in params.items()})
 
-    def make_request(self, user=None, auth=None, method=None):
+    def make_request(self, user=None, auth=None, method=None, is_superuser=False):
         request = HttpRequest()
         if method:
             request.method = method
         request.META["REMOTE_ADDR"] = "127.0.0.1"
         request.META["SERVER_NAME"] = "testserver"
         request.META["SERVER_PORT"] = 80
-        request.GET = {}
-        request.POST = {}
 
         # order matters here, session -> user -> other things
         request.session = self.session
         request.auth = auth
         request.user = user or AnonymousUser()
+        # must happen after request.user/request.session is populated
         request.superuser = Superuser(request)
+        if is_superuser:
+            # XXX: this is gross, but its a one off and apis change only once in a great while
+            request.superuser.set_logged_in(user)
         request.is_superuser = lambda: request.superuser.is_active
         request.successful_authenticator = None
         return request
@@ -203,7 +225,9 @@ class BaseTestCase(Fixtures, Exam):
 
         # TODO(dcramer): ideally this would get abstracted
         if organization_ids:
-            request.session[SSO_SESSION_KEY] = ",".join(str(o) for o in organization_ids)
+            for o in organization_ids:
+                sso_session = SsoSession.create(o)
+                self.session[sso_session.session_key] = sso_session.to_dict()
 
         # logging in implicitly binds superuser, but for test cases we
         # want that action to be explicit to avoid accidentally testing
@@ -358,9 +382,13 @@ class APITestCase(BaseTestCase, BaseAPITestCase):
         Simulate an API call to the test case's URI and method.
 
         :param params:
+            Note: These names are intentionally a little funny to prevent name
+             collisions with real API arguments.
+            * extra_headers: (Optional) Dict mapping keys to values that will be
+             passed as request headers.
             * qs_params: (Optional) Dict mapping keys to values that will be
-             url-encoded into a API call's query string. Note: The name is
-             intentionally a little funny to prevent name collisions.
+             url-encoded into a API call's query string.
+            * raw_data: (Optional) Sometimes we want to precompute the JSON body.
         :returns Response object
         """
         if self.endpoint is None:
@@ -373,9 +401,16 @@ class APITestCase(BaseTestCase, BaseAPITestCase):
             query_string = urlencode(params.pop("qs_params"), doseq=True)
             url = f"{url}?{query_string}"
 
-        method = params.pop("method", self.method)
+        headers = params.pop("extra_headers", {})
+        raw_data = params.pop("raw_data", None)
+        if raw_data and isinstance(raw_data, bytes):
+            raw_data = raw_data.decode("utf-8")
+        if raw_data and isinstance(raw_data, str):
+            raw_data = json.loads(raw_data)
+        data = raw_data or params
+        method = params.pop("method", self.method).lower()
 
-        return getattr(self.client, method)(url, format="json", data=params)
+        return getattr(self.client, method)(url, format="json", data=data, **headers)
 
     def get_valid_response(self, *args, **params):
         """Deprecated. Calls `get_response` (see above) and asserts a specific status code."""
@@ -815,6 +850,33 @@ class SnubaTestCase(BaseTestCase):
             == 200
         )
 
+    def build_session(self, **kwargs):
+        session = {
+            "session_id": str(uuid4()),
+            "distinct_id": str(uuid4()),
+            "status": "ok",
+            "seq": 0,
+            "retention_days": 90,
+            "duration": 60.0,
+            "errors": 0,
+            "started": time.time() // 60 * 60,
+            "received": time.time(),
+        }
+        # Support both passing the values for these field directly, and the full objects
+        translators = [
+            ("release", "version", "release"),
+            ("environment", "name", "environment"),
+            ("project_id", "id", "project"),
+            ("org_id", "id", "organization"),
+        ]
+        for key, attr, default_attr in translators:
+            if key not in kwargs:
+                kwargs[key] = getattr(self, default_attr)
+            val = kwargs[key]
+            kwargs[key] = getattr(val, attr, val)
+        session.update(kwargs)
+        return session
+
     def store_session(self, session):
         self.bulk_store_sessions([session])
 
@@ -900,6 +962,125 @@ class SnubaTestCase(BaseTestCase):
         assert (
             requests.post(
                 settings.SENTRY_SNUBA + "/tests/events/insert", data=json.dumps(events)
+            ).status_code
+            == 200
+        )
+
+
+@requires_snuba_metrics
+class SessionMetricsTestCase(SnubaTestCase):
+    """Store metrics instead of sessions"""
+
+    snuba_endpoint = "/tests/entities/{entity}/insert"
+
+    def store_session(self, session):
+        """Mimic relays behavior of always emitting a metric for a started session,
+        and emitting an additional one if the session is fatal
+        https://github.com/getsentry/relay/blob/e3c064e213281c36bde5d2b6f3032c6d36e22520/relay-server/src/actors/envelopes.rs#L357
+        """
+        user = session.get("distinct_id")
+
+        # This check is not yet reflected in relay, see https://getsentry.atlassian.net/browse/INGEST-464
+        user_is_nil = user is None or user == "00000000-0000-0000-0000-000000000000"
+
+        # seq=0 is equivalent to relay's session.init, init=True is transformed
+        # to seq=0 in Relay.
+        if session["seq"] == 0:  # init
+            self._push_metric(
+                session, "counter", SessionMetricKey.SESSION, {"session.status": "init"}, +1
+            )
+            if not user_is_nil:
+                self._push_metric(
+                    session, "set", SessionMetricKey.USER, {"session.status": "init"}, user
+                )
+
+        status = session["status"]
+
+        # Mark the session as errored, which includes fatal sessions.
+        if session.get("errors", 0) > 0 or status not in ("ok", "exited"):
+            self._push_metric(
+                session, "set", SessionMetricKey.SESSION_ERROR, {}, session["session_id"]
+            )
+            if not user_is_nil:
+                self._push_metric(
+                    session, "set", SessionMetricKey.USER, {"session.status": "errored"}, user
+                )
+
+        if status in ("abnormal", "crashed"):  # fatal
+            self._push_metric(
+                session, "counter", SessionMetricKey.SESSION, {"session.status": status}, +1
+            )
+            if not user_is_nil:
+                self._push_metric(
+                    session, "set", SessionMetricKey.USER, {"session.status": status}, user
+                )
+
+        if status != "ok":  # terminal
+            if session["duration"] is not None:
+                self._push_metric(
+                    session,
+                    "distribution",
+                    SessionMetricKey.SESSION_DURATION,
+                    {"session.status": status},
+                    session["duration"],
+                )
+
+    def bulk_store_sessions(self, sessions):
+        for session in sessions:
+            self.store_session(session)
+
+    @classmethod
+    def _push_metric(cls, session, type, key: SessionMetricKey, tags, value):
+        def metric_id(key: SessionMetricKey):
+            res = indexer.record(key.value)
+            assert res is not None, key
+            return res
+
+        def tag_key(name):
+            res = indexer.record(name)
+            assert res is not None, name
+            return res
+
+        def tag_value(name):
+            res = indexer.record(name)
+            assert res is not None, name
+            return res
+
+        base_tags = {
+            tag_key(tag): tag_value(session[tag])
+            for tag in (
+                "release",
+                "environment",
+            )
+        }
+
+        extra_tags = {tag_key(k): tag_value(v) for k, v in tags.items()}
+
+        if type == "set":
+            # Relay uses a different hashing algorithm, but that's ok
+            value = [int.from_bytes(hashlib.md5(value.encode()).digest()[:8], "big")]
+        elif type == "distribution":
+            value = [value]
+
+        msg = {
+            "org_id": session["org_id"],
+            "project_id": session["project_id"],
+            "metric_id": metric_id(key),
+            "timestamp": session["started"],
+            "tags": {**base_tags, **extra_tags},
+            "type": {"counter": "c", "set": "s", "distribution": "d"}[type],
+            "value": value,
+            "retention_days": 90,
+        }
+
+        cls._send_buckets([msg], entity=f"metrics_{type}s")
+
+    @classmethod
+    def _send_buckets(cls, buckets, entity):
+        assert (
+            requests.post(
+                settings.SENTRY_SNUBA + cls.snuba_endpoint.format(entity=entity),
+                data=json.dumps(buckets),
             ).status_code
             == 200
         )
@@ -1197,3 +1378,99 @@ class SCIMAzureTestCase(SCIMTestCase):
         auth.register(ACTIVE_DIRECTORY_PROVIDER_NAME, DummyProvider)
         super().setUp(provider=ACTIVE_DIRECTORY_PROVIDER_NAME)
         self.addCleanup(auth.unregister, ACTIVE_DIRECTORY_PROVIDER_NAME, DummyProvider)
+
+
+class ActivityTestCase(TestCase):
+    def another_user(self, email_string, team=None, alt_email_string=None):
+        user = self.create_user(email_string)
+        if alt_email_string:
+            UserEmail.objects.create(email=alt_email_string, user=user)
+
+            assert UserEmail.objects.filter(user=user, email=alt_email_string).update(
+                is_verified=True
+            )
+
+        assert UserEmail.objects.filter(user=user, email=user.email).update(is_verified=True)
+
+        self.create_member(user=user, organization=self.org, teams=[team] if team else None)
+
+        return user
+
+    def another_commit(self, order, name, user, repository, alt_email_string=None):
+        commit = Commit.objects.create(
+            key=name * 40,
+            repository_id=repository.id,
+            organization_id=self.org.id,
+            author=CommitAuthor.objects.create(
+                organization_id=self.org.id,
+                name=user.name,
+                email=alt_email_string or user.email,
+            ),
+        )
+        ReleaseCommit.objects.create(
+            organization_id=self.org.id,
+            release=self.release,
+            commit=commit,
+            order=order,
+        )
+
+        return commit
+
+    def another_release(self, name):
+        release = Release.objects.create(
+            version=name * 40,
+            organization_id=self.project.organization_id,
+            date_released=timezone.now(),
+        )
+        release.add_project(self.project)
+        release.add_project(self.project2)
+        deploy = Deploy.objects.create(
+            release=release, organization_id=self.org.id, environment_id=self.environment.id
+        )
+
+        return release, deploy
+
+
+class SlackActivityNotificationTest(ActivityTestCase):
+    @fixture
+    def adapter(self):
+        return mail_adapter
+
+    def setUp(self):
+        NotificationSetting.objects.update_settings(
+            ExternalProviders.SLACK,
+            NotificationSettingTypes.WORKFLOW,
+            NotificationSettingOptionValues.ALWAYS,
+            user=self.user,
+        )
+        NotificationSetting.objects.update_settings(
+            ExternalProviders.SLACK,
+            NotificationSettingTypes.DEPLOY,
+            NotificationSettingOptionValues.ALWAYS,
+            user=self.user,
+        )
+        NotificationSetting.objects.update_settings(
+            ExternalProviders.SLACK,
+            NotificationSettingTypes.ISSUE_ALERTS,
+            NotificationSettingOptionValues.ALWAYS,
+            user=self.user,
+        )
+        UserOption.objects.create(user=self.user, key="self_notifications", value="1")
+        self.integration = install_slack(self.organization)
+        self.idp = IdentityProvider.objects.create(type="slack", external_id="TXXXXXXX1", config={})
+        self.identity = Identity.objects.create(
+            external_id="UXXXXXXX1",
+            idp=self.idp,
+            user=self.user,
+            status=IdentityStatus.VALID,
+            scopes=[],
+        )
+        responses.add(
+            method=responses.POST,
+            url="https://slack.com/api/chat.postMessage",
+            body='{"ok": true}',
+            status=200,
+            content_type="application/json",
+        )
+        self.name = self.user.get_display_name()
+        self.short_id = self.group.qualified_short_id

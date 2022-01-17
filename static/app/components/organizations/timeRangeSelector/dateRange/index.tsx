@@ -5,23 +5,23 @@ import {withTheme} from '@emotion/react';
 import styled from '@emotion/styled';
 import moment from 'moment';
 
-import Checkbox from 'app/components/checkbox';
-import LoadingIndicator from 'app/components/loadingIndicator';
-import TimePicker from 'app/components/organizations/timeRangeSelector/timePicker';
-import Placeholder from 'app/components/placeholder';
-import {MAX_PICKABLE_DAYS} from 'app/constants';
-import {t} from 'app/locale';
-import space from 'app/styles/space';
-import {LightWeightOrganization} from 'app/types';
-import {analytics} from 'app/utils/analytics';
+import Checkbox from 'sentry/components/checkbox';
+import LoadingIndicator from 'sentry/components/loadingIndicator';
+import TimePicker from 'sentry/components/organizations/timeRangeSelector/timePicker';
+import Placeholder from 'sentry/components/placeholder';
+import {MAX_PICKABLE_DAYS} from 'sentry/constants';
+import {t} from 'sentry/locale';
+import space from 'sentry/styles/space';
+import {Organization} from 'sentry/types';
+import {analytics} from 'sentry/utils/analytics';
 import {
   getEndOfDay,
   getStartOfPeriodAgo,
   isValidTime,
   setDateToTime,
-} from 'app/utils/dates';
-import getRouteStringFromRoutes from 'app/utils/getRouteStringFromRoutes';
-import {Theme} from 'app/utils/theme';
+} from 'sentry/utils/dates';
+import getRouteStringFromRoutes from 'sentry/utils/getRouteStringFromRoutes';
+import {Theme} from 'sentry/utils/theme';
 
 const DateRangePicker = React.lazy(() => import('./dateRangeWrapper'));
 
@@ -50,7 +50,7 @@ type Props = WithRouterProps & {
   /**
    * Just used for metrics
    */
-  organization: LightWeightOrganization;
+  organization: Organization;
 
   /**
    * Start date value for absolute date selector
@@ -89,7 +89,7 @@ type State = {
   hasEndErrors: boolean;
 };
 
-class DateRange extends React.Component<Props, State> {
+class BaseDateRange extends React.Component<Props, State> {
   static defaultProps = defaultProps;
 
   state: State = {
@@ -246,7 +246,7 @@ class DateRange extends React.Component<Props, State> {
   }
 }
 
-const StyledDateRange = styled(withTheme(withRouter(DateRange)))`
+const DateRange = styled(withTheme(withRouter(BaseDateRange)))`
   display: flex;
   flex-direction: column;
   border-left: 1px solid ${p => p.theme.border};
@@ -268,4 +268,4 @@ const UtcPicker = styled('div')`
   flex: 1;
 `;
 
-export default StyledDateRange;
+export default DateRange;

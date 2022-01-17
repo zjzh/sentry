@@ -1,4 +1,6 @@
-from typing import Any, Mapping, Tuple
+from __future__ import annotations
+
+from typing import Any, Mapping
 
 from sentry.utils.html import escape
 from sentry.utils.http import absolute_uri
@@ -7,10 +9,12 @@ from .base import GroupActivityNotification
 
 
 class RegressionActivityNotification(GroupActivityNotification):
+    referrer_base = "regression-activity"
+
     def get_activity_name(self) -> str:
         return "Regression"
 
-    def get_description(self) -> Tuple[str, Mapping[str, Any], Mapping[str, Any]]:
+    def get_description(self) -> tuple[str, Mapping[str, Any], Mapping[str, Any]]:
         data = self.activity.data
 
         if data.get("version"):

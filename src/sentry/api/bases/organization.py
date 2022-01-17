@@ -1,6 +1,7 @@
 import sentry_sdk
 from django.core.cache import cache
 from rest_framework.exceptions import ParseError, PermissionDenied
+from rest_framework.request import Request
 
 from sentry.api.base import Endpoint
 from sentry.api.exceptions import ResourceDoesNotExist
@@ -40,14 +41,14 @@ class OrganizationPermission(SentryPermission):
         "DELETE": ["org:admin"],
     }
 
-    def is_not_2fa_compliant(self, request, organization):
+    def is_not_2fa_compliant(self, request: Request, organization):
         return (
             organization.flags.require_2fa
             and not Authenticator.objects.user_has_2fa(request.user)
             and not is_active_superuser(request)
         )
 
-    def needs_sso(self, request, organization):
+    def needs_sso(self, request: Request, organization):
         # XXX(dcramer): this is very similar to the server-rendered views
         # logic for checking valid SSO
         if not request.access.requires_sso:
@@ -58,12 +59,12 @@ class OrganizationPermission(SentryPermission):
             return True
         return False
 
-    def has_object_permission(self, request, view, organization):
+    def has_object_permission(self, request: Request, view, organization):
         self.determine_access(request, organization)
         allowed_scopes = set(self.scope_map.get(request.method, []))
         return any(request.access.has_scope(s) for s in allowed_scopes)
 
-    def is_member_disabled_from_limit(self, request, organization):
+    def is_member_disabled_from_limit(self, request: Request, organization):
         return is_member_disabled_from_limit(request, organization)
 
 
@@ -158,18 +159,6 @@ class OrganizationAlertRulePermission(OrganizationPermission):
 class OrganizationEndpoint(Endpoint):
     permission_classes = (OrganizationPermission,)
 
-    def get_requested_project_ids(self, request):
-        """
-        Returns the project ids that were requested by the request.
-
-        To determine the projects to filter this endpoint by with full
-        permission checking, use ``get_projects``, instead.
-        """
-        try:
-            return set(map(int, request.GET.getlist("project")))
-        except ValueError:
-            raise ParseError(detail="Invalid project parameter. Values must be numbers.")
-
     def get_projects(
         self,
         request,
@@ -201,7 +190,7 @@ class OrganizationEndpoint(Endpoint):
         :return: A list of Project objects, or raises PermissionDenied.
         """
         if project_ids is None:
-            project_ids = self.get_requested_project_ids(request)
+            project_ids = self.get_requested_project_ids_unchecked(request)
         return self._get_projects_by_id(
             project_ids, request, organization, force_global_perms, include_all_accessible
         )
@@ -254,11 +243,23 @@ class OrganizationEndpoint(Endpoint):
 
         return projects
 
-    def get_environments(self, request, organization):
+    def get_requested_project_ids_unchecked(self, request: Request):
+        """
+        Returns the project ids that were requested by the request.
+
+        To determine the projects to filter this endpoint by with full
+        permission checking, use ``get_projects``, instead.
+        """
+        try:
+            return set(map(int, request.GET.getlist("project")))
+        except ValueError:
+            raise ParseError(detail="Invalid project parameter. Values must be numbers.")
+
+    def get_environments(self, request: Request, organization):
         return get_environments(request, organization)
 
     def get_filter_params(
-        self, request, organization, date_filter_optional=False, project_ids=None
+        self, request: Request, organization, date_filter_optional=False, project_ids=None
     ):
         """
         Extracts common filter parameters from the request and returns them
@@ -324,7 +325,7 @@ class OrganizationEndpoint(Endpoint):
 
         return params
 
-    def convert_args(self, request, organization_slug, *args, **kwargs):
+    def convert_args(self, request: Request, organization_slug, *args, **kwargs):
         try:
             organization = Organization.objects.get_from_cache(slug=organization_slug)
         except Organization.DoesNotExist:
@@ -344,7 +345,7 @@ class OrganizationEndpoint(Endpoint):
         # Never track any org (regardless of whether the user does or doesn't have
         # membership in that org) when the user is in active superuser mode
         if request.auth is None and request.user and not is_active_superuser(request):
-            request.session["activeorg"] = organization.slug
+            auth.set_active_org(request, organization.slug)
 
         kwargs["organization"] = organization
         return (args, kwargs)
@@ -353,7 +354,7 @@ class OrganizationEndpoint(Endpoint):
 class OrganizationReleasesBaseEndpoint(OrganizationEndpoint):
     permission_classes = (OrganizationReleasePermission,)
 
-    def get_projects(self, request, organization, project_ids=None):
+    def get_projects(self, request: Request, organization, project_ids=None):
         """
         Get all projects the current user or API token has access to. More
         detail in the parent class's method of the same name.
@@ -379,7 +380,7 @@ class OrganizationReleasesBaseEndpoint(OrganizationEndpoint):
             project_ids=project_ids,
         )
 
-    def has_release_permission(self, request, organization, release):
+    def has_release_permission(self, request: Request, organization, release):
         """
         Does the given request have permission to access this release, based
         on the projects to which the release is attached?
@@ -390,12 +391,13 @@ class OrganizationReleasesBaseEndpoint(OrganizationEndpoint):
         """
         actor_id = None
         has_perms = None
+        key = None
         if getattr(request, "user", None) and request.user.id:
             actor_id = "user:%s" % request.user.id
         if getattr(request, "auth", None) and request.auth.id:
             actor_id = "apikey:%s" % request.auth.id
         if actor_id is not None:
-            project_ids = sorted(self.get_requested_project_ids(request))
+            project_ids = sorted(self.get_requested_project_ids_unchecked(request))
             key = "release_perms:1:%s" % hash_values(
                 [actor_id, organization.id, release.id] + project_ids
             )
@@ -404,7 +406,7 @@ class OrganizationReleasesBaseEndpoint(OrganizationEndpoint):
             has_perms = ReleaseProject.objects.filter(
                 release=release, project__in=self.get_projects(request, organization)
             ).exists()
-            if actor_id is not None:
+            if key is not None and actor_id is not None:
                 cache.set(key, has_perms, 60)
 
         return has_perms

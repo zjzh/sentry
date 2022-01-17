@@ -1,39 +1,58 @@
+import React from 'react';
 import styled from '@emotion/styled';
 import startCase from 'lodash/startCase';
 
-import Alert from 'app/components/alert';
-import Button from 'app/components/button';
-import Link from 'app/components/links/link';
-import {PanelItem} from 'app/components/panels';
-import {IconWarning} from 'app/icons';
-import {t} from 'app/locale';
-import PluginIcon from 'app/plugins/components/pluginIcon';
-import space from 'app/styles/space';
-import {IntegrationInstallationStatus, Organization, SentryApp} from 'app/types';
+import Alert from 'sentry/components/alert';
+import Button from 'sentry/components/button';
+import Link from 'sentry/components/links/link';
+import {PanelItem} from 'sentry/components/panels';
+import {IconWarning} from 'sentry/icons';
+import {t} from 'sentry/locale';
+import PluginIcon from 'sentry/plugins/components/pluginIcon';
+import space from 'sentry/styles/space';
+import {
+  IntegrationInstallationStatus,
+  Organization,
+  PluginWithProjectList,
+  SentryApp,
+} from 'sentry/types';
 import {
   convertIntegrationTypeToSnakeCase,
-  trackIntegrationEvent,
-} from 'app/utils/integrationUtil';
+  trackIntegrationAnalytics,
+} from 'sentry/utils/integrationUtil';
 
+import AlertContainer from './integrationAlertContainer';
 import IntegrationStatus from './integrationStatus';
+import PluginDeprecationAlert from './pluginDeprecationAlert';
 
 type Props = {
   organization: Organization;
-  type: 'plugin' | 'firstParty' | 'sentryApp' | 'documentIntegration';
+  type: 'plugin' | 'firstParty' | 'sentryApp' | 'docIntegration';
   slug: string;
   displayName: string;
-  status?: IntegrationInstallationStatus;
   publishStatus: 'unpublished' | 'published' | 'internal';
   configurations: number;
   categories: string[];
+  status?: IntegrationInstallationStatus;
+  /**
+   * If provided, render an alert message with this text.
+   */
   alertText?: string;
+  /**
+   * If `alertText` was provided, this text overrides the "Resolve now" message
+   * in the alert.
+   */
+  resolveText?: string;
+  customAlert?: React.ReactNode;
+  plugin?: PluginWithProjectList;
+  customIcon?: React.ReactNode;
 };
 
 const urlMap = {
   plugin: 'plugins',
   firstParty: 'integrations',
   sentryApp: 'sentry-apps',
-  documentIntegration: 'document-integrations',
+  docIntegration: 'document-integrations',
 };
 
 const IntegrationRow = (props: Props) => {
@@ -47,6 +66,10 @@ const IntegrationRow = (props: Props) => {
     configurations,
     categories,
     alertText,
+    resolveText,
+    plugin,
+    customAlert,
+    customIcon,
   } = props;
 
   const baseUrl =
@@ -77,7 +100,7 @@ const IntegrationRow = (props: Props) => {
   return (
     <PanelRow noPadding data-test-id={slug}>
       <FlexContainer>
-        <PluginIcon size={36} pluginId={slug} />
+        {customIcon ?? <PluginIcon size={36} pluginId={slug} />}
         <Container>
           <IntegrationName to={baseUrl}>{displayName}</IntegrationName>
           <IntegrationDetails>
@@ -103,21 +126,31 @@ const IntegrationRow = (props: Props) => {
               href={`${baseUrl}?tab=configurations&referrer=directory_resolve_now`}
               size="xsmall"
               onClick={() =>
-                trackIntegrationEvent('integrations.resolve_now_clicked', {
+                trackIntegrationAnalytics('integrations.resolve_now_clicked', {
                   integration_type: convertIntegrationTypeToSnakeCase(type),
                   integration: slug,
                   organization,
                 })
               }
             >
-              {t('Resolve Now')}
+              {resolveText || t('Resolve Now')}
             </ResolveNowButton>
           </Alert>
         </AlertContainer>
       )}
+      {customAlert}
+      {plugin?.deprecationDate && (
+        <PluginDeprecationAlertWrapper>
+          <PluginDeprecationAlert organization={organization} plugin={plugin} />
+        </PluginDeprecationAlertWrapper>
+      )}
     </PanelRow>
   );
 };
+
+const PluginDeprecationAlertWrapper = styled('div')`
+  padding: 0px ${space(3)} 0px 68px;
+`;
 
 const PanelRow = styled(PanelItem)`
   flex-direction: column;
@@ -208,10 +241,6 @@ const CategoryTag = styled(
 const ResolveNowButton = styled(Button)`
   color: ${p => p.theme.subText};
   float: right;
-`;
-
-const AlertContainer = styled('div')`
-  padding: 0px ${space(3)} 0px 68px;
 `;
 
 export default IntegrationRow;

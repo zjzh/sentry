@@ -1,22 +1,23 @@
 import {Fragment} from 'react';
 import {withRouter, WithRouterProps} from 'react-router';
 import {css} from '@emotion/react';
-import {Location} from 'history';
 
-import {ModalRenderProps} from 'app/actionCreators/modal';
-import {AppStoreConnectContextProps} from 'app/components/projects/appStoreConnectContext';
-import {getDebugSourceName} from 'app/data/debugFileSources';
-import {tct} from 'app/locale';
-import {CustomRepoType} from 'app/types/debugFiles';
-import FieldFromConfig from 'app/views/settings/components/forms/fieldFromConfig';
-import Form from 'app/views/settings/components/forms/form';
+import {ModalRenderProps} from 'sentry/actionCreators/modal';
+import {getDebugSourceName} from 'sentry/data/debugFileSources';
+import {tct} from 'sentry/locale';
+import {AppStoreConnectStatusData, CustomRepoType} from 'sentry/types/debugFiles';
+import FieldFromConfig from 'sentry/views/settings/components/forms/fieldFromConfig';
+import Form from 'sentry/views/settings/components/forms/form';
 
 import AppStoreConnect from './appStoreConnect';
-import {getFormFields, getInitialData} from './utils';
+import Http from './http';
+import {getFinalData, getFormFieldsAndInitialData} from './utils';
 
 type AppStoreConnectInitialData = React.ComponentProps<
   typeof AppStoreConnect
 >['initialData'];
+
+type HttpInitialData = React.ComponentProps<typeof Http>['initialData'];
 
 type RouteParams = {
   orgId: string;
@@ -33,7 +34,7 @@ type Props = WithRouterProps<RouteParams, {}> & {
    */
   sourceType: CustomRepoType;
 
-  appStoreConnectContext?: AppStoreConnectContextProps;
+  appStoreConnectStatusData?: AppStoreConnectStatusData;
   /**
    * The sourceConfig. May be empty to create a new one.
    */
@@ -48,17 +49,18 @@ function DebugFileCustomRepository({
   sourceConfig,
   sourceType,
   params: {orgId, projectId: projectSlug},
-  location,
-  appStoreConnectContext,
+  appStoreConnectStatusData,
   closeModal,
 }: Props) {
-  function handleSave(data: Record<string, any>) {
-    onSave({...data, type: sourceType}).then(() => {
+  function handleSave(data?: Record<string, any>) {
+    if (!data) {
       closeModal();
+      window.location.reload();
+      return;
+    }
 
-      if (sourceType === CustomRepoType.APP_STORE_CONNECT) {
-        window.location.reload();
-      }
+    onSave({...getFinalData(sourceType, data), type: sourceType}).then(() => {
+      closeModal();
     });
   }
 
@@ -71,15 +73,25 @@ function DebugFileCustomRepository({
         orgSlug={orgId}
         projectSlug={projectSlug}
         onSubmit={handleSave}
-        initialData={sourceConfig as AppStoreConnectInitialData | undefined}
-        location={location as Location}
-        appStoreConnectContext={appStoreConnectContext}
+        initialData={sourceConfig as AppStoreConnectInitialData}
+        appStoreConnectStatusData={appStoreConnectStatusData}
       />
     );
   }
 
-  const fields = getFormFields(sourceType);
-  const initialData = getInitialData(sourceConfig);
+  if (sourceType === CustomRepoType.HTTP) {
+    return (
+      <Http
+        Header={Header}
+        Body={Body}
+        Footer={Footer}
+        onSubmit={handleSave}
+        initialData={sourceConfig as HttpInitialData}
+      />
+    );
+  }
+
+  const {initialData, fields} = getFormFieldsAndInitialData(sourceType, sourceConfig);
 
   return (
     <Fragment>

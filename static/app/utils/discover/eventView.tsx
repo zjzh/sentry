@@ -7,14 +7,13 @@ import pick from 'lodash/pick';
 import uniqBy from 'lodash/uniqBy';
 import moment from 'moment';
 
-import {EventQuery} from 'app/actionCreators/events';
-import {COL_WIDTH_UNDEFINED} from 'app/components/gridEditable';
-import {getParams} from 'app/components/organizations/globalSelectionHeader/getParams';
-import {DEFAULT_PER_PAGE} from 'app/constants';
-import {URL_PARAM} from 'app/constants/globalSelectionHeader';
-import {t} from 'app/locale';
-import ConfigStore from 'app/stores/configStore';
-import {GlobalSelection, NewQuery, SavedQuery, SelectValue, User} from 'app/types';
+import {EventQuery} from 'sentry/actionCreators/events';
+import {COL_WIDTH_UNDEFINED} from 'sentry/components/gridEditable';
+import {normalizeDateTimeParams} from 'sentry/components/organizations/pageFilters/parse';
+import {DEFAULT_PER_PAGE} from 'sentry/constants';
+import {URL_PARAM} from 'sentry/constants/pageFilters';
+import {t} from 'sentry/locale';
+import {NewQuery, PageFilters, SavedQuery, SelectValue, User} from 'sentry/types';
 import {
   aggregateOutputType,
   Column,
@@ -29,27 +28,28 @@ import {
   isLegalYAxisType,
   Sort,
   WebVital,
-} from 'app/utils/discover/fields';
-import {decodeList, decodeScalar} from 'app/utils/queryString';
-import {
-  FieldValueKind,
-  TableColumn,
-  TableColumnSort,
-} from 'app/views/eventsV2/table/types';
-import {decodeColumnOrder} from 'app/views/eventsV2/utils';
-import {SpanOperationBreakdownFilter} from 'app/views/performance/transactionSummary/filter';
-import {EventsDisplayFilterName} from 'app/views/performance/transactionSummary/transactionEvents/utils';
-
-import {statsPeriodToDays} from '../dates';
-import {MutableSearch} from '../tokenizeSearch';
-
-import {getSortField} from './fieldRenderers';
+} from 'sentry/utils/discover/fields';
 import {
   CHART_AXIS_OPTIONS,
   DISPLAY_MODE_FALLBACK_OPTIONS,
   DISPLAY_MODE_OPTIONS,
   DisplayModes,
-} from './types';
+  TOP_N,
+} from 'sentry/utils/discover/types';
+import {decodeList, decodeScalar} from 'sentry/utils/queryString';
+import {
+  FieldValueKind,
+  TableColumn,
+  TableColumnSort,
+} from 'sentry/views/eventsV2/table/types';
+import {decodeColumnOrder} from 'sentry/views/eventsV2/utils';
+import {SpanOperationBreakdownFilter} from 'sentry/views/performance/transactionSummary/filter';
+import {EventsDisplayFilterName} from 'sentry/views/performance/transactionSummary/transactionEvents/utils';
+
+import {statsPeriodToDays} from '../dates';
+import {MutableSearch} from '../tokenizeSearch';
+
+import {getSortField} from './fieldRenderers';
 
 // Metadata mapping for discover results.
 export type MetaType = Record<string, ColumnType>;
@@ -271,6 +271,7 @@ class EventView {
   environment: Readonly<string[]>;
   yAxis: string | undefined;
   display: string | undefined;
+  topEvents: string | undefined;
   interval: string | undefined;
   expired?: boolean;
   createdBy: User | undefined;
@@ -290,6 +291,7 @@ class EventView {
     environment: Readonly<string[]>;
     yAxis: string | undefined;
     display: string | undefined;
+    topEvents: string | undefined;
     interval?: string;
     expired?: boolean;
     createdBy: User | undefined;
@@ -335,6 +337,7 @@ class EventView {
     this.environment = environment;
     this.yAxis = props.yAxis;
     this.display = props.display;
+    this.topEvents = props.topEvents;
     this.interval = props.interval;
     this.createdBy = props.createdBy;
     this.expired = props.expired;
@@ -344,7 +347,7 @@ class EventView {
   }
 
   static fromLocation(location: Location): EventView {
-    const {start, end, statsPeriod} = getParams(location.query);
+    const {start, end, statsPeriod} = normalizeDateTimeParams(location.query);
 
     return new EventView({
       id: decodeScalar(location.query.id),
@@ -360,6 +363,7 @@ class EventView {
       environment: collectQueryStringByKey(location.query, 'environment'),
       yAxis: decodeScalar(location.query.yAxis),
       display: decodeScalar(location.query.display),
+      topEvents: decodeScalar(location.query.topEvents),
       interval: decodeScalar(location.query.interval),
       createdBy: undefined,
       additionalConditions: new MutableSearch([]),
@@ -407,7 +411,7 @@ class EventView {
   static fromSavedQuery(saved: NewQuery | SavedQuery): EventView {
     const fields = EventView.getFields(saved);
     // normalize datetime selection
-    const {start, end, statsPeriod} = getParams({
+    const {start, end, statsPeriod} = normalizeDateTimeParams({
       start: saved.start,
       end: saved.end,
       statsPeriod: saved.range,
@@ -430,8 +434,10 @@ class EventView {
         },
         'environment'
       ),
-      yAxis: saved.yAxis,
+      // Workaround to only use the first yAxis since eventView yAxis doesn't accept string[]
+      yAxis: Array.isArray(saved.yAxis) ? saved.yAxis[0] : saved.yAxis,
       display: saved.display,
+      topEvents: saved.topEvents ? saved.topEvents.toString() : undefined,
       createdBy: saved.createdBy,
       expired: saved.expired,
       additionalConditions: new MutableSearch([]),
@@ -443,7 +449,7 @@ class EventView {
     location: Location
   ): EventView {
     let fields = decodeFields(location);
-    const {start, end, statsPeriod} = getParams(location.query);
+    const {start, end, statsPeriod} = normalizeDateTimeParams(location.query);
     const id = decodeScalar(location.query.id);
     const teams = decodeTeams(location);
     const projects = decodeProjects(location);
@@ -463,8 +469,16 @@ class EventView {
             ? decodeQuery(location)
             : queryStringFromSavedQuery(saved),
         sorts: sorts.length === 0 ? fromSorts(saved.orderby) : sorts,
-        yAxis: decodeScalar(location.query.yAxis) || saved.yAxis,
+        yAxis:
+          decodeScalar(location.query.yAxis) ||
+          // Workaround to only use the first yAxis since eventView yAxis doesn't accept string[]
+          (Array.isArray(saved.yAxis) ? saved.yAxis[0] : saved.yAxis),
         display: decodeScalar(location.query.display) || saved.display,
+        topEvents: (
+          decodeScalar(location.query.topEvents) ||
+          saved.topEvents ||
+          TOP_N
+        ).toString(),
         interval: decodeScalar(location.query.interval),
         createdBy: saved.createdBy,
         expired: saved.expired,
@@ -485,22 +499,23 @@ class EventView {
   }
 
   isEqualTo(other: EventView): boolean {
-    const keys = [
-      'id',
-      'name',
-      'query',
-      'statsPeriod',
-      'fields',
-      'sorts',
-      'project',
-      'environment',
-      'yAxis',
-      'display',
-    ];
-
+    const defaults = {
+      id: undefined,
+      name: undefined,
+      query: undefined,
+      statsPeriod: undefined,
+      fields: undefined,
+      sorts: undefined,
+      project: undefined,
+      environment: undefined,
+      yAxis: 'count()',
+      display: DisplayModes.DEFAULT,
+      topEvents: '5',
+    };
+    const keys = Object.keys(defaults);
     for (const key of keys) {
-      const currentValue = this[key];
-      const otherValue = other[key];
+      const currentValue = this[key] ?? defaults[key];
+      const otherValue = other[key] ?? defaults[key];
 
       if (!isEqual(currentValue, otherValue)) {
         return false;
@@ -544,8 +559,9 @@ class EventView {
       end: this.end,
       range: this.statsPeriod,
       environment: this.environment,
-      yAxis: this.yAxis,
+      yAxis: this.yAxis ? [this.yAxis] : undefined,
       display: this.display,
+      topEvents: this.topEvents,
     };
 
     if (!newQuery.query) {
@@ -557,7 +573,7 @@ class EventView {
     return newQuery;
   }
 
-  getGlobalSelection(): GlobalSelection {
+  getPageFilters(): PageFilters {
     return {
       projects: this.project as number[],
       environments: this.environment as string[],
@@ -573,12 +589,12 @@ class EventView {
     };
   }
 
-  getGlobalSelectionQuery(): Query {
+  getPageFiltersQuery(): Query {
     const {
       environments: environment,
       projects,
       datetime: {start, end, period, utc},
-    } = this.getGlobalSelection();
+    } = this.getPageFilters();
     return {
       project: projects.map(proj => proj.toString()),
       environment,
@@ -606,6 +622,7 @@ class EventView {
       query: undefined,
       yAxis: undefined,
       display: undefined,
+      topEvents: undefined,
       interval: undefined,
     };
 
@@ -617,7 +634,6 @@ class EventView {
   }
 
   generateQueryStringObject(): Query {
-    const user = ConfigStore.get('user');
     const output = {
       id: this.id,
       name: this.name,
@@ -629,8 +645,8 @@ class EventView {
       query: this.query,
       yAxis: this.yAxis || this.getYAxis(),
       display: this.display,
+      topEvents: this.topEvents,
       interval: this.interval,
-      user: user.id,
     };
 
     for (const field of EXTERNAL_QUERY_STRING_KEYS) {
@@ -719,6 +735,7 @@ class EventView {
       environment: this.environment,
       yAxis: this.yAxis,
       display: this.display,
+      topEvents: this.topEvents,
       interval: this.interval,
       expired: this.expired,
       createdBy: this.createdBy,
@@ -1066,7 +1083,7 @@ class EventView {
         };
 
     // normalize datetime selection
-    return getParams({
+    return normalizeDateTimeParams({
       ...dateSelection,
       utc: decodeScalar(query.utc),
     });
@@ -1125,8 +1142,7 @@ class EventView {
   }
 
   getResultsViewShortUrlTarget(slug: string): {pathname: string; query: Query} {
-    const user = ConfigStore.get('user');
-    const output = {id: this.id, user: user.id};
+    const output = {id: this.id};
     for (const field of [...Object.values(URL_PARAM), 'cursor']) {
       if (this[field] && this[field].length) {
         output[field] = this[field];
@@ -1330,6 +1346,8 @@ class EventView {
   }
 }
 
+export type ImmutableEventView = Readonly<Omit<EventView, 'additionalConditions'>>;
+
 const isFieldsSimilar = (
   currentValue: Array<string>,
   otherValue: Array<string>
@@ -1344,7 +1362,8 @@ const isFieldsSimilar = (
 
   if (!isEqual(currentEquations, otherEquations)) {
     return false;
-  } else if (!isEqual(currentFields, otherFields)) {
+  }
+  if (!isEqual(currentFields, otherFields)) {
     return false;
   }
   return true;

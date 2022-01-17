@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 from django.db import IntegrityError
 
 from sentry.mediators.sentry_apps import Creator
@@ -10,8 +12,8 @@ from sentry.models import (
     SentryAppComponent,
     User,
 )
+from sentry.models.integrationfeature import IntegrationTypes
 from sentry.testutils import TestCase
-from sentry.utils.compat.mock import patch
 
 
 class TestCreator(TestCase):
@@ -32,6 +34,16 @@ class TestCreator(TestCase):
     def test_slug(self):
         app = self.creator.call()
         assert app.slug == "nulldb"
+
+    def test_default_popularity(self):
+        app = self.creator.call()
+        assert app.popularity == SentryApp._meta.get_field("popularity").default
+
+    def test_popularity(self):
+        popularity = 27
+        self.creator.popularity = popularity
+        app = self.creator.call()
+        assert app.popularity == popularity
 
     def test_creates_proxy_user(self):
         self.creator.call()
@@ -91,7 +103,9 @@ class TestCreator(TestCase):
 
     def test_creates_integration_feature(self):
         app = self.creator.call()
-        assert IntegrationFeature.objects.filter(sentry_app=app).exists()
+        assert IntegrationFeature.objects.filter(
+            target_id=app.id, target_type=IntegrationTypes.SENTRY_APP.value
+        ).exists()
 
     @patch("sentry.mediators.sentry_apps.creator.Creator.log")
     @patch("sentry.models.integrationfeature.IntegrationFeature.objects.create")
@@ -146,6 +160,7 @@ class TestCreator(TestCase):
             user_id=self.user.id,
             organization_id=self.org.id,
             sentry_app=sentry_app.slug,
+            created_alert_rule_ui_component=False,
         )
 
     def test_allows_name_that_exists_as_username_already(self):

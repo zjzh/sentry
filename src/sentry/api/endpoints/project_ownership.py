@@ -1,5 +1,6 @@
 from django.utils import timezone
 from rest_framework import serializers
+from rest_framework.request import Request
 from rest_framework.response import Response
 
 from sentry.api.bases.project import ProjectEndpoint
@@ -7,6 +8,8 @@ from sentry.api.serializers import serialize
 from sentry.models import ProjectOwnership
 from sentry.ownership.grammar import CODEOWNERS, create_schema_from_issue_owners
 from sentry.signals import ownership_rule_created
+
+MAX_RAW_LENGTH = 100000
 
 
 class ProjectOwnershipSerializer(serializers.Serializer):
@@ -29,6 +32,15 @@ class ProjectOwnershipSerializer(serializers.Serializer):
     def validate(self, attrs):
         if "raw" not in attrs:
             return attrs
+
+        # We want to limit `raw` to a reasonable length, so that people don't end up with values
+        # that are several megabytes large. To not break this functionality for existing customers
+        # we temporarily allow rows that already exceed this limit to still be updated.
+        existing_raw = self.context["ownership"].raw or ""
+        if len(attrs["raw"]) > MAX_RAW_LENGTH and len(existing_raw) <= MAX_RAW_LENGTH:
+            raise serializers.ValidationError(
+                {"raw": f"Raw needs to be <= {MAX_RAW_LENGTH} characters in length"}
+            )
 
         schema = create_schema_from_issue_owners(attrs["raw"], self.context["ownership"].project_id)
 
@@ -95,7 +107,7 @@ class ProjectOwnershipMixin:
 
 
 class ProjectOwnershipEndpoint(ProjectEndpoint, ProjectOwnershipMixin):
-    def get(self, request, project):
+    def get(self, request: Request, project) -> Response:
         """
         Retrieve a Project's Ownership configuration
         ````````````````````````````````````````````
@@ -106,7 +118,7 @@ class ProjectOwnershipEndpoint(ProjectEndpoint, ProjectOwnershipMixin):
         """
         return Response(serialize(self.get_ownership(project), request.user))
 
-    def put(self, request, project):
+    def put(self, request: Request, project) -> Response:
         """
         Update a Project's Ownership configuration
         ``````````````````````````````````````````

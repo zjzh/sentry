@@ -1,5 +1,6 @@
 import logging
 
+from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.serializers import ValidationError
 
@@ -18,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 
 class SentryAppsEndpoint(SentryAppsBaseEndpoint):
-    def get(self, request):
+    def get(self, request: Request) -> Response:
         status = request.GET.get("status")
 
         if status == "published":
@@ -46,7 +47,7 @@ class SentryAppsEndpoint(SentryAppsBaseEndpoint):
             on_results=lambda x: serialize(x, request.user, access=request.access),
         )
 
-    def post(self, request, organization):
+    def post(self, request: Request, organization) -> Response:
         data = {
             "name": request.json_body.get("name"),
             "user": request.user,
@@ -62,6 +63,9 @@ class SentryAppsEndpoint(SentryAppsBaseEndpoint):
             "schema": request.json_body.get("schema", {}),
             "overview": request.json_body.get("overview"),
             "allowedOrigins": request.json_body.get("allowedOrigins", []),
+            "popularity": request.json_body.get("popularity")
+            if is_active_superuser(request)
+            else None,
         }
 
         if self._has_hook_events(request) and not features.has(
@@ -77,7 +81,17 @@ class SentryAppsEndpoint(SentryAppsBaseEndpoint):
                 status=403,
             )
 
-        serializer = SentryAppSerializer(data=data, access=request.access)
+        serializer = SentryAppSerializer(
+            data=data,
+            access=request.access,
+            context={
+                "features": {
+                    "organizations:alert-rule-ui-component": features.has(
+                        "organizations:alert-rule-ui-component", organization, actor=request.user
+                    )
+                }
+            },
+        )
 
         if serializer.is_valid():
             data["redirect_url"] = data["redirectUrl"]
@@ -111,7 +125,7 @@ class SentryAppsEndpoint(SentryAppsBaseEndpoint):
                 analytics.record(name, **log_info)
         return Response(serializer.errors, status=400)
 
-    def _has_hook_events(self, request):
+    def _has_hook_events(self, request: Request):
         if not request.json_body.get("events"):
             return False
 

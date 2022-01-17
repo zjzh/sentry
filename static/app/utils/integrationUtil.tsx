@@ -8,22 +8,27 @@ import {
   IconGitlab,
   IconJira,
   IconVsts,
-} from 'app/icons';
-import HookStore from 'app/stores/hookStore';
+} from 'sentry/icons';
+import {t} from 'sentry/locale';
+import HookStore from 'sentry/stores/hookStore';
 import {
   AppOrProviderOrPlugin,
-  DocumentIntegration,
+  DocIntegration,
+  Integration,
   IntegrationFeature,
   IntegrationInstallationStatus,
   IntegrationType,
-  LightWeightOrganization,
+  Organization,
   PluginWithProjectList,
   SentryApp,
   SentryAppInstallation,
-} from 'app/types';
-import {Hooks} from 'app/types/hooks';
-import {EventParameters, trackAdvancedAnalyticsEvent} from 'app/utils/advancedAnalytics';
-import {IntegrationAnalyticsKey} from 'app/utils/integrationEvents';
+} from 'sentry/types';
+import {Hooks} from 'sentry/types/hooks';
+import {
+  integrationEventMap,
+  IntegrationEventParameters,
+} from 'sentry/utils/analytics/integrationAnalyticsEvents';
+import makeAnalyticsFunction from 'sentry/utils/analytics/makeAnalyticsFunction';
 
 const mapIntegrationParams = analyticsParams => {
   // Reload expects integration_status even though it's not relevant for non-sentry apps
@@ -35,17 +40,12 @@ const mapIntegrationParams = analyticsParams => {
   return fullParams;
 };
 
-// wrapper around trackAdvancedAnalyticsEvent which has some extra
-// data massaging above
-export function trackIntegrationEvent<T extends IntegrationAnalyticsKey>(
-  eventKey: T,
-  analyticsParams: EventParameters[T] & {organization: LightWeightOrganization}, // integration events should always be tied to an org
-  options?: Parameters<typeof trackAdvancedAnalyticsEvent>[2]
-) {
-  options = options || {};
-  options.mapValuesFn = mapIntegrationParams;
-  return trackAdvancedAnalyticsEvent(eventKey, analyticsParams, options);
-}
+export const trackIntegrationAnalytics = makeAnalyticsFunction<
+  IntegrationEventParameters,
+  {organization: Organization} // org is required
+>(integrationEventMap, {
+  mapValuesFn: mapIntegrationParams,
+});
 
 /**
  * In sentry.io the features list supports rendering plan details. If the hook
@@ -124,8 +124,8 @@ export const getCategoriesForIntegration = (
   if (isPlugin(integration)) {
     return getCategories(integration.featureDescriptions);
   }
-  if (isDocumentIntegration(integration)) {
-    return getCategories(integration.features);
+  if (isDocIntegration(integration)) {
+    return getCategories(integration.features ?? []);
   }
   return getCategories(integration.metadata.features);
 };
@@ -142,10 +142,10 @@ export function isPlugin(
   return integration.hasOwnProperty('shortName');
 }
 
-export function isDocumentIntegration(
+export function isDocIntegration(
   integration: AppOrProviderOrPlugin
-): integration is DocumentIntegration {
-  return integration.hasOwnProperty('docUrl');
+): integration is DocIntegration {
+  return integration.hasOwnProperty('isDraft');
 }
 
 export const getIntegrationType = (
@@ -157,21 +157,21 @@ export const getIntegrationType = (
   if (isPlugin(integration)) {
     return 'plugin';
   }
-  if (isDocumentIntegration(integration)) {
+  if (isDocIntegration(integration)) {
     return 'document';
   }
   return 'first_party';
 };
 
 export const convertIntegrationTypeToSnakeCase = (
-  type: 'plugin' | 'firstParty' | 'sentryApp' | 'documentIntegration'
+  type: 'plugin' | 'firstParty' | 'sentryApp' | 'docIntegration'
 ) => {
   switch (type) {
     case 'firstParty':
       return 'first_party';
     case 'sentryApp':
       return 'sentry_app';
-    case 'documentIntegration':
+    case 'docIntegration':
       return 'document';
     default:
       return type;
@@ -209,7 +209,22 @@ export const getIntegrationIcon = (integrationType?: string, size?: string) => {
 
 // used for project creation and onboarding
 // determines what integration maps to what project platform
-export const platfromToIntegrationMap = {
+export const platformToIntegrationMap = {
   'node-awslambda': 'aws_lambda',
   'python-awslambda': 'aws_lambda',
+};
+
+export const isSlackIntegrationUpToDate = (integrations: Integration[]): boolean => {
+  return integrations.every(
+    integration =>
+      integration.provider.key !== 'slack' || integration.scopes?.includes('commands')
+  );
+};
+
+export const getAlertText = (integrations?: Integration[]): string | undefined => {
+  return isSlackIntegrationUpToDate(integrations || [])
+    ? undefined
+    : t(
+        'Update to the latest version of our Slack app to get access to personal and team notifications.'
+      );
 };

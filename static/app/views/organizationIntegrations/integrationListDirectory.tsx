@@ -6,40 +6,50 @@ import flatten from 'lodash/flatten';
 import groupBy from 'lodash/groupBy';
 import startCase from 'lodash/startCase';
 import uniq from 'lodash/uniq';
-import * as queryString from 'query-string';
+import * as qs from 'query-string';
 
-import AsyncComponent from 'app/components/asyncComponent';
-import SelectControl from 'app/components/forms/selectControl';
-import {Panel, PanelBody} from 'app/components/panels';
-import SearchBar from 'app/components/searchBar';
-import SentryDocumentTitle from 'app/components/sentryDocumentTitle';
-import {t, tct} from 'app/locale';
-import space from 'app/styles/space';
+import AsyncComponent from 'sentry/components/asyncComponent';
+import DocIntegrationAvatar from 'sentry/components/avatar/docIntegrationAvatar';
+import SelectControl from 'sentry/components/forms/selectControl';
+import HookOrDefault from 'sentry/components/hookOrDefault';
+import ExternalLink from 'sentry/components/links/externalLink';
+import {Panel, PanelBody} from 'sentry/components/panels';
+import SearchBar from 'sentry/components/searchBar';
+import SentryAppIcon from 'sentry/components/sentryAppIcon';
+import SentryDocumentTitle from 'sentry/components/sentryDocumentTitle';
+import {t, tct} from 'sentry/locale';
+import space from 'sentry/styles/space';
 import {
   AppOrProviderOrPlugin,
-  DocumentIntegration,
+  DocIntegration,
   Integration,
   IntegrationProvider,
   Organization,
   PluginWithProjectList,
   SentryApp,
   SentryAppInstallation,
-} from 'app/types';
-import {createFuzzySearch} from 'app/utils/createFuzzySearch';
+} from 'sentry/types';
+import {createFuzzySearch} from 'sentry/utils/createFuzzySearch';
 import {
+  getAlertText,
   getCategoriesForIntegration,
   getSentryAppInstallStatus,
-  isDocumentIntegration,
+  isDocIntegration,
   isPlugin,
   isSentryApp,
-  trackIntegrationEvent,
-} from 'app/utils/integrationUtil';
-import withOrganization from 'app/utils/withOrganization';
-import SettingsPageHeader from 'app/views/settings/components/settingsPageHeader';
-import PermissionAlert from 'app/views/settings/organization/permissionAlert';
+  trackIntegrationAnalytics,
+} from 'sentry/utils/integrationUtil';
+import withOrganization from 'sentry/utils/withOrganization';
+import SettingsPageHeader from 'sentry/views/settings/components/settingsPageHeader';
+import PermissionAlert from 'sentry/views/settings/organization/permissionAlert';
 
-import {documentIntegrations, POPULARITY_WEIGHT} from './constants';
+import {POPULARITY_WEIGHT} from './constants';
 import IntegrationRow from './integrationRow';
+
+const FirstPartyIntegrationAlert = HookOrDefault({
+  hookName: 'component:first-party-integration-alert',
+  defaultComponent: () => null,
+});
 
 const fuseOptions = {
   threshold: 0.3,
@@ -60,6 +70,7 @@ type State = {
   appInstalls: SentryAppInstallation[] | null;
   orgOwnedApps: SentryApp[] | null;
   publishedApps: SentryApp[] | null;
+  docIntegrations: DocIntegration[] | null;
   config: {providers: IntegrationProvider[]} | null;
   extraApp?: SentryApp;
   searchInput: string;
@@ -91,7 +102,7 @@ export class IntegrationListDirectory extends AsyncComponent<
   }
 
   onLoadAllEndpointsSuccess() {
-    const {publishedApps, orgOwnedApps, extraApp, plugins} = this.state;
+    const {publishedApps, orgOwnedApps, extraApp, plugins, docIntegrations} = this.state;
     const published = publishedApps || [];
     // If we have an extra app in state from query parameter, add it as org owned app
     if (orgOwnedApps !== null && extraApp) {
@@ -116,7 +127,7 @@ export class IntegrationListDirectory extends AsyncComponent<
       .concat(orgOwned ?? [])
       .concat(this.providers)
       .concat(plugins ?? [])
-      .concat(Object.values(documentIntegrations));
+      .concat(docIntegrations ?? []);
 
     const list = this.sortIntegrations(combined);
 
@@ -147,7 +158,7 @@ export class IntegrationListDirectory extends AsyncComponent<
         integrationsInstalled.add(plugin.slug);
       }
     });
-    trackIntegrationEvent(
+    trackIntegrationAnalytics(
       'integrations.index_viewed',
       {
         integrations_installed: integrationsInstalled.size,
@@ -171,6 +182,7 @@ export class IntegrationListDirectory extends AsyncComponent<
       ['publishedApps', '/sentry-apps/', {query: {status: 'published'}}],
       ['appInstalls', `/organizations/${orgId}/sentry-app-installations/`],
       ['plugins', `/organizations/${orgId}/plugins/configs/`],
+      ['docIntegrations', '/doc-integrations/'],
     ];
     /**
      * optional app to load for super users
@@ -215,15 +227,19 @@ export class IntegrationListDirectory extends AsyncComponent<
       return 0;
     }
 
-    if (isDocumentIntegration(integration)) {
+    if (isDocIntegration(integration)) {
       return 0;
     }
 
     return integrations?.find(i => i.provider.key === integration.key) ? 2 : 0;
   }
 
-  getPopularityWeight = (integration: AppOrProviderOrPlugin) =>
-    POPULARITY_WEIGHT[integration.slug] ?? 1;
+  getPopularityWeight = (integration: AppOrProviderOrPlugin) => {
+    if (isSentryApp(integration) || isDocIntegration(integration)) {
+      return integration?.popularity ?? 1;
+    }
+    return POPULARITY_WEIGHT[integration.slug] ?? 1;
+  };
 
   sortByName = (a: AppOrProviderOrPlugin, b: AppOrProviderOrPlugin) =>
     a.slug.localeCompare(b.slug);
@@ -268,7 +284,7 @@ export class IntegrationListDirectory extends AsyncComponent<
   }
 
   debouncedTrackIntegrationSearch = debounce((search: string, numResults: number) => {
-    trackIntegrationEvent('integrations.directory_item_searched', {
+    trackIntegrationAnalytics('integrations.directory_item_searched', {
       view: 'integrations_directory',
       search_term: search,
       num_results: numResults,
@@ -277,10 +293,10 @@ export class IntegrationListDirectory extends AsyncComponent<
   }, TEXT_SEARCH_ANALYTICS_DEBOUNCE_IN_MS);
 
   /**
-   * Get filter parameters and guard against `queryString.parse` returning arrays.
+   * Get filter parameters and guard against `qs.parse` returning arrays.
    */
   getFilterParameters = (): {searchInput: string; selectedCategory: string} => {
-    const {category, search} = queryString.parse(this.props.location.search);
+    const {category, search} = qs.parse(this.props.location.search);
 
     const selectedCategory = Array.isArray(category) ? category[0] : category || '';
     const searchInput = Array.isArray(search) ? search[0] : search || '';
@@ -294,8 +310,8 @@ export class IntegrationListDirectory extends AsyncComponent<
   updateQueryString = () => {
     const {searchInput, selectedCategory} = this.state;
 
-    const searchString = queryString.stringify({
-      ...queryString.parse(this.props.location.search),
+    const searchString = qs.stringify({
+      ...qs.parse(this.props.location.search),
       search: searchInput ? searchInput : undefined,
       category: selectedCategory ? selectedCategory : undefined,
     });
@@ -346,7 +362,7 @@ export class IntegrationListDirectory extends AsyncComponent<
       this.updateDisplayedList();
 
       if (category) {
-        trackIntegrationEvent('integrations.directory_category_selected', {
+        trackIntegrationAnalytics('integrations.directory_category_selected', {
           view: 'integrations_directory',
           category,
           organization: this.props.organization,
@@ -374,13 +390,17 @@ export class IntegrationListDirectory extends AsyncComponent<
         publishStatus="published"
         configurations={integrations.length}
         categories={getCategoriesForIntegration(provider)}
+        alertText={getAlertText(integrations)}
+        resolveText={t('Update Now')}
+        customAlert={
+          <FirstPartyIntegrationAlert integrations={integrations} wrapWithContainer />
+        }
       />
     );
   };
 
   renderPlugin = (plugin: PluginWithProjectList) => {
     const {organization} = this.props;
-
     const isLegacy = plugin.isHidden;
     const displayName = `${plugin.name} ${isLegacy ? '(Legacy)' : ''}`;
     // hide legacy integrations if we don't have any projects with them
@@ -399,6 +419,7 @@ export class IntegrationListDirectory extends AsyncComponent<
         publishStatus="published"
         configurations={plugin.projectList.length}
         categories={getCategoriesForIntegration(plugin)}
+        plugin={plugin}
       />
     );
   };
@@ -421,22 +442,25 @@ export class IntegrationListDirectory extends AsyncComponent<
         publishStatus={app.status}
         configurations={0}
         categories={categories}
+        customIcon={<SentryAppIcon sentryApp={app} size={36} />}
       />
     );
   };
 
-  renderDocumentIntegration = (integration: DocumentIntegration) => {
+  renderDocIntegration = (doc: DocIntegration) => {
     const {organization} = this.props;
     return (
       <IntegrationRow
-        key={`doc-int-${integration.slug}`}
+        key={`doc-int-${doc.slug}`}
+        data-test-id="integration-row"
         organization={organization}
-        type="documentIntegration"
-        slug={integration.slug}
-        displayName={integration.name}
+        type="docIntegration"
+        slug={doc.slug}
+        displayName={doc.name}
         publishStatus="published"
         configurations={0}
-        categories={getCategoriesForIntegration(integration)}
+        categories={getCategoriesForIntegration(doc)}
+        customIcon={<DocIntegrationAvatar docIntegration={doc} size={36} />}
       />
     );
   };
@@ -448,8 +472,8 @@ export class IntegrationListDirectory extends AsyncComponent<
     if (isPlugin(integration)) {
       return this.renderPlugin(integration);
     }
-    if (isDocumentIntegration(integration)) {
-      return this.renderDocumentIntegration(integration);
+    if (isDocIntegration(integration)) {
+      return this.renderDocIntegration(integration);
     }
     return this.renderProvider(integration);
   };
@@ -474,9 +498,12 @@ export class IntegrationListDirectory extends AsyncComponent<
                   name="select-categories"
                   onChange={this.onCategorySelect}
                   value={selectedCategory}
-                  choices={[
-                    ['', t('All Categories')],
-                    ...categoryList.map(category => [category, startCase(category)]),
+                  options={[
+                    {value: '', label: t('All Categories')},
+                    ...categoryList.map(category => ({
+                      value: category,
+                      label: startCase(category),
+                    })),
                   ]}
                 />
                 <SearchBar
@@ -484,6 +511,7 @@ export class IntegrationListDirectory extends AsyncComponent<
                   onChange={this.handleSearchChange}
                   placeholder={t('Filter Integrations...')}
                   width="25em"
+                  data-test-id="search-bar"
                 />
               </ActionContainer>
             }
@@ -492,7 +520,7 @@ export class IntegrationListDirectory extends AsyncComponent<
 
         <PermissionAlert access={['org:integrations']} />
         <Panel>
-          <PanelBody>
+          <PanelBody data-test-id="integration-panel">
             {displayedList.length ? (
               displayedList.map(this.renderIntegration)
             ) : (
@@ -508,7 +536,7 @@ export class IntegrationListDirectory extends AsyncComponent<
                 <EmptyResultsBody>
                   {tct('[link:Build it on the Sentry Integration Platform.]', {
                     link: (
-                      <a href="https://docs.sentry.io/product/integrations/integration-platform/" />
+                      <ExternalLink href="https://docs.sentry.io/product/integrations/integration-platform/" />
                     ),
                   })}
                 </EmptyResultsBody>
@@ -524,7 +552,7 @@ export class IntegrationListDirectory extends AsyncComponent<
 const ActionContainer = styled('div')`
   display: grid;
   grid-template-columns: 240px max-content;
-  grid-gap: ${space(2)};
+  gap: ${space(2)};
 `;
 
 const EmptyResultsContainer = styled('div')`

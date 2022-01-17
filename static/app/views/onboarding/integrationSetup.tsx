@@ -4,23 +4,23 @@ import {Component, Fragment} from 'react';
 import styled from '@emotion/styled';
 import {motion} from 'framer-motion';
 
-import {openInviteMembersModal} from 'app/actionCreators/modal';
-import {Client} from 'app/api';
-import Alert from 'app/components/alert';
-import Button from 'app/components/button';
-import ButtonBar from 'app/components/buttonBar';
-import LoadingError from 'app/components/loadingError';
-import {PlatformKey} from 'app/data/platformCategories';
-import platforms from 'app/data/platforms';
-import {t, tct} from 'app/locale';
-import space from 'app/styles/space';
-import {IntegrationProvider, Organization} from 'app/types';
-import {trackAdvancedAnalyticsEvent} from 'app/utils/advancedAnalytics';
-import getDynamicText from 'app/utils/getDynamicText';
-import {trackIntegrationEvent} from 'app/utils/integrationUtil';
-import withApi from 'app/utils/withApi';
-import withOrganization from 'app/utils/withOrganization';
-import AddIntegrationButton from 'app/views/organizationIntegrations/addIntegrationButton';
+import {openInviteMembersModal} from 'sentry/actionCreators/modal';
+import {Client} from 'sentry/api';
+import Alert from 'sentry/components/alert';
+import Button from 'sentry/components/button';
+import ButtonBar from 'sentry/components/buttonBar';
+import LoadingError from 'sentry/components/loadingError';
+import {PlatformKey} from 'sentry/data/platformCategories';
+import platforms from 'sentry/data/platforms';
+import {t, tct} from 'sentry/locale';
+import space from 'sentry/styles/space';
+import {IntegrationProvider, Organization} from 'sentry/types';
+import trackAdvancedAnalyticsEvent from 'sentry/utils/analytics/trackAdvancedAnalyticsEvent';
+import getDynamicText from 'sentry/utils/getDynamicText';
+import {trackIntegrationAnalytics} from 'sentry/utils/integrationUtil';
+import withApi from 'sentry/utils/withApi';
+import withOrganization from 'sentry/utils/withOrganization';
+import AddIntegrationButton from 'sentry/views/organizationIntegrations/addIntegrationButton';
 
 import FirstEventFooter from './components/firstEventFooter';
 import AddInstallationInstructions from './components/integrations/addInstallationInstructions';
@@ -100,7 +100,7 @@ class IntegrationSetup extends Component<Props, State> {
 
   trackSwitchToManual = () => {
     const {organization, integrationSlug} = this.props;
-    trackIntegrationEvent('integrations.switch_manual_sdk_setup', {
+    trackIntegrationAnalytics('integrations.switch_manual_sdk_setup', {
       integration_type: 'first_party',
       integration: integrationSlug,
       view: 'onboarding',

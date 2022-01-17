@@ -1,4 +1,7 @@
+from django.db.models import F
+from django.utils import timezone
 from rest_framework.exceptions import ParseError
+from rest_framework.request import Request
 from rest_framework.response import Response
 
 from sentry import features
@@ -18,7 +21,7 @@ class DiscoverSavedQueryDetailEndpoint(OrganizationEndpoint):
             "organizations:discover", organization, actor=request.user
         ) or features.has("organizations:discover-query", organization, actor=request.user)
 
-    def get(self, request, organization, query_id):
+    def get(self, request: Request, organization, query_id) -> Response:
         """
         Get a saved query
         """
@@ -32,7 +35,7 @@ class DiscoverSavedQueryDetailEndpoint(OrganizationEndpoint):
 
         return Response(serialize(query), status=200)
 
-    def put(self, request, organization, query_id):
+    def put(self, request: Request, organization, query_id) -> Response:
         """
         Modify a saved query
         """
@@ -70,7 +73,7 @@ class DiscoverSavedQueryDetailEndpoint(OrganizationEndpoint):
 
         return Response(serialize(model), status=200)
 
-    def delete(self, request, organization, query_id):
+    def delete(self, request: Request, organization, query_id) -> Response:
         """
         Delete a saved query
         """
@@ -83,5 +86,34 @@ class DiscoverSavedQueryDetailEndpoint(OrganizationEndpoint):
             raise ResourceDoesNotExist
 
         model.delete()
+
+        return Response(status=204)
+
+
+from rest_framework.request import Request
+from rest_framework.response import Response
+
+
+class DiscoverSavedQueryVisitEndpoint(OrganizationEndpoint):
+    permission_classes = (DiscoverSavedQueryPermission,)
+
+    def has_feature(self, organization, request):
+        return features.has("organizations:discover-query", organization, actor=request.user)
+
+    def post(self, request: Request, organization, query_id) -> Response:
+        """
+        Update last_visited and increment visits counter
+        """
+        if not self.has_feature(organization, request):
+            return self.respond(status=404)
+
+        try:
+            model = DiscoverSavedQuery.objects.get(id=query_id, organization=organization)
+        except DiscoverSavedQuery.DoesNotExist:
+            raise ResourceDoesNotExist
+
+        model.visits = F("visits") + 1
+        model.last_visited = timezone.now()
+        model.save(update_fields=["visits", "last_visited"])
 
         return Response(status=204)

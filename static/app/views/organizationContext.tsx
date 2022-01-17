@@ -1,67 +1,64 @@
 import * as React from 'react';
-import DocumentTitle from 'react-document-title';
+import {createContext} from 'react';
 import {PlainRoute, RouteComponentProps} from 'react-router';
 import styled from '@emotion/styled';
 import * as Sentry from '@sentry/react';
 
-import {openSudo} from 'app/actionCreators/modal';
-import {fetchOrganizationDetails} from 'app/actionCreators/organization';
-import ProjectActions from 'app/actions/projectActions';
-import {Client} from 'app/api';
-import Alert from 'app/components/alert';
-import LoadingError from 'app/components/loadingError';
-import LoadingIndicator from 'app/components/loadingIndicator';
-import Sidebar from 'app/components/sidebar';
-import {ORGANIZATION_FETCH_ERROR_TYPES} from 'app/constants';
-import {t} from 'app/locale';
-import SentryTypes from 'app/sentryTypes';
-import ConfigStore from 'app/stores/configStore';
-import HookStore from 'app/stores/hookStore';
-import OrganizationStore from 'app/stores/organizationStore';
-import space from 'app/styles/space';
-import {Organization} from 'app/types';
-import {metric} from 'app/utils/analytics';
-import {callIfFunction} from 'app/utils/callIfFunction';
-import getRouteStringFromRoutes from 'app/utils/getRouteStringFromRoutes';
-import RequestError from 'app/utils/requestError/requestError';
-import withApi from 'app/utils/withApi';
-import withOrganizations from 'app/utils/withOrganizations';
+import {openSudo} from 'sentry/actionCreators/modal';
+import {fetchOrganizationDetails} from 'sentry/actionCreators/organization';
+import ProjectActions from 'sentry/actions/projectActions';
+import {Client} from 'sentry/api';
+import Alert from 'sentry/components/alert';
+import LoadingError from 'sentry/components/loadingError';
+import LoadingTriangle from 'sentry/components/loadingTriangle';
+import SentryDocumentTitle from 'sentry/components/sentryDocumentTitle';
+import Sidebar from 'sentry/components/sidebar';
+import {ORGANIZATION_FETCH_ERROR_TYPES} from 'sentry/constants';
+import {t} from 'sentry/locale';
+import SentryTypes from 'sentry/sentryTypes';
+import ConfigStore from 'sentry/stores/configStore';
+import HookStore from 'sentry/stores/hookStore';
+import OrganizationStore from 'sentry/stores/organizationStore';
+import space from 'sentry/styles/space';
+import {Organization} from 'sentry/types';
+import {metric} from 'sentry/utils/analytics';
+import {callIfFunction} from 'sentry/utils/callIfFunction';
+import getRouteStringFromRoutes from 'sentry/utils/getRouteStringFromRoutes';
+import RequestError from 'sentry/utils/requestError/requestError';
+import withApi from 'sentry/utils/withApi';
+import withOrganizations from 'sentry/utils/withOrganizations';
 
-const defaultProps = {
-  detailed: true,
-};
-
-type Props = {
+type Props = RouteComponentProps<{orgId: string}, {}> & {
   api: Client;
   routes: PlainRoute[];
   includeSidebar: boolean;
   useLastOrganization: boolean;
   organizationsLoading: boolean;
   organizations: Organization[];
-  detailed: boolean;
-} & typeof defaultProps &
-  RouteComponentProps<{orgId: string}, {}>;
+};
 
 type State = {
   organization: Organization | null;
   loading: boolean;
-  dirty?: boolean;
-  errorType?: string | null;
-  error?: RequestError | null;
-  hooks?: React.ReactNode[];
   prevProps: {
     orgId: string;
     organizationsLoading: boolean;
     location: RouteComponentProps<{orgId: string}, {}>['location'];
   };
+  dirty?: boolean;
+  errorType?: string | null;
+  error?: RequestError | null;
+  hooks?: React.ReactNode[];
 };
 
-class OrganizationContext extends React.Component<Props, State> {
+const OrganizationContext = createContext<Organization | null>(null);
+
+class OrganizationContextContainer extends React.Component<Props, State> {
   static getDerivedStateFromProps(props: Readonly<Props>, prevState: State): State {
     const {prevProps} = prevState;
 
-    if (OrganizationContext.shouldRemount(prevProps, props)) {
-      return OrganizationContext.getDefaultState(props);
+    if (OrganizationContextContainer.shouldRemount(prevProps, props)) {
+      return OrganizationContextContainer.getDefaultState(props);
     }
 
     const {organizationsLoading, location, params} = props;
@@ -108,7 +105,7 @@ class OrganizationContext extends React.Component<Props, State> {
       location: props.location,
     };
 
-    if (OrganizationContext.isOrgStorePopulatedCorrectly(props)) {
+    if (OrganizationContextContainer.isOrgStorePopulatedCorrectly(props)) {
       // retrieve initial state from store
       return {
         ...OrganizationStore.get(),
@@ -141,30 +138,22 @@ class OrganizationContext extends React.Component<Props, State> {
       return false;
     }
 
-    return organization.slug !== OrganizationContext.getOrganizationSlug(props);
+    return organization.slug !== OrganizationContextContainer.getOrganizationSlug(props);
   }
 
   static isOrgStorePopulatedCorrectly(props: Props) {
-    const {detailed} = props;
     const {organization, dirty} = OrganizationStore.get();
 
-    return (
-      !dirty &&
-      organization &&
-      !OrganizationContext.isOrgChanging(props) &&
-      (!detailed || (detailed && organization.projects && organization.teams))
-    );
+    return !dirty && organization && !OrganizationContextContainer.isOrgChanging(props);
   }
 
   static childContextTypes = {
     organization: SentryTypes.Organization,
   };
 
-  static defaultProps = defaultProps;
-
   constructor(props: Props) {
     super(props);
-    this.state = OrganizationContext.getDefaultState(props);
+    this.state = OrganizationContextContainer.getDefaultState(props);
   }
 
   getChildContext() {
@@ -184,7 +173,7 @@ class OrganizationContext extends React.Component<Props, State> {
       location: prevProps.location,
     };
 
-    if (OrganizationContext.shouldRemount(remountPrevProps, this.props)) {
+    if (OrganizationContextContainer.shouldRemount(remountPrevProps, this.props)) {
       this.remountComponent();
     }
   }
@@ -199,7 +188,10 @@ class OrganizationContext extends React.Component<Props, State> {
   ];
 
   remountComponent = () => {
-    this.setState(OrganizationContext.getDefaultState(this.props), this.fetchData);
+    this.setState(
+      OrganizationContextContainer.getDefaultState(this.props),
+      this.fetchData
+    );
   };
 
   onProjectCreation() {
@@ -208,45 +200,36 @@ class OrganizationContext extends React.Component<Props, State> {
     // for the entire component tree
     fetchOrganizationDetails(
       this.props.api,
-      OrganizationContext.getOrganizationSlug(this.props),
+      OrganizationContextContainer.getOrganizationSlug(this.props),
       true,
-      true
+      false
     );
   }
 
   isLoading() {
     // In the absence of an organization slug, the loading state should be
     // derived from this.props.organizationsLoading from OrganizationsStore
-    if (!OrganizationContext.getOrganizationSlug(this.props)) {
+    if (!OrganizationContextContainer.getOrganizationSlug(this.props)) {
       return this.props.organizationsLoading;
     }
-    // The following loading logic exists because we could either be waiting for
-    // the whole organization object to come in or just the teams and projects.
-    const {loading, error, organization} = this.state;
-    const {detailed} = this.props;
-    return (
-      loading ||
-      (!error &&
-        detailed &&
-        (!organization || !organization.projects || !organization.teams))
-    );
+
+    return this.state.loading;
   }
 
   fetchData(isInitialFetch = false) {
-    if (!OrganizationContext.getOrganizationSlug(this.props)) {
+    if (!OrganizationContextContainer.getOrganizationSlug(this.props)) {
       return;
     }
     // fetch from the store, then fetch from the API if necessary
-    if (OrganizationContext.isOrgStorePopulatedCorrectly(this.props)) {
+    if (OrganizationContextContainer.isOrgStorePopulatedCorrectly(this.props)) {
       return;
     }
 
     metric.mark({name: 'organization-details-fetch-start'});
     fetchOrganizationDetails(
       this.props.api,
-      OrganizationContext.getOrganizationSlug(this.props),
-      this.props.detailed,
-      !OrganizationContext.isOrgChanging(this.props), // if true, will preserve a lightweight org that was fetched,
+      OrganizationContextContainer.getOrganizationSlug(this.props),
+      !OrganizationContextContainer.isOrgChanging(this.props), // if true, will preserve a lightweight org that was fetched,
       isInitialFetch
     );
   }
@@ -299,14 +282,13 @@ class OrganizationContext extends React.Component<Props, State> {
   }
 
   getOrganizationDetailsEndpoint() {
-    return `/organizations/${OrganizationContext.getOrganizationSlug(this.props)}/`;
+    return `/organizations/${OrganizationContextContainer.getOrganizationSlug(
+      this.props
+    )}/`;
   }
 
   getTitle() {
-    if (this.state.organization) {
-      return this.state.organization.name;
-    }
-    return 'Sentry';
+    return this.state.organization?.name ?? 'Sentry';
   }
 
   renderSidebar(): React.ReactNode {
@@ -342,22 +324,22 @@ class OrganizationContext extends React.Component<Props, State> {
 
   renderBody() {
     return (
-      <DocumentTitle title={this.getTitle()}>
-        <div className="app">
-          {this.state.hooks}
-          {this.renderSidebar()}
-          {this.props.children}
-        </div>
-      </DocumentTitle>
+      <SentryDocumentTitle noSuffix title={this.getTitle()}>
+        <OrganizationContext.Provider value={this.state.organization}>
+          <div className="app">
+            {this.state.hooks}
+            {this.renderSidebar()}
+            {this.props.children}
+          </div>
+        </OrganizationContext.Provider>
+      </SentryDocumentTitle>
     );
   }
 
   render() {
     if (this.isLoading()) {
       return (
-        <LoadingIndicator triangle>
-          {t('Loading data for your organization.')}
-        </LoadingIndicator>
+        <LoadingTriangle>{t('Loading data for your organization.')}</LoadingTriangle>
       );
     }
 
@@ -374,8 +356,11 @@ class OrganizationContext extends React.Component<Props, State> {
   }
 }
 
-export default withApi(withOrganizations(Sentry.withProfiler(OrganizationContext)));
-export {OrganizationContext};
+export default withApi(
+  withOrganizations(Sentry.withProfiler(OrganizationContextContainer))
+);
+
+export {OrganizationContextContainer as OrganizationLegacyContext, OrganizationContext};
 
 const ErrorWrapper = styled('div')`
   padding: ${space(3)};

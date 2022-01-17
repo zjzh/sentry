@@ -3,36 +3,44 @@ import styled from '@emotion/styled';
 import sortBy from 'lodash/sortBy';
 import * as qs from 'query-string';
 
-import {addErrorMessage, addSuccessMessage} from 'app/actionCreators/indicator';
-import {openModal} from 'app/actionCreators/modal';
-import AsyncComponent from 'app/components/asyncComponent';
-import Button from 'app/components/button';
-import ExternalLink from 'app/components/links/externalLink';
-import {Panel, PanelBody, PanelHeader, PanelItem} from 'app/components/panels';
-import RepositoryProjectPathConfigForm from 'app/components/repositoryProjectPathConfigForm';
+import {addErrorMessage, addSuccessMessage} from 'sentry/actionCreators/indicator';
+import {openModal} from 'sentry/actionCreators/modal';
+import Access from 'sentry/components/acl/access';
+import AsyncComponent from 'sentry/components/asyncComponent';
+import Button from 'sentry/components/button';
+import ExternalLink from 'sentry/components/links/externalLink';
+import {Panel, PanelBody, PanelHeader, PanelItem} from 'sentry/components/panels';
+import RepositoryProjectPathConfigForm from 'sentry/components/repositoryProjectPathConfigForm';
 import RepositoryProjectPathConfigRow, {
   ButtonColumn,
   InputPathColumn,
   NameRepoColumn,
   OutputPathColumn,
-} from 'app/components/repositoryProjectPathConfigRow';
-import {IconAdd} from 'app/icons';
-import {t, tct} from 'app/locale';
-import space from 'app/styles/space';
+} from 'sentry/components/repositoryProjectPathConfigRow';
+import Tooltip from 'sentry/components/tooltip';
+import {IconAdd} from 'sentry/icons';
+import {t, tct} from 'sentry/locale';
+import space from 'sentry/styles/space';
 import {
   Integration,
   Organization,
+  Project,
   Repository,
   RepositoryProjectPathConfig,
-} from 'app/types';
-import {getIntegrationIcon, trackIntegrationEvent} from 'app/utils/integrationUtil';
-import withOrganization from 'app/utils/withOrganization';
-import EmptyMessage from 'app/views/settings/components/emptyMessage';
-import TextBlock from 'app/views/settings/components/text/textBlock';
+} from 'sentry/types';
+import {
+  getIntegrationIcon,
+  trackIntegrationAnalytics,
+} from 'sentry/utils/integrationUtil';
+import withOrganization from 'sentry/utils/withOrganization';
+import withProjects from 'sentry/utils/withProjects';
+import EmptyMessage from 'sentry/views/settings/components/emptyMessage';
+import TextBlock from 'sentry/views/settings/components/text/textBlock';
 
 type Props = AsyncComponent['props'] & {
   integration: Integration;
   organization: Organization;
+  projects: Project[];
 };
 
 type State = AsyncComponent['state'] & {
@@ -51,10 +59,6 @@ class IntegrationCodeMappings extends AsyncComponent<Props, State> {
 
   get integrationId() {
     return this.props.integration.id;
-  }
-
-  get projects() {
-    return this.props.organization.projects;
   }
 
   get pathConfigs() {
@@ -85,7 +89,7 @@ class IntegrationCodeMappings extends AsyncComponent<Props, State> {
   }
 
   getMatchingProject(pathConfig: RepositoryProjectPathConfig) {
-    return this.projects.find(project => project.id === pathConfig.projectId);
+    return this.props.projects.find(project => project.id === pathConfig.projectId);
   }
 
   componentDidMount() {
@@ -93,7 +97,7 @@ class IntegrationCodeMappings extends AsyncComponent<Props, State> {
     // We don't start new session if the user was coming from choosing
     // the manual setup option flow from the issue details page
     const startSession = referrer === 'stacktrace-issue-details' ? false : true;
-    trackIntegrationEvent(
+    trackIntegrationAnalytics(
       'integrations.code_mappings_viewed',
       {
         integration: this.props.integration.provider.key,
@@ -127,7 +131,7 @@ class IntegrationCodeMappings extends AsyncComponent<Props, State> {
   };
 
   handleSubmitSuccess = (pathConfig: RepositoryProjectPathConfig) => {
-    trackIntegrationEvent('integrations.stacktrace_complete_setup', {
+    trackIntegrationAnalytics('integrations.stacktrace_complete_setup', {
       setup_type: 'manual',
       view: 'integration_configuration_detail',
       provider: this.props.integration.provider.key,
@@ -142,8 +146,8 @@ class IntegrationCodeMappings extends AsyncComponent<Props, State> {
   };
 
   openModal = (pathConfig?: RepositoryProjectPathConfig) => {
-    const {organization, integration} = this.props;
-    trackIntegrationEvent('integrations.stacktrace_start_setup', {
+    const {organization, projects, integration} = this.props;
+    trackIntegrationAnalytics('integrations.stacktrace_start_setup', {
       setup_type: 'manual',
       view: 'integration_configuration_detail',
       provider: this.props.integration.provider.key,
@@ -157,7 +161,7 @@ class IntegrationCodeMappings extends AsyncComponent<Props, State> {
           <RepositoryProjectPathConfigForm
             organization={organization}
             integration={integration}
-            projects={this.projects}
+            projects={projects}
             repos={this.repos}
             onSubmitSuccess={config => {
               this.handleSubmitSuccess(config);
@@ -194,15 +198,29 @@ class IntegrationCodeMappings extends AsyncComponent<Props, State> {
               <NameRepoColumn>{t('Code Mappings')}</NameRepoColumn>
               <InputPathColumn>{t('Stack Trace Root')}</InputPathColumn>
               <OutputPathColumn>{t('Source Code Root')}</OutputPathColumn>
-              <ButtonColumn>
-                <AddButton
-                  onClick={() => this.openModal()}
-                  size="xsmall"
-                  icon={<IconAdd size="xs" isCircled />}
-                >
-                  {t('Add Mapping')}
-                </AddButton>
-              </ButtonColumn>
+
+              <Access access={['org:integrations']}>
+                {({hasAccess}) => (
+                  <ButtonColumn>
+                    <Tooltip
+                      title={t(
+                        'You must be an organization owner, manager or admin to edit or remove a code mapping.'
+                      )}
+                      disabled={hasAccess}
+                    >
+                      <AddButton
+                        data-test-id="add-mapping-button"
+                        onClick={() => this.openModal()}
+                        size="xsmall"
+                        icon={<IconAdd size="xs" isCircled />}
+                        disabled={!hasAccess}
+                      >
+                        {t('Add Code Mapping')}
+                      </AddButton>
+                    </Tooltip>
+                  </ButtonColumn>
+                )}
+              </Access>
             </HeaderLayout>
           </PanelHeader>
           <PanelBody>
@@ -214,7 +232,7 @@ class IntegrationCodeMappings extends AsyncComponent<Props, State> {
                     href={`https://docs.sentry.io/product/integrations/${integration.provider.key}/#stack-trace-linking`}
                     size="small"
                     onClick={() => {
-                      trackIntegrationEvent('integrations.stacktrace_docs_clicked', {
+                      trackIntegrationAnalytics('integrations.stacktrace_docs_clicked', {
                         view: 'integration_configuration_detail',
                         provider: this.props.integration.provider.key,
                         organization: this.props.organization,
@@ -257,7 +275,7 @@ class IntegrationCodeMappings extends AsyncComponent<Props, State> {
   }
 }
 
-export default withOrganization(IntegrationCodeMappings);
+export default withProjects(withOrganization(IntegrationCodeMappings));
 
 const AddButton = styled(Button)``;
 

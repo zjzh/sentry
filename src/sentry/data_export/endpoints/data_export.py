@@ -1,6 +1,7 @@
 import sentry_sdk
 from django.core.exceptions import ValidationError
 from rest_framework import serializers
+from rest_framework.request import Request
 from rest_framework.response import Response
 
 from sentry import features
@@ -8,7 +9,7 @@ from sentry.api.base import EnvironmentMixin
 from sentry.api.bases.organization import OrganizationDataExportPermission, OrganizationEndpoint
 from sentry.api.serializers import serialize
 from sentry.api.utils import InvalidParams, get_date_range_from_params
-from sentry.discover.arithmetic import is_equation, resolve_equation_list, strip_equation
+from sentry.discover.arithmetic import categorize_columns, resolve_equation_list
 from sentry.exceptions import InvalidSearchQuery
 from sentry.models import Environment
 from sentry.search.events.fields import resolve_field_list
@@ -50,16 +51,7 @@ class DataExportQuerySerializer(serializers.Serializer):
             if not isinstance(base_fields, list):
                 base_fields = [base_fields]
 
-            equations = []
-            fields = []
-            if self.context.get("has_arithmetic"):
-                for field in base_fields:
-                    if is_equation(field):
-                        equations.append(strip_equation(field))
-                    else:
-                        fields.append(field)
-            else:
-                fields = base_fields
+            equations, fields = categorize_columns(base_fields)
 
             if len(base_fields) > MAX_FIELDS:
                 detail = f"You can export up to {MAX_FIELDS} fields at a time. Please delete some and try again."
@@ -93,6 +85,7 @@ class DataExportQuerySerializer(serializers.Serializer):
                 del query_info["statsPeriodEnd"]
             query_info["start"] = start.isoformat()
             query_info["end"] = end.isoformat()
+            query_info["use_snql"] = features.has("organizations:discover-use-snql", organization)
 
             # validate the query string by trying to parse it
             processor = DiscoverProcessor(
@@ -102,7 +95,7 @@ class DataExportQuerySerializer(serializers.Serializer):
             try:
                 snuba_filter = get_filter(query_info["query"], processor.params)
                 if len(equations) > 0:
-                    resolved_equations, _ = resolve_equation_list(equations, fields)
+                    resolved_equations, _, _ = resolve_equation_list(equations, fields)
                 else:
                     resolved_equations = []
                 resolve_field_list(
@@ -121,7 +114,7 @@ class DataExportQuerySerializer(serializers.Serializer):
 class DataExportEndpoint(OrganizationEndpoint, EnvironmentMixin):
     permission_classes = (OrganizationDataExportPermission,)
 
-    def post(self, request, organization):
+    def post(self, request: Request, organization) -> Response:
         """
         Create a new asynchronous file export task, and
         email user upon completion,
@@ -147,9 +140,6 @@ class DataExportEndpoint(OrganizationEndpoint, EnvironmentMixin):
                     project_query, request, organization
                 ),
                 "get_projects": lambda: self.get_projects(request, organization),
-                "has_arithmetic": features.has(
-                    "organizations:discover-arithmetic", organization, actor=request.user
-                ),
             },
         )
         if not serializer.is_valid():

@@ -1,8 +1,8 @@
 import Reflux from 'reflux';
 
-import EnvironmentActions from 'app/actions/environmentActions';
-import {Environment} from 'app/types';
-import {getDisplayName, getUrlRoutingName} from 'app/utils/environment';
+import EnvironmentActions from 'sentry/actions/environmentActions';
+import {Environment} from 'sentry/types';
+import {getDisplayName, getUrlRoutingName} from 'sentry/utils/environment';
 
 type EnhancedEnvironment = Environment & {
   displayName: string;
@@ -16,11 +16,11 @@ type State = {
 
 type OrganizationEnvironmentsStoreInterface = {
   state: State;
-  init: () => void;
-  onFetchEnvironments: () => void;
-  onFetchEnvironmentsSuccess: (environments: Environment[]) => void;
-  onFetchEnvironmentsError: (error: Error) => void;
-  get: () => State;
+  init(): void;
+  onFetchEnvironments(): void;
+  onFetchEnvironmentsSuccess(environments: Environment[]): void;
+  onFetchEnvironmentsError(error: Error): void;
+  get(): State;
 };
 
 const storeConfig: Reflux.StoreDefinition & OrganizationEnvironmentsStoreInterface = {
@@ -76,11 +76,7 @@ const storeConfig: Reflux.StoreDefinition & OrganizationEnvironmentsStoreInterfa
   },
 };
 
-type OrganizationEnvironmentsStore = Reflux.Store &
+const OrganizationEnvironmentsStore = Reflux.createStore(storeConfig) as Reflux.Store &
   OrganizationEnvironmentsStoreInterface;
-
-const OrganizationEnvironmentsStore = Reflux.createStore(
-  storeConfig
-) as OrganizationEnvironmentsStore;
 
 export default OrganizationEnvironmentsStore;

@@ -1,18 +1,18 @@
 import * as React from 'react';
 import styled from '@emotion/styled';
 
-import ErrorPanel from 'app/components/charts/errorPanel';
-import IdBadge from 'app/components/idBadge';
-import ExternalLink from 'app/components/links/externalLink';
-import Link from 'app/components/links/link';
-import {SettingsIconLink} from 'app/components/organizations/headerItem';
-import {Panel} from 'app/components/panels';
-import PanelTable from 'app/components/panels/panelTable';
-import {IconSettings, IconWarning} from 'app/icons';
-import {t, tct} from 'app/locale';
-import {DataCategory, Project} from 'app/types';
-import theme from 'app/utils/theme';
-import EmptyMessage from 'app/views/settings/components/emptyMessage';
+import ErrorPanel from 'sentry/components/charts/errorPanel';
+import IdBadge from 'sentry/components/idBadge';
+import ExternalLink from 'sentry/components/links/externalLink';
+import Link from 'sentry/components/links/link';
+import {SettingsIconLink} from 'sentry/components/organizations/headerItem';
+import {Panel} from 'sentry/components/panels';
+import PanelTable from 'sentry/components/panels/panelTable';
+import {IconSettings, IconWarning} from 'sentry/icons';
+import {t, tct} from 'sentry/locale';
+import {DataCategory, Project} from 'sentry/types';
+import theme from 'sentry/utils/theme';
+import EmptyMessage from 'sentry/views/settings/components/emptyMessage';
 
 import {formatUsageWithUnits} from '../utils';
 
@@ -122,27 +122,24 @@ class UsageTable extends React.Component<Props> {
 
 export default UsageTable;
 
-export const StyledPanelTable = styled(PanelTable)`
+const StyledPanelTable = styled(PanelTable)`
   grid-template-columns: repeat(5, auto);
 
   @media (min-width: ${p => p.theme.breakpoints[0]}) {
-    grid-template-columns: auto repeat(4, 100px);
+    grid-template-columns: 1fr repeat(4, minmax(0, auto));
   }
 `;
+
 export const CellStat = styled('div')`
   flex-shrink: 1;
   text-align: right;
+  font-variant-numeric: tabular-nums;
 `;
+
 export const CellProject = styled(CellStat)`
   display: flex;
   align-items: center;
   text-align: left;
-`;
-export const CellSetting = styled(CellStat)`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
 `;
 
 const StyledIdBadge = styled(IdBadge)`

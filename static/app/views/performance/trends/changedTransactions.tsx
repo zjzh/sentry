@@ -1,38 +1,39 @@
 import {Fragment} from 'react';
 import {browserHistory} from 'react-router';
 import styled from '@emotion/styled';
-import {Location, Query} from 'history';
+import {Location} from 'history';
 
-import {Client} from 'app/api';
-import Button from 'app/components/button';
-import {HeaderTitleLegend} from 'app/components/charts/styles';
-import Count from 'app/components/count';
-import DropdownLink from 'app/components/dropdownLink';
-import EmptyStateWarning from 'app/components/emptyStateWarning';
-import IdBadge from 'app/components/idBadge';
-import Link from 'app/components/links/link';
-import LoadingIndicator from 'app/components/loadingIndicator';
-import MenuItem from 'app/components/menuItem';
-import Pagination from 'app/components/pagination';
-import {Panel} from 'app/components/panels';
-import QuestionTooltip from 'app/components/questionTooltip';
-import Radio from 'app/components/radio';
-import Tooltip from 'app/components/tooltip';
-import {IconEllipsis} from 'app/icons';
-import {t} from 'app/locale';
-import overflowEllipsis from 'app/styles/overflowEllipsis';
-import space from 'app/styles/space';
-import {AvatarProject, Organization, Project} from 'app/types';
-import {formatPercentage, getDuration} from 'app/utils/formatters';
-import TrendsDiscoverQuery from 'app/utils/performance/trends/trendsDiscoverQuery';
-import {decodeScalar} from 'app/utils/queryString';
-import {MutableSearch} from 'app/utils/tokenizeSearch';
-import withApi from 'app/utils/withApi';
-import withOrganization from 'app/utils/withOrganization';
-import withProjects from 'app/utils/withProjects';
-import {RadioLineItem} from 'app/views/settings/components/forms/controls/radioGroup';
+import {Client} from 'sentry/api';
+import Button from 'sentry/components/button';
+import {HeaderTitleLegend} from 'sentry/components/charts/styles';
+import Count from 'sentry/components/count';
+import DropdownLink from 'sentry/components/dropdownLink';
+import Duration from 'sentry/components/duration';
+import EmptyStateWarning from 'sentry/components/emptyStateWarning';
+import IdBadge from 'sentry/components/idBadge';
+import Link from 'sentry/components/links/link';
+import LoadingIndicator from 'sentry/components/loadingIndicator';
+import MenuItem from 'sentry/components/menuItem';
+import Pagination, {CursorHandler} from 'sentry/components/pagination';
+import {Panel} from 'sentry/components/panels';
+import QuestionTooltip from 'sentry/components/questionTooltip';
+import Radio from 'sentry/components/radio';
+import Tooltip from 'sentry/components/tooltip';
+import {IconArrow, IconEllipsis} from 'sentry/icons';
+import {t} from 'sentry/locale';
+import overflowEllipsis from 'sentry/styles/overflowEllipsis';
+import space from 'sentry/styles/space';
+import {AvatarProject, Organization, Project} from 'sentry/types';
+import {formatPercentage, getDuration} from 'sentry/utils/formatters';
+import TrendsDiscoverQuery from 'sentry/utils/performance/trends/trendsDiscoverQuery';
+import {decodeScalar} from 'sentry/utils/queryString';
+import {MutableSearch} from 'sentry/utils/tokenizeSearch';
+import useApi from 'sentry/utils/useApi';
+import withOrganization from 'sentry/utils/withOrganization';
+import withProjects from 'sentry/utils/withProjects';
+import {RadioLineItem} from 'sentry/views/settings/components/forms/controls/radioGroup';
 
-import {DisplayModes} from '../transactionSummary/charts';
+import {DisplayModes} from '../transactionSummary/transactionOverview/charts';
 import {transactionSummaryRouteWithQuery} from '../transactionSummary/utils';
 
 import Chart from './chart';
@@ -51,7 +52,6 @@ import {
   getTrendProjectId,
   modifyTrendView,
   normalizeTrends,
-  StyledIconArrow,
   transformDeltaSpread,
   transformValueDelta,
   trendCursorNames,
@@ -59,7 +59,6 @@ import {
 } from './utils';
 
 type Props = {
-  api: Client;
   organization: Organization;
   trendChangeType: TrendChangeType;
   previousTrendFunction?: TrendFunctionField;
@@ -75,13 +74,9 @@ type TrendsCursorQuery = {
   regressionCursor?: string;
 };
 
-function onTrendsCursor(trendChangeType: TrendChangeType) {
-  return function onCursor(
-    cursor: string,
-    path: string,
-    query: Query,
-    _direction: number
-  ) {
+const makeTrendsCursorHandler =
+  (trendChangeType: TrendChangeType): CursorHandler =>
+  (cursor, path, query) => {
     const cursorQuery = {} as TrendsCursorQuery;
     if (trendChangeType === TrendChangeType.IMPROVED) {
       cursorQuery.improvedCursor = cursor;
@@ -97,7 +92,6 @@ function onTrendsCursor(trendChangeType: TrendChangeType) {
       query: {...query, ...cursorQuery},
     });
   };
-}
 
 function getChartTitle(trendChangeType: TrendChangeType): string {
   switch (trendChangeType) {
@@ -207,7 +201,6 @@ function handleFilterDuration(location: Location, value: number, symbol: FilterS
 
 function ChangedTransactions(props: Props) {
   const {
-    api,
     location,
     trendChangeType,
     previousTrendFunction,
@@ -216,11 +209,13 @@ function ChangedTransactions(props: Props) {
     projects,
     setError,
   } = props;
+  const api = useApi();
+
   const trendView = props.trendView.clone();
   const chartTitle = getChartTitle(trendChangeType);
   modifyTrendView(trendView, location, trendChangeType);
 
-  const onCursor = onTrendsCursor(trendChangeType);
+  const onCursor = makeTrendsCursorHandler(trendChangeType);
   const cursor = decodeScalar(location.query[trendCursorNames[trendChangeType]]);
 
   return (
@@ -419,6 +414,7 @@ function TrendsListItem(props: TrendsListItemProps) {
               </span>
             </TooltipContent>
           }
+          disableForVisualTest // Disabled tooltip in snapshots because of overlap order issues.
         >
           <RadioLineItem index={index} role="radio">
             <Radio
@@ -484,23 +480,41 @@ function TrendsListItem(props: TrendsListItemProps) {
         <CompareDurations {...props} />
       </ItemTransactionDurationChange>
       <ItemTransactionStatus color={color}>
-        <Fragment>
-          {transformValueDelta(transaction.trend_difference, trendChangeType)}
-        </Fragment>
+        <ValueDelta {...props} />
       </ItemTransactionStatus>
     </ListItemContainer>
   );
 }
 
-type CompareLinkProps = TrendsListItemProps & {};
-
-const CompareDurations = (props: CompareLinkProps) => {
-  const {transaction} = props;
+export const CompareDurations = ({
+  transaction,
+}: {
+  transaction: TrendsListItemProps['transaction'];
+}) => {
+  const {fromSeconds, toSeconds, showDigits} = transformDeltaSpread(
+    transaction.aggregate_range_1,
+    transaction.aggregate_range_2
+  );
 
   return (
     <DurationChange>
-      {transformDeltaSpread(transaction.aggregate_range_1, transaction.aggregate_range_2)}
+      <Duration seconds={fromSeconds} fixedDigits={showDigits ? 1 : 0} abbreviation />
+      <StyledIconArrow direction="right" size="xs" />
+      <Duration seconds={toSeconds} fixedDigits={showDigits ? 1 : 0} abbreviation />
     </DurationChange>
+  );
+};
+
+const ValueDelta = ({transaction, trendChangeType}: TrendsListItemProps) => {
+  const {seconds, fixedDigits, changeLabel} = transformValueDelta(
+    transaction.trend_difference,
+    trendChangeType
+  );
+
+  return (
+    <span>
+      <Duration seconds={seconds} fixedDigits={fixedDigits} abbreviation /> {changeLabel}
+    </span>
   );
 };
 
@@ -546,7 +560,7 @@ const ChartContainer = styled('div')`
 
 const StyledHeaderTitleLegend = styled(HeaderTitleLegend)`
   border-radius: ${p => p.theme.borderRadius};
-  padding: ${space(2)} ${space(3)};
+  margin: ${space(2)} ${space(3)};
 `;
 
 const StyledButton = styled(Button)`
@@ -616,4 +630,8 @@ const TooltipContent = styled('div')`
   align-items: center;
 `;
 
-export default withApi(withProjects(withOrganization(ChangedTransactions)));
+const StyledIconArrow = styled(IconArrow)`
+  margin: 0 ${space(1)};
+`;
+
+export default withProjects(withOrganization(ChangedTransactions));

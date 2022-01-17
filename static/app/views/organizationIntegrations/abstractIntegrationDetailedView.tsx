@@ -3,34 +3,34 @@ import {RouteComponentProps} from 'react-router';
 import styled from '@emotion/styled';
 import startCase from 'lodash/startCase';
 
-import Access from 'app/components/acl/access';
-import Alert from 'app/components/alert';
-import AsyncComponent from 'app/components/asyncComponent';
-import ExternalLink from 'app/components/links/externalLink';
-import {Panel} from 'app/components/panels';
-import Tag from 'app/components/tag';
-import Tooltip from 'app/components/tooltip';
-import {IconClose, IconDocs, IconGeneric, IconGithub, IconProject} from 'app/icons';
-import {t} from 'app/locale';
-import PluginIcon from 'app/plugins/components/pluginIcon';
-import space from 'app/styles/space';
+import Access from 'sentry/components/acl/access';
+import Alert from 'sentry/components/alert';
+import AsyncComponent from 'sentry/components/asyncComponent';
+import ExternalLink from 'sentry/components/links/externalLink';
+import {Panel} from 'sentry/components/panels';
+import Tag from 'sentry/components/tag';
+import Tooltip from 'sentry/components/tooltip';
+import {IconClose, IconDocs, IconGeneric, IconGithub, IconProject} from 'sentry/icons';
+import {t} from 'sentry/locale';
+import PluginIcon from 'sentry/plugins/components/pluginIcon';
+import space from 'sentry/styles/space';
 import {
   IntegrationFeature,
   IntegrationInstallationStatus,
   IntegrationType,
   Organization,
-} from 'app/types';
+} from 'sentry/types';
 import {
   IntegrationAnalyticsKey,
   IntegrationEventParameters,
-} from 'app/utils/integrationEvents';
+} from 'sentry/utils/analytics/integrationAnalyticsEvents';
 import {
   getCategories,
   getIntegrationFeatureGate,
-  trackIntegrationEvent,
-} from 'app/utils/integrationUtil';
-import marked, {singleLineRenderer} from 'app/utils/marked';
-import EmptyMessage from 'app/views/settings/components/emptyMessage';
+  trackIntegrationAnalytics,
+} from 'sentry/utils/integrationUtil';
+import marked, {singleLineRenderer} from 'sentry/utils/marked';
+import EmptyMessage from 'sentry/views/settings/components/emptyMessage';
 
 import RequestIntegrationButton from './integrationRequest/RequestIntegrationButton';
 import IntegrationStatus from './integrationStatus';
@@ -64,7 +64,7 @@ class AbstractIntegrationDetailedView<
   }
 
   onLoadAllEndpointsSuccess() {
-    this.trackIntegrationEvent('integrations.integration_viewed', {
+    this.trackIntegrationAnalytics('integrations.integration_viewed', {
       integration_tab: this.state.tab,
     });
   }
@@ -133,7 +133,7 @@ class AbstractIntegrationDetailedView<
   }
 
   onTabChange = (value: Tab) => {
-    this.trackIntegrationEvent('integrations.integration_tab_clicked', {
+    this.trackIntegrationAnalytics('integrations.integration_tab_clicked', {
       integration_tab: value,
     });
     this.setState({tab: value});
@@ -188,8 +188,8 @@ class AbstractIntegrationDetailedView<
     return this.props.params.integrationSlug;
   }
 
-  // Wrapper around trackIntegrationEvent that automatically provides many fields and the org
-  trackIntegrationEvent = <T extends IntegrationAnalyticsKey>(
+  // Wrapper around trackIntegrationAnalytics that automatically provides many fields and the org
+  trackIntegrationAnalytics = <T extends IntegrationAnalyticsKey>(
     eventKey: IntegrationAnalyticsKey,
     options?: Partial<IntegrationEventParameters[T]>
   ) => {
@@ -203,7 +203,7 @@ class AbstractIntegrationDetailedView<
       organization: this.props.organization,
       ...options,
     };
-    trackIntegrationEvent(eventKey, params);
+    trackIntegrationAnalytics(eventKey, params);
   };
 
   // Returns the props as needed by the hooks integrations:feature-gates
@@ -226,6 +226,18 @@ class AbstractIntegrationDetailedView<
 
   cleanTags() {
     return getCategories(this.featureData);
+  }
+
+  renderAlert(): React.ReactNode {
+    return null;
+  }
+
+  renderAdditionalCTA(): React.ReactNode {
+    return null;
+  }
+
+  renderIntegrationIcon() {
+    return <PluginIcon pluginId={this.integrationSlug} size={50} />;
   }
 
   renderRequestIntegrationButton() {
@@ -275,25 +287,30 @@ class AbstractIntegrationDetailedView<
     const tags = this.cleanTags();
 
     return (
-      <Flex>
-        <PluginIcon pluginId={this.integrationSlug} size={50} />
-        <NameContainer>
-          <Flex>
-            <Name>{this.integrationName}</Name>
-            <StatusWrapper>
-              {this.installationStatus && (
-                <IntegrationStatus status={this.installationStatus} />
-              )}
-            </StatusWrapper>
-          </Flex>
-          <Flex>
-            {tags.map(feature => (
-              <StyledTag key={feature}>{startCase(feature)}</StyledTag>
-            ))}
-          </Flex>
-        </NameContainer>
-        {this.renderAddInstallButton()}
-      </Flex>
+      <TopSectionWrapper>
+        <Flex>
+          {this.renderIntegrationIcon()}
+          <NameContainer>
+            <Flex>
+              <Name>{this.integrationName}</Name>
+              <StatusWrapper>
+                {this.installationStatus && (
+                  <IntegrationStatus status={this.installationStatus} />
+                )}
+              </StatusWrapper>
+            </Flex>
+            <Flex>
+              {tags.map(feature => (
+                <StyledTag key={feature}>{startCase(feature)}</StyledTag>
+              ))}
+            </Flex>
+          </NameContainer>
+        </Flex>
+        <Flex>
+          {this.renderAddInstallButton()}
+          {this.renderAdditionalCTA()}
+        </Flex>
+      </TopSectionWrapper>
     );
   }
 
@@ -359,6 +376,7 @@ class AbstractIntegrationDetailedView<
   renderBody() {
     return (
       <React.Fragment>
+        {this.renderAlert()}
         {this.renderTopSection()}
         {this.renderTabs()}
         {this.state.tab === 'overview'
@@ -428,10 +446,6 @@ const FeatureListItem = styled('span')`
 `;
 
 const Description = styled('div')`
-  font-size: 1.5rem;
-  line-height: 2.1rem;
-  margin-bottom: ${space(2)};
-
   li {
     margin-bottom: 6px;
   }
@@ -441,7 +455,7 @@ const Metadata = styled(Flex)`
   display: grid;
   grid-auto-rows: max-content;
   grid-auto-flow: row;
-  grid-gap: ${space(2)};
+  gap: ${space(2)};
   font-size: 0.9em;
   margin-left: ${space(4)};
   margin-right: 100px;
@@ -454,7 +468,7 @@ const AuthorInfo = styled('div')`
 const ExternalLinkContainer = styled('div')`
   display: grid;
   grid-template-columns: max-content 1fr;
-  grid-gap: ${space(1)};
+  gap: ${space(1)};
   align-items: center;
 `;
 
@@ -478,6 +492,11 @@ const CreatedContainer = styled('div')`
   color: ${p => p.theme.gray300};
   font-weight: 600;
   font-size: 12px;
+`;
+
+const TopSectionWrapper = styled('div')`
+  display: flex;
+  justify-content: space-between;
 `;
 
 export default AbstractIntegrationDetailedView;

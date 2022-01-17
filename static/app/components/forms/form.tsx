@@ -2,9 +2,10 @@ import * as React from 'react';
 import styled from '@emotion/styled';
 import isEqual from 'lodash/isEqual';
 
-import FormContext, {FormContextData} from 'app/components/forms/formContext';
-import FormState from 'app/components/forms/state';
-import {t} from 'app/locale';
+import Button from 'sentry/components/button';
+import FormContext, {FormContextData} from 'sentry/components/forms/formContext';
+import FormState from 'sentry/components/forms/state';
+import {t} from 'sentry/locale';
 
 type FormProps = {
   cancelLabel?: string;
@@ -153,23 +154,22 @@ class Form<
           )}
           {this.props.children}
           <div className={this.props.footerClass} style={{marginTop: 25}}>
-            <button
-              className="btn btn-primary"
+            <Button
+              priority="primary"
               disabled={isSaving || this.props.submitDisabled || !hasChanges}
               type="submit"
             >
               {this.props.submitLabel}
-            </button>
+            </Button>
             {this.props.onCancel && (
-              <button
+              <Button
                 type="button"
-                className="btn btn-default"
                 disabled={isSaving}
                 onClick={this.props.onCancel}
                 style={{marginLeft: 5}}
               >
                 {this.props.cancelLabel}
-              </button>
+              </Button>
             )}
             {this.props.extraButton}
           </div>

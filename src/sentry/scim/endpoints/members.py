@@ -1,13 +1,15 @@
 from django.conf import settings
 from django.db import transaction
 from django.db.models import Q
-from rest_framework.exceptions import ParseError
+from rest_framework.exceptions import PermissionDenied
+from rest_framework.request import Request
 from rest_framework.response import Response
 
 from sentry import roles
 from sentry.api.bases.organizationmember import OrganizationMemberEndpoint
 from sentry.api.endpoints.organization_member_details import OrganizationMemberDetailsEndpoint
 from sentry.api.endpoints.organization_member_index import OrganizationMemberSerializer
+from sentry.api.exceptions import ConflictError
 from sentry.api.paginator import GenericOffsetPaginator
 from sentry.api.serializers import serialize
 from sentry.api.serializers.models.organization_member import OrganizationMemberSCIMSerializer
@@ -23,23 +25,14 @@ from sentry.signals import member_invited
 from sentry.utils.cursors import SCIMCursor
 
 from .constants import (
-    SCIM_400_INVALID_FILTER,
     SCIM_400_INVALID_PATCH,
     SCIM_400_TOO_MANY_PATCH_OPS_ERROR,
     SCIM_409_USER_EXISTS,
     MemberPatchOps,
 )
-from .utils import (
-    OrganizationSCIMMemberPermission,
-    SCIMEndpoint,
-    SCIMFilterError,
-    parse_filter_conditions,
-)
+from .utils import OrganizationSCIMMemberPermission, SCIMEndpoint
 
 ERR_ONLY_OWNER = "You cannot remove the only remaining owner of the organization."
-from rest_framework.exceptions import PermissionDenied
-
-from sentry.api.exceptions import ConflictError
 
 
 def _scim_member_serializer_with_expansion(organization):
@@ -60,7 +53,7 @@ def _scim_member_serializer_with_expansion(organization):
 class OrganizationSCIMMemberDetails(SCIMEndpoint, OrganizationMemberEndpoint):
     permission_classes = (OrganizationSCIMMemberPermission,)
 
-    def _delete_member(self, request, organization, member):
+    def _delete_member(self, request: Request, organization, member):
         audit_data = member.get_audit_log_data()
         if OrganizationMemberDetailsEndpoint.is_only_owner(member):
             raise PermissionDenied(detail=ERR_ONLY_OWNER)
@@ -88,14 +81,14 @@ class OrganizationSCIMMemberDetails(SCIMEndpoint, OrganizationMemberEndpoint):
                 return True
         return False
 
-    def get(self, request, organization, member):
+    def get(self, request: Request, organization, member) -> Response:
         context = serialize(
             member,
             serializer=_scim_member_serializer_with_expansion(organization),
         )
         return Response(context)
 
-    def patch(self, request, organization, member):
+    def patch(self, request: Request, organization, member):
         operations = request.data.get("Operations", [])
         if len(operations) > 100:
             return Response(SCIM_400_TOO_MANY_PATCH_OPS_ERROR, status=400)
@@ -113,7 +106,7 @@ class OrganizationSCIMMemberDetails(SCIMEndpoint, OrganizationMemberEndpoint):
         )
         return Response(context)
 
-    def delete(self, request, organization, member):
+    def delete(self, request: Request, organization, member) -> Response:
         self._delete_member(request, organization, member)
         return Response(status=204)
 
@@ -121,13 +114,10 @@ class OrganizationSCIMMemberDetails(SCIMEndpoint, OrganizationMemberEndpoint):
 class OrganizationSCIMMemberIndex(SCIMEndpoint):
     permission_classes = (OrganizationSCIMMemberPermission,)
 
-    def get(self, request, organization):
+    def get(self, request: Request, organization) -> Response:
         # note that SCIM doesn't care about changing results as they're queried
-        # TODO: sanitize get parameter inputs?
-        try:
-            filter_val = parse_filter_conditions(request.GET.get("filter"))
-        except SCIMFilterError:
-            raise ParseError(detail=SCIM_400_INVALID_FILTER)
+
+        query_params = self.get_query_parameters(request)
 
         queryset = (
             OrganizationMember.objects.filter(
@@ -138,9 +128,10 @@ class OrganizationSCIMMemberIndex(SCIMEndpoint):
             .select_related("user")
             .order_by("email", "user__email")
         )
-        if filter_val:
+        if query_params["filter"]:
             queryset = queryset.filter(
-                Q(email__iexact=filter_val) | Q(user__email__iexact=filter_val)
+                Q(email__iexact=query_params["filter"])
+                | Q(user__email__iexact=query_params["filter"])
             )  # not including secondary email vals (dups, etc.)
 
         def data_fn(offset, limit):
@@ -152,18 +143,18 @@ class OrganizationSCIMMemberIndex(SCIMEndpoint):
                 None,
                 _scim_member_serializer_with_expansion(organization),
             )
-            return self.list_api_format(request, queryset.count(), results)
+            return self.list_api_format(results, queryset.count(), query_params["start_index"])
 
         return self.paginate(
             request=request,
             on_results=on_results,
             paginator=GenericOffsetPaginator(data_fn=data_fn),
-            default_per_page=int(request.GET.get("count", 100)),
+            default_per_page=query_params["count"],
             queryset=queryset,
             cursor_cls=SCIMCursor,
         )
 
-    def post(self, request, organization):
+    def post(self, request: Request, organization) -> Response:
         serializer = OrganizationMemberSerializer(
             data={
                 "email": request.data.get("userName"),
@@ -193,19 +184,21 @@ class OrganizationSCIMMemberIndex(SCIMEndpoint):
                 role=result["role"],
                 inviter=request.user,
             )
-            self.create_audit_entry(
-                request=request,
-                organization_id=organization.id,
-                target_object=member.id,
-                data=member.get_audit_log_data(),
-                event=AuditLogEntryEvent.MEMBER_INVITE
-                if settings.SENTRY_ENABLE_INVITES
-                else AuditLogEntryEvent.MEMBER_ADD,
-            )
+
             # TODO: are invite tokens needed for SAML orgs?
             if settings.SENTRY_ENABLE_INVITES:
                 member.token = member.generate_token()
             member.save()
+
+        self.create_audit_entry(
+            request=request,
+            organization_id=organization.id,
+            target_object=member.id,
+            data=member.get_audit_log_data(),
+            event=AuditLogEntryEvent.MEMBER_INVITE
+            if settings.SENTRY_ENABLE_INVITES
+            else AuditLogEntryEvent.MEMBER_ADD,
+        )
 
         if settings.SENTRY_ENABLE_INVITES and result.get("sendInvite"):
             member.send_invite_email()

@@ -1,10 +1,10 @@
 import * as React from 'react';
 import styled from '@emotion/styled';
 
-import ErrorLevel from 'app/components/events/errorLevel';
-import overflowEllipsis from 'app/styles/overflowEllipsis';
-import space from 'app/styles/space';
-import {Level} from 'app/types';
+import ErrorLevel from 'sentry/components/events/errorLevel';
+import overflowEllipsis from 'sentry/styles/overflowEllipsis';
+import space from 'sentry/styles/space';
+import {Level} from 'sentry/types';
 
 type Props = {
   level?: Level;
@@ -15,7 +15,7 @@ type Props = {
   hasGuideAnchor?: boolean;
 };
 
-const EventMessage = ({
+const BaseEventMessage = ({
   className,
   level,
   levelIndicatorSize,
@@ -35,7 +35,7 @@ const EventMessage = ({
   </div>
 );
 
-const StyledEventMessage = styled(EventMessage)`
+const EventMessage = styled(BaseEventMessage)`
   display: flex;
   align-items: center;
   position: relative;
@@ -53,4 +53,4 @@ const Message = styled('span')`
   max-height: 38px;
 `;
 
-export default StyledEventMessage;
+export default EventMessage;

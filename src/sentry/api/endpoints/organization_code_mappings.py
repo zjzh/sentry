@@ -1,6 +1,8 @@
 from django.http import Http404
 from django.utils.translation import ugettext_lazy as _
 from rest_framework import serializers, status
+from rest_framework.request import Request
+from rest_framework.response import Response
 
 from sentry.api.bases.organization import OrganizationEndpoint, OrganizationIntegrationsPermission
 from sentry.api.serializers import serialize
@@ -18,19 +20,18 @@ def gen_path_regex_field():
     )
 
 
+BRANCH_NAME_ERROR_MESSAGE = "Branch name may only have letters, numbers, underscores, forward slashes, dashes, and periods. Branch name may not start or end with a forward slash."
+
+
 class RepositoryProjectPathConfigSerializer(CamelSnakeModelSerializer):
     repository_id = serializers.IntegerField(required=True)
     project_id = serializers.IntegerField(required=True)
     stack_root = gen_path_regex_field()
     source_root = gen_path_regex_field()
     default_branch = serializers.RegexField(
-        r"^(^(?![\/]))([\w\/-]+)(?<![\/])$",
+        r"^(^(?![\/]))([\w\.\/-]+)(?<![\/])$",
         required=True,
-        error_messages={
-            "invalid": _(
-                "Branch name may only have letters, numbers, underscores, forward slashes and dashes. Branch name may not start or end with a forward slash."
-            )
-        },
+        error_messages={"invalid": _(BRANCH_NAME_ERROR_MESSAGE)},
     )
 
     class Meta:
@@ -69,11 +70,10 @@ class RepositoryProjectPathConfigSerializer(CamelSnakeModelSerializer):
         repo_query = Repository.objects.filter(
             id=repository_id, organization_id=self.organization.id
         )
-        # if there is an integration, validate that repo exists on integration
-        if self.org_integration:
-            repo_query = repo_query.filter(
-                integration_id=self.org_integration.integration_id,
-            )
+        # validate that repo exists on integration
+        repo_query = repo_query.filter(
+            integration_id=self.org_integration.integration_id,
+        )
         if not repo_query.exists():
             raise serializers.ValidationError("Repository does not exist")
         return repository_id
@@ -99,7 +99,7 @@ class RepositoryProjectPathConfigSerializer(CamelSnakeModelSerializer):
         return self.instance
 
 
-class NullableOrganizationIntegrationMixin:
+class OrganizationIntegrationMixin:
     def get_organization_integration(self, organization, integration_id):
         try:
             return OrganizationIntegration.objects.get(
@@ -117,10 +117,10 @@ class NullableOrganizationIntegrationMixin:
             raise Http404
 
 
-class OrganizationCodeMappingsEndpoint(OrganizationEndpoint, NullableOrganizationIntegrationMixin):
+class OrganizationCodeMappingsEndpoint(OrganizationEndpoint, OrganizationIntegrationMixin):
     permission_classes = (OrganizationIntegrationsPermission,)
 
-    def get(self, request, organization):
+    def get(self, request: Request, organization) -> Response:
         """
         Get the list of repository project path configs
 
@@ -143,7 +143,7 @@ class OrganizationCodeMappingsEndpoint(OrganizationEndpoint, NullableOrganizatio
         queryset = RepositoryProjectPathConfig.objects.all()
 
         if integration_id:
-            # get_organization_integration will raise a 404 if no org_integraiton is found
+            # get_organization_integration will raise a 404 if no org_integration is found
             org_integration = self.get_organization_integration(organization, integration_id)
             queryset = queryset.filter(organization_integration=org_integration)
 
@@ -157,7 +157,7 @@ class OrganizationCodeMappingsEndpoint(OrganizationEndpoint, NullableOrganizatio
         data = map(lambda x: serialize(x, request.user), queryset)
         return self.respond(data)
 
-    def post(self, request, organization):
+    def post(self, request: Request, organization) -> Response:
         """
         Create a new repository project path config
         ``````````````````
@@ -169,21 +169,23 @@ class OrganizationCodeMappingsEndpoint(OrganizationEndpoint, NullableOrganizatio
         :param string stackRoot:
         :param string sourceRoot:
         :param string defaultBranch:
-        :param int optional integrationId:
+        :param int required integrationId:
         :auth: required
         """
         integration_id = request.data.get("integrationId")
-        org_integration = None
 
-        if integration_id:
-            try:
-                org_integration = self.get_organization_integration(organization, integration_id)
-            except Http404:
-                # Human friendly error response.
-                return self.respond(
-                    "Could not find this integration installed on your organization",
-                    status=status.HTTP_404_NOT_FOUND,
-                )
+        if not integration_id:
+            return self.respond("Missing param: integration_id", status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            # We expect there to exist an org_integration
+            org_integration = self.get_organization_integration(organization, integration_id)
+        except Http404:
+            # Human friendly error response.
+            return self.respond(
+                "Could not find this integration installed on your organization",
+                status=status.HTTP_404_NOT_FOUND,
+            )
 
         serializer = RepositoryProjectPathConfigSerializer(
             context={"organization": organization, "organization_integration": org_integration},

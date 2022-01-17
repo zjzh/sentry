@@ -1,9 +1,9 @@
 import {Location} from 'history';
 
-import Pills from 'app/components/pills';
-import {Organization} from 'app/types';
-import {Event} from 'app/types/event';
-import {defined, generateQueryWithTag} from 'app/utils';
+import Pills from 'sentry/components/pills';
+import {Organization} from 'sentry/types';
+import {Event} from 'sentry/types/event';
+import {defined, generateQueryWithTag} from 'sentry/utils';
 
 import EventTagsPill from './eventTagsPill';
 
@@ -12,16 +12,9 @@ type Props = {
   organization: Organization;
   projectId: string;
   location: Location;
-  hasQueryFeature: boolean;
 };
 
-const EventTags = ({
-  event: {tags = []},
-  organization,
-  projectId,
-  location,
-  hasQueryFeature,
-}: Props) => {
+const EventTags = ({event: {tags = []}, organization, projectId, location}: Props) => {
   if (!tags.length) {
     return null;
   }
@@ -41,7 +34,6 @@ const EventTags = ({
           query={generateQueryWithTag(location.query, tag)}
           streamPath={streamPath}
           releasesPath={releasesPath}
-          hasQueryFeature={hasQueryFeature}
         />
       ))}
     </Pills>

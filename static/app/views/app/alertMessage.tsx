@@ -1,36 +1,25 @@
 import * as React from 'react';
 import styled from '@emotion/styled';
 
-import AlertActions from 'app/actions/alertActions';
-import Alert from 'app/components/alert';
-import Button from 'app/components/button';
-import ExternalLink from 'app/components/links/externalLink';
-import {IconCheckmark, IconClose, IconWarning} from 'app/icons';
-import {t} from 'app/locale';
-import space from 'app/styles/space';
-
-type AlertType = {
-  /**
-   * A lot of alerts coming from getsentry do not have an `id`
-   */
-  id?: string;
-  message: React.ReactNode;
-  type: 'success' | 'error' | 'warning' | 'info';
-  url?: string;
-  onClose?: () => void;
-};
+import AlertActions from 'sentry/actions/alertActions';
+import Alert from 'sentry/components/alert';
+import Button from 'sentry/components/button';
+import ExternalLink from 'sentry/components/links/externalLink';
+import {IconCheckmark, IconClose, IconWarning} from 'sentry/icons';
+import {t} from 'sentry/locale';
+import AlertStore from 'sentry/stores/alertStore';
+import space from 'sentry/styles/space';
 
 type Props = {
-  alert: AlertType;
+  alert: ReturnType<typeof AlertStore['getState']>[number];
   system: boolean;
 };
 
 const AlertMessage = ({alert, system}: Props) => {
-  const handleCloseAlert = () => {
-    AlertActions.closeAlert(alert);
-  };
+  const handleClose = () => AlertActions.closeAlert(alert);
 
-  const {url, message, type} = alert;
+  const {url, message, type, opaque} = alert;
+
   const icon =
     type === 'success' ? (
       <IconCheckmark size="md" isCircled />
@@ -39,14 +28,14 @@ const AlertMessage = ({alert, system}: Props) => {
     );
 
   return (
-    <StyledAlert type={type} icon={icon} system={system}>
+    <StyledAlert type={type} icon={icon} system={system} opaque={opaque}>
       <StyledMessage>
         {url ? <ExternalLink href={url}>{message}</ExternalLink> : message}
       </StyledMessage>
       <StyledCloseButton
-        icon={<IconClose size="md" isCircled />}
+        icon={<IconClose size="sm" />}
         aria-label={t('Close')}
-        onClick={alert.onClose ?? handleCloseAlert}
+        onClick={alert.onClose ?? handleClose}
         size="zero"
         borderless
       />
@@ -68,7 +57,6 @@ const StyledMessage = styled('span')`
 
 const StyledCloseButton = styled(Button)`
   background-color: transparent;
-  opacity: 0.4;
   transition: opacity 0.1s linear;
   position: absolute;
   top: 50%;

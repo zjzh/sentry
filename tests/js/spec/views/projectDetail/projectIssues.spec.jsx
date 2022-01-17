@@ -1,7 +1,7 @@
 import {mountWithTheme} from 'sentry-test/enzyme';
 import {initializeOrg} from 'sentry-test/initializeOrg';
 
-import ProjectIssues from 'app/views/projectDetail/projectIssues';
+import ProjectIssues from 'sentry/views/projectDetail/projectIssues';
 
 describe('ProjectDetail > ProjectIssues', function () {
   let endpointMock, filteredEndpointMock, wrapper;
@@ -33,13 +33,17 @@ describe('ProjectDetail > ProjectIssues', function () {
     wrapper.unmount();
   });
 
-  it('renders a list', function () {
+  it('renders a list', async function () {
     wrapper = mountWithTheme(
       <ProjectIssues organization={organization} location={router.location} />,
       routerContext
     );
 
     expect(wrapper.find('SectionHeading').text()).toBe('Frequent Unhandled Issues');
+
+    await tick();
+    wrapper.update();
+
     expect(wrapper.find('StreamGroup').length).toBe(2);
   });
 
@@ -50,7 +54,7 @@ describe('ProjectDetail > ProjectIssues', function () {
     );
 
     expect(
-      wrapper.find('ControlsWrapper Link[aria-label="Open in Issues"]').prop('to')
+      wrapper.find('ControlsWrapper Link[aria-label="Open in Issues"]').at(0).prop('to')
     ).toEqual({
       pathname: `/organizations/${organization.slug}/issues/`,
       query: {
@@ -69,7 +73,7 @@ describe('ProjectDetail > ProjectIssues', function () {
     );
 
     expect(
-      wrapper.find('ControlsWrapper Link[aria-label="Open in Discover"]').prop('to')
+      wrapper.find('ControlsWrapper Link[aria-label="Open in Discover"]').at(0).prop('to')
     ).toEqual({
       pathname: `/organizations/${organization.slug}/discover/results/`,
       query: {
@@ -98,7 +102,7 @@ describe('ProjectDetail > ProjectIssues', function () {
     expect(filteredEndpointMock).toHaveBeenCalledTimes(1);
 
     expect(
-      wrapper.find('ControlsWrapper Link[aria-label="Open in Issues"]').prop('to')
+      wrapper.find('ControlsWrapper Link[aria-label="Open in Issues"]').at(0).prop('to')
     ).toEqual({
       pathname: `/organizations/${organization.slug}/issues/`,
       query: {

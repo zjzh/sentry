@@ -2,10 +2,10 @@ import * as React from 'react';
 import styled from '@emotion/styled';
 import omit from 'lodash/omit';
 
-import ExternalLink from 'app/components/links/externalLink';
-import Link from 'app/components/links/link';
-import {IconChevron} from 'app/icons';
-import space from 'app/styles/space';
+import ExternalLink from 'sentry/components/links/externalLink';
+import Link from 'sentry/components/links/link';
+import {IconChevron} from 'sentry/icons';
+import space from 'sentry/styles/space';
 
 type Size = 'small' | 'normal';
 type Priority = 'info' | 'warning' | 'success' | 'error' | 'muted';
@@ -16,6 +16,7 @@ type OtherProps = {
   ['data-test-id']?: string;
   icon?: string | React.ReactNode;
   onClick?: (e: React.MouseEvent) => void;
+  children?: React.ReactNode;
 };
 
 type DefaultProps = {
@@ -26,53 +27,42 @@ type DefaultProps = {
   href?: string;
 };
 
-type Props = OtherProps & DefaultProps & Partial<Pick<LinkProps, 'to'>>;
+type Props = OtherProps & Partial<DefaultProps> & Partial<Pick<LinkProps, 'to'>>;
 
 type StyledLinkProps = DefaultProps &
   Partial<Pick<LinkProps, 'to'>> &
   Omit<LinkProps, 'to' | 'size'>;
 
-class AlertLink extends React.Component<Props> {
-  static defaultProps: DefaultProps = {
-    priority: 'warning',
-    size: 'normal',
-    withoutMarginBottom: false,
-    openInNewTab: false,
-  };
-
-  render() {
-    const {
-      size,
-      priority,
-      icon,
-      children,
-      onClick,
-      withoutMarginBottom,
-      openInNewTab,
-      to,
-      href,
-      ['data-test-id']: dataTestId,
-    } = this.props;
-
-    return (
-      <StyledLink
-        data-test-id={dataTestId}
-        to={to}
-        href={href}
-        onClick={onClick}
-        size={size}
-        priority={priority}
-        withoutMarginBottom={withoutMarginBottom}
-        openInNewTab={openInNewTab}
-      >
-        {icon && <IconWrapper>{icon}</IconWrapper>}
-        <AlertLinkText>{children}</AlertLinkText>
-        <IconLink>
-          <IconChevron direction="right" />
-        </IconLink>
-      </StyledLink>
-    );
-  }
+function AlertLink({
+  size = 'normal',
+  priority = 'warning',
+  icon,
+  children,
+  onClick,
+  withoutMarginBottom = false,
+  openInNewTab = false,
+  to,
+  href,
+  ['data-test-id']: dataTestId,
+}: Props) {
+  return (
+    <StyledLink
+      data-test-id={dataTestId}
+      to={to}
+      href={href}
+      onClick={onClick}
+      size={size}
+      priority={priority}
+      withoutMarginBottom={withoutMarginBottom}
+      openInNewTab={openInNewTab}
+    >
+      {icon && <IconWrapper>{icon}</IconWrapper>}
+      <AlertLinkText>{children}</AlertLinkText>
+      <IconLink>
+        <IconChevron direction="right" />
+      </IconLink>
+    </StyledLink>
+  );
 }
 
 export default AlertLink;

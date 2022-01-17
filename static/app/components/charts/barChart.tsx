@@ -1,23 +1,24 @@
 import * as React from 'react';
-import {EChartOption} from 'echarts';
+import type {BarSeriesOption} from 'echarts';
 
-import {Series} from 'app/types/echarts';
+import {Series} from 'sentry/types/echarts';
 
 import BarSeries from './series/barSeries';
 import BaseChart from './baseChart';
 
-type ChartProps = React.ComponentProps<typeof BaseChart>;
+type ChartProps = Omit<React.ComponentProps<typeof BaseChart>, 'css'>;
 
-export type BarChartSeries = Series & Omit<EChartOption.SeriesBar, 'data' | 'name'>;
+export type BarChartSeries = Series & Omit<BarSeriesOption, 'data' | 'name'>;
 
 type Props = Omit<ChartProps, 'series'> & {
-  stacked?: boolean;
   series: BarChartSeries[];
+  stacked?: boolean;
+  animation?: boolean;
 };
 
 class BarChart extends React.Component<Props> {
   render() {
-    const {series, stacked, xAxis, ...props} = this.props;
+    const {series, stacked, xAxis, animation, ...props} = this.props;
 
     return (
       <BaseChart
@@ -33,6 +34,7 @@ class BarChart extends React.Component<Props> {
               }
               return {value: [name, value], itemStyle};
             }),
+            animation,
             ...options,
           })
         )}

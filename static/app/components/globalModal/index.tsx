@@ -6,12 +6,12 @@ import styled from '@emotion/styled';
 import {createFocusTrap, FocusTrap} from 'focus-trap';
 import {AnimatePresence, motion} from 'framer-motion';
 
-import {closeModal as actionCloseModal} from 'app/actionCreators/modal';
-import {ROOT_ELEMENT} from 'app/constants';
-import ModalStore from 'app/stores/modalStore';
-import space from 'app/styles/space';
-import getModalPortal from 'app/utils/getModalPortal';
-import testableTransition from 'app/utils/testableTransition';
+import {closeModal as actionCloseModal} from 'sentry/actionCreators/modal';
+import {ROOT_ELEMENT} from 'sentry/constants';
+import ModalStore from 'sentry/stores/modalStore';
+import space from 'sentry/styles/space';
+import getModalPortal from 'sentry/utils/getModalPortal';
+import testableTransition from 'sentry/utils/testableTransition';
 
 import {makeClosableHeader, makeCloseButton, ModalBody, ModalFooter} from './components';
 
@@ -32,6 +32,12 @@ type ModalOptions = {
    * Set to true (the default) to show a translucent backdrop
    */
   backdrop?: 'static' | boolean;
+  /**
+   * Set to `false` to disable the ability to click outside the modal to
+   * close it. This is useful for modals containing user input which will
+   * disappear on an accidental click. Defaults to `true`.
+   */
+  allowClickClose?: boolean;
 };
 
 type ModalRenderProps = {
@@ -57,6 +63,17 @@ type ModalRenderProps = {
    * header which can include the close button.
    */
   CloseButton: ReturnType<typeof makeCloseButton>;
+};
+
+/**
+ * Meta-type to make re-exporting these in the action creator easy without
+ * poluting the global API namespace with duplicate type names.
+ *
+ * eg. you won't accidentally import ModalRenderProps from here.
+ */
+export type ModalTypes = {
+  options: ModalOptions;
+  renderProps: ModalRenderProps;
 };
 
 type Props = {
@@ -141,6 +158,9 @@ function GlobalModal({visible = false, options = {}, children, onClose}: Props) 
     return reset;
   }, [portal, handleEscapeClose, visible]);
 
+  // Close the modal when the browser history changes
+  React.useEffect(() => browserHistory.listen(() => actionCloseModal()), []);
+
   const renderedChild = children?.({
     CloseButton: makeCloseButton(closeModal),
     Header: makeClosableHeader(closeModal),
@@ -152,10 +172,13 @@ function GlobalModal({visible = false, options = {}, children, onClose}: Props) 
   // Default to enabled backdrop
   const backdrop = options.backdrop ?? true;
 
+  // Default to enabled click close
+  const allowClickClose = options.allowClickClose ?? true;
+
   // Only close when we directly click outside of the modal.
   const containerRef = React.useRef<HTMLDivElement>(null);
   const clickClose = (e: React.MouseEvent) =>
-    containerRef.current === e.target && closeModal();
+    containerRef.current === e.target && allowClickClose && closeModal();
 
   return ReactDOM.createPortal(
     <React.Fragment>
@@ -191,7 +214,7 @@ const fullPageCss = css`
 const Backdrop = styled('div')`
   ${fullPageCss};
   z-index: ${p => p.theme.zIndex.modal};
-  background: ${p => p.theme.gray500};
+  background: ${p => p.theme.black};
   will-change: opacity;
   transition: opacity 200ms;
   pointer-events: none;
@@ -227,8 +250,7 @@ const Content = styled('div')`
   padding: ${space(4)};
   background: ${p => p.theme.background};
   border-radius: 8px;
-  border: ${p => p.theme.modalBorder};
-  box-shadow: ${p => p.theme.modalBoxShadow};
+  box-shadow: 0 0 0 1px ${p => p.theme.translucentBorder}, ${p => p.theme.dropShadowHeavy};
 `;
 
 type State = {
@@ -240,13 +262,7 @@ class GlobalModalContainer extends React.Component<Partial<Props>, State> {
     modalStore: ModalStore.get(),
   };
 
-  componentDidMount() {
-    // Listen for route changes so we can dismiss modal
-    this.unlistenBrowserHistory = browserHistory.listen(() => actionCloseModal());
-  }
-
   componentWillUnmount() {
-    this.unlistenBrowserHistory?.();
     this.unlistener?.();
   }
 
@@ -254,8 +270,6 @@ class GlobalModalContainer extends React.Component<Partial<Props>, State> {
     (modalStore: State['modalStore']) => this.setState({modalStore}),
     undefined
   );
-
-  unlistenBrowserHistory?: ReturnType<typeof browserHistory.listen>;
 
   render() {
     const {modalStore} = this.state;

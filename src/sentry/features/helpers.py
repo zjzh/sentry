@@ -1,17 +1,19 @@
-from typing import Any, Callable, Optional, Sequence
+from typing import TYPE_CHECKING, Any, Callable, Optional, Sequence
 
 from rest_framework.request import Request
 from rest_framework.response import Response
 
 from sentry import features
-from sentry.models import Organization
+
+if TYPE_CHECKING:
+    from sentry.models import Organization
 
 # TODO(mgaeta): It's not currently possible to type a Callable's args with kwargs.
 EndpointFunc = Callable[..., Response]
 
 
 def any_organization_has_feature(
-    feature: str, organizations: Sequence[Organization], **kwargs: Any
+    feature: str, organizations: Sequence["Organization"], **kwargs: Any
 ) -> bool:
     return any([features.has(feature, organization, **kwargs) for organization in organizations])
 
@@ -33,7 +35,7 @@ def requires_feature(
 
     Example:
         >>> @requires_feature('organizations:performance-view')
-        >>> def get(self, request, organization):
+        >>> def get(self, request: Request, organization) -> Response:
         >>>     return Response()
     """
 

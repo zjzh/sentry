@@ -1,20 +1,19 @@
-import React from 'react';
 import {Route, RouteComponentProps} from 'react-router';
 
-import {ChildrenRenderFn} from 'app/components/acl/feature';
-import DateRange from 'app/components/organizations/timeRangeSelector/dateRange';
-import SelectorItems from 'app/components/organizations/timeRangeSelector/dateRange/selectorItems';
-import SidebarItem from 'app/components/sidebar/sidebarItem';
+import {ChildrenRenderFn} from 'sentry/components/acl/feature';
+import DateRange from 'sentry/components/organizations/timeRangeSelector/dateRange';
+import SelectorItems from 'sentry/components/organizations/timeRangeSelector/dateRange/selectorItems';
+import SidebarItem from 'sentry/components/sidebar/sidebarItem';
 import {
+  Integration,
   IntegrationProvider,
-  LightWeightOrganization,
   Member,
   Organization,
   Project,
   User,
-} from 'app/types';
-import {ExperimentKey} from 'app/types/experiments';
-import {NavigationItem, NavigationSection} from 'app/views/settings/types';
+} from 'sentry/types';
+import {ExperimentKey} from 'sentry/types/experiments';
+import {NavigationItem, NavigationSection} from 'sentry/views/settings/types';
 
 // XXX(epurkhiser): A Note about `_`.
 //
@@ -48,7 +47,6 @@ export type RouteHooks = {
   'routes:admin': RoutesHook;
   'routes:api': RoutesHook;
   'routes:organization': RoutesHook;
-  'routes:organization-root': RoutesHook;
 };
 
 /**
@@ -56,27 +54,66 @@ export type RouteHooks = {
  * These components have plan specific overrides in getsentry
  */
 type DateRangeProps = React.ComponentProps<typeof DateRange>;
+
 type SelectorItemsProps = React.ComponentProps<typeof SelectorItems>;
+
 type GlobalNotificationProps = {className: string; organization?: Organization};
+
 type DisabledMemberViewProps = RouteComponentProps<{orgId: string}, {}>;
+
 type MemberListHeaderProps = {
   members: Member[];
   organization: Organization;
 };
+
+type DisabledAppStoreConnectItem = {
+  disabled: boolean;
+  onTrialStarted: () => void;
+  children: React.ReactElement;
+};
+
+type DisabledCustomSymbolSources = {
+  organization: Organization;
+  disabled: boolean;
+  children: React.ReactNode;
+};
+
 type DisabledMemberTooltipProps = {children: React.ReactNode};
+
 type DashboardHeadersProps = {organization: Organization};
+
+type CodeOwnersHeaderProps = {
+  addCodeOwner: () => void;
+  handleRequest: () => void;
+};
+
+type FirstPartyIntegrationAlertProps = {
+  integrations: Integration[];
+  wrapWithContainer?: boolean;
+  hideCTA?: boolean;
+};
+
+type FirstPartyIntegrationAdditionalCTAProps = {
+  integrations: Integration[];
+};
 
 /**
  * Component wrapping hooks
  */
 export type ComponentHooks = {
+  'component:disabled-custom-symbol-sources': () => React.ComponentType<DisabledCustomSymbolSources>;
   'component:header-date-range': () => React.ComponentType<DateRangeProps>;
   'component:header-selector-items': () => React.ComponentType<SelectorItemsProps>;
   'component:global-notifications': () => React.ComponentType<GlobalNotificationProps>;
   'component:disabled-member': () => React.ComponentType<DisabledMemberViewProps>;
   'component:member-list-header': () => React.ComponentType<MemberListHeaderProps>;
+  'component:codeowners-header': () => React.ComponentType<CodeOwnersHeaderProps>;
   'component:disabled-member-tooltip': () => React.ComponentType<DisabledMemberTooltipProps>;
+  'component:disabled-app-store-connect-item': () => React.ComponentType<DisabledAppStoreConnectItem>;
   'component:dashboards-header': () => React.ComponentType<DashboardHeadersProps>;
+  'component:org-stats-banner': () => React.ComponentType<DashboardHeadersProps>;
+  'component:first-party-integration-alert': () => React.ComponentType<FirstPartyIntegrationAlertProps>;
+  'component:first-party-integration-additional-cta': () => React.ComponentType<FirstPartyIntegrationAdditionalCTAProps>;
 };
 
 /**
@@ -95,14 +132,14 @@ export type CustomizationHooks = {
  */
 export type AnalyticsHooks = {
   'analytics:init-user': AnalyticsInitUser;
-  'analytics:track-event': AnalyticsTrackEvent;
   'analytics:track-event-v2': AnalyticsTrackEventV2;
-  'analytics:track-adhoc-event': AnalyticsTrackAdhocEvent;
   'analytics:log-experiment': AnalyticsLogExperiment;
   'metrics:event': MetricsEvent;
 
-  // TODO(epurkhiser): This is deprecated and should be replaced
+  // TODO(scefali): Below are deprecated and should be replaced
   'analytics:event': LegacyAnalyticsEvent;
+  'analytics:track-event': AnalyticsTrackEvent;
+  'analytics:track-adhoc-event': AnalyticsTrackAdhocEvent;
 };
 
 /**
@@ -121,6 +158,7 @@ export type FeatureDisabledHooks = {
   'feature-disabled:discover-sidebar-item': FeatureDisabledHook;
   'feature-disabled:discover2-page': FeatureDisabledHook;
   'feature-disabled:discover2-sidebar-item': FeatureDisabledHook;
+  'feature-disabled:open-in-discover': FeatureDisabledHook;
   'feature-disabled:events-page': FeatureDisabledHook;
   'feature-disabled:events-sidebar-item': FeatureDisabledHook;
   'feature-disabled:grid-editable-actions': FeatureDisabledHook;
@@ -136,11 +174,13 @@ export type FeatureDisabledHooks = {
   'feature-disabled:project-performance-score-card': FeatureDisabledHook;
   'feature-disabled:project-selector-checkbox': FeatureDisabledHook;
   'feature-disabled:rate-limits': FeatureDisabledHook;
+  'feature-disabled:relay': FeatureDisabledHook;
   'feature-disabled:sso-basic': FeatureDisabledHook;
   'feature-disabled:sso-rippling': FeatureDisabledHook;
   'feature-disabled:sso-saml2': FeatureDisabledHook;
   'feature-disabled:trace-view-link': FeatureDisabledHook;
   'feature-disabled:alert-wizard-performance': FeatureDisabledHook;
+  'feature-disabled:project-selector-all-projects': FeatureDisabledHook;
 };
 
 /**
@@ -264,7 +304,7 @@ type AnalyticsTrackEventV2 = (
      */
     eventName: string | null;
 
-    organization: LightWeightOrganization | null;
+    organization: Organization | null;
     /**
      * Arbitrary data to track
      */
@@ -369,14 +409,14 @@ type SettingsItemsHook = (organization?: Organization) => NavigationItem[];
  */
 type SidebarItemLabelHook = () => React.ComponentType<{
   /**
+   * The item label being wrapped
+   */
+  children: React.ReactNode;
+  /**
    * The key of the item label currently being rendered. If no id is provided
    * the hook will have no effect.
    */
   id?: string;
-  /**
-   * The item label being wrapped
-   */
-  children: React.ReactNode;
 }>;
 
 type SidebarItemOverrideHook = () => React.ComponentType<{

@@ -2,24 +2,24 @@ import {Component, Fragment} from 'react';
 import {browserHistory} from 'react-router';
 import styled from '@emotion/styled';
 import * as Sentry from '@sentry/react';
-import {Location, Query} from 'history';
+import {Location} from 'history';
 import pick from 'lodash/pick';
 
-import {Client} from 'app/api';
-import DateTime from 'app/components/dateTime';
-import EmptyStateWarning from 'app/components/emptyStateWarning';
-import GroupListHeader from 'app/components/issues/groupListHeader';
-import LoadingError from 'app/components/loadingError';
-import LoadingIndicator from 'app/components/loadingIndicator';
-import Pagination from 'app/components/pagination';
-import {Panel, PanelBody} from 'app/components/panels';
-import StreamGroup from 'app/components/stream/group';
-import {URL_PARAM} from 'app/constants/globalSelectionHeader';
-import {tct} from 'app/locale';
-import GroupStore from 'app/stores/groupStore';
-import {GroupResolution} from 'app/types';
-import {TableDataRow} from 'app/utils/discover/discoverQuery';
-import withApi from 'app/utils/withApi';
+import {Client} from 'sentry/api';
+import DateTime from 'sentry/components/dateTime';
+import EmptyStateWarning from 'sentry/components/emptyStateWarning';
+import GroupListHeader from 'sentry/components/issues/groupListHeader';
+import LoadingError from 'sentry/components/loadingError';
+import LoadingIndicator from 'sentry/components/loadingIndicator';
+import Pagination, {CursorHandler} from 'sentry/components/pagination';
+import {Panel, PanelBody} from 'sentry/components/panels';
+import StreamGroup from 'sentry/components/stream/group';
+import {URL_PARAM} from 'sentry/constants/pageFilters';
+import {tct} from 'sentry/locale';
+import GroupStore from 'sentry/stores/groupStore';
+import {GroupResolution} from 'sentry/types';
+import {TableDataRow} from 'sentry/utils/discover/discoverQuery';
+import withApi from 'sentry/utils/withApi';
 
 type CustomGroup = GroupResolution & {
   eventID: string;
@@ -112,12 +112,11 @@ class List extends Component<Props, State> {
       .filter(event => !!event) as Array<CustomGroup>;
   };
 
-  handleCursorChange(cursor: string, path: string, query: Query, pageDiff: number) {
+  handleCursorChange: CursorHandler = (cursor, path, query, delta) =>
     browserHistory.push({
       pathname: path,
-      query: {...query, cursor: pageDiff <= 0 ? undefined : cursor},
+      query: {...query, cursor: delta <= 0 ? undefined : cursor},
     });
-  }
 
   handleRetry = () => {
     this.getGroups();

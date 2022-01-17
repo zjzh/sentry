@@ -1,14 +1,14 @@
 import styled from '@emotion/styled';
 import isEqual from 'lodash/isEqual';
 
-import PluginComponentBase from 'app/components/bases/pluginComponentBase';
-import {Form, FormState} from 'app/components/forms';
-import LoadingIndicator from 'app/components/loadingIndicator';
-import {t, tct} from 'app/locale';
-import {Organization, Plugin, Project} from 'app/types';
-import {parseRepo} from 'app/utils';
-import {IntegrationAnalyticsKey} from 'app/utils/integrationEvents';
-import {trackIntegrationEvent} from 'app/utils/integrationUtil';
+import PluginComponentBase from 'sentry/components/bases/pluginComponentBase';
+import {Form, FormState} from 'sentry/components/forms';
+import LoadingIndicator from 'sentry/components/loadingIndicator';
+import {t, tct} from 'sentry/locale';
+import {Organization, Plugin, Project} from 'sentry/types';
+import {parseRepo} from 'sentry/utils';
+import {IntegrationAnalyticsKey} from 'sentry/utils/analytics/integrationAnalyticsEvents';
+import {trackIntegrationAnalytics} from 'sentry/utils/integrationUtil';
 
 type Props = {
   organization: Organization;
@@ -50,7 +50,7 @@ class PluginSettings<
   }
 
   trackPluginEvent = (eventKey: IntegrationAnalyticsKey) => {
-    trackIntegrationEvent(eventKey, {
+    trackIntegrationAnalytics(eventKey, {
       integration: this.props.plugin.id,
       integration_type: 'plugin',
       view: 'plugin_details',

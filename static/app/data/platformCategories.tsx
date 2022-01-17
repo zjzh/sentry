@@ -1,4 +1,4 @@
-import {t} from 'app/locale';
+import {t} from 'sentry/locale';
 
 const popular = [
   'javascript',
@@ -53,6 +53,10 @@ export const mobile = [
   'dart-flutter',
   'unity',
   'dotnet-xamarin',
+  // Old platforms
+  'java-android',
+  'cocoa-objc',
+  'cocoa-swift',
 ] as const;
 
 export const backend = [
@@ -94,6 +98,7 @@ export const backend = [
   'ruby-rails',
   'ruby-rack',
   'rust',
+  'kotlin',
 ] as const;
 
 export const serverless = [
@@ -104,6 +109,7 @@ export const serverless = [
   'node-azurefunctions',
   'node-gcpfunctions',
   'dotnet-awslambda',
+  'dotnet-gcpfunctions',
 ] as const;
 
 export const desktop = [
@@ -121,6 +127,8 @@ export const desktop = [
   'native-qt',
   'minidump',
   'unity',
+  'flutter',
+  'kotlin',
 ] as const;
 
 const categoryList = [
@@ -139,7 +147,11 @@ export const sourceMaps: PlatformKey[] = [
   'electron',
 ];
 
-export const tracing = ['python-tracing', 'node-tracing'] as const;
+export const tracing = [
+  'python-tracing',
+  'node-tracing',
+  'react-native-tracing',
+] as const;
 
 export const performance: PlatformKey[] = [
   'javascript',

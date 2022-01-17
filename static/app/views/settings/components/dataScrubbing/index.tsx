@@ -1,15 +1,15 @@
 import * as React from 'react';
 import styled from '@emotion/styled';
 
-import {addErrorMessage, addSuccessMessage} from 'app/actionCreators/indicator';
-import {openModal} from 'app/actionCreators/modal';
-import {Client} from 'app/api';
-import Button from 'app/components/button';
-import ExternalLink from 'app/components/links/externalLink';
-import {Panel, PanelAlert, PanelBody, PanelHeader} from 'app/components/panels';
-import {t, tct} from 'app/locale';
-import space from 'app/styles/space';
-import {Organization, Project} from 'app/types';
+import {addErrorMessage, addSuccessMessage} from 'sentry/actionCreators/indicator';
+import {openModal} from 'sentry/actionCreators/modal';
+import {Client} from 'sentry/api';
+import Button from 'sentry/components/button';
+import ExternalLink from 'sentry/components/links/externalLink';
+import {Panel, PanelAlert, PanelBody, PanelHeader} from 'sentry/components/panels';
+import {t, tct} from 'sentry/locale';
+import space from 'sentry/styles/space';
+import {Organization, Project} from 'sentry/types';
 
 import Add from './modals/add';
 import Edit from './modals/edit';
@@ -160,45 +160,43 @@ class DataScrubbing<T extends ProjectId = undefined> extends React.Component<
     const {orgRules, rules} = this.state;
 
     return (
-      <React.Fragment>
-        <Panel data-test-id="advanced-data-scrubbing">
-          <PanelHeader>
-            <div>{t('Advanced Data Scrubbing')}</div>
-          </PanelHeader>
-          <PanelAlert type="info">
-            {additionalContext}{' '}
-            {`${t('The new rules will only apply to upcoming events. ')}`}{' '}
-            {tct('For more details, see [linkToDocs].', {
-              linkToDocs: (
-                <ExternalLink href={ADVANCED_DATASCRUBBING_LINK}>
-                  {t('full documentation on data scrubbing')}
-                </ExternalLink>
-              ),
-            })}
-          </PanelAlert>
-          <PanelBody>
-            {projectId && <OrganizationRules rules={orgRules} />}
-            <Content
-              rules={rules}
-              onDeleteRule={this.handleDelete}
-              onEditRule={this.handleOpenEditModal}
+      <Panel data-test-id="advanced-data-scrubbing" id="advanced-data-scrubbing">
+        <PanelHeader>
+          <div>{t('Advanced Data Scrubbing')}</div>
+        </PanelHeader>
+        <PanelAlert type="info">
+          {additionalContext}{' '}
+          {`${t('The new rules will only apply to upcoming events. ')}`}{' '}
+          {tct('For more details, see [linkToDocs].', {
+            linkToDocs: (
+              <ExternalLink href={ADVANCED_DATASCRUBBING_LINK}>
+                {t('full documentation on data scrubbing')}
+              </ExternalLink>
+            ),
+          })}
+        </PanelAlert>
+        <PanelBody>
+          {projectId && <OrganizationRules rules={orgRules} />}
+          <Content
+            rules={rules}
+            onDeleteRule={this.handleDelete}
+            onEditRule={this.handleOpenEditModal}
+            disabled={disabled}
+          />
+          <PanelAction>
+            <Button href={ADVANCED_DATASCRUBBING_LINK} target="_blank">
+              {t('Read the docs')}
+            </Button>
+            <Button
               disabled={disabled}
-            />
-            <PanelAction>
-              <Button href={ADVANCED_DATASCRUBBING_LINK} target="_blank">
-                {t('Read the docs')}
-              </Button>
-              <Button
-                disabled={disabled}
-                onClick={this.handleOpenAddModal}
-                priority="primary"
-              >
-                {t('Add Rule')}
-              </Button>
-            </PanelAction>
-          </PanelBody>
-        </Panel>
-      </React.Fragment>
+              onClick={this.handleOpenAddModal}
+              priority="primary"
+            >
+              {t('Add Rule')}
+            </Button>
+          </PanelAction>
+        </PanelBody>
+      </Panel>
     );
   }
 }
@@ -209,7 +207,7 @@ const PanelAction = styled('div')`
   padding: ${space(1)} ${space(2)};
   position: relative;
   display: grid;
-  grid-gap: ${space(1)};
+  gap: ${space(1)};
   grid-template-columns: auto auto;
   justify-content: flex-end;
   border-top: 1px solid ${p => p.theme.border};

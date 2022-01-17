@@ -2,27 +2,32 @@ import * as React from 'react';
 import {browserHistory} from 'react-router';
 import {Location, LocationDescriptorObject} from 'history';
 
-import {addSuccessMessage} from 'app/actionCreators/indicator';
-import {openModal} from 'app/actionCreators/modal';
-import {fetchLegacyKeyTransactionsCount} from 'app/actionCreators/performance';
-import GuideAnchor from 'app/components/assistant/guideAnchor';
-import GridEditable, {COL_WIDTH_UNDEFINED, GridColumn} from 'app/components/gridEditable';
-import SortLink from 'app/components/gridEditable/sortLink';
-import Link from 'app/components/links/link';
-import Pagination from 'app/components/pagination';
-import Tooltip from 'app/components/tooltip';
-import {IconStar} from 'app/icons';
-import {tct} from 'app/locale';
-import {Organization, Project} from 'app/types';
-import {defined} from 'app/utils';
-import {trackAnalyticsEvent} from 'app/utils/analytics';
-import DiscoverQuery, {TableData, TableDataRow} from 'app/utils/discover/discoverQuery';
-import EventView, {EventData, isFieldSortable} from 'app/utils/discover/eventView';
-import {getFieldRenderer} from 'app/utils/discover/fieldRenderers';
-import {fieldAlignment, getAggregateAlias} from 'app/utils/discover/fields';
-import {MutableSearch} from 'app/utils/tokenizeSearch';
-import CellAction, {Actions, updateQuery} from 'app/views/eventsV2/table/cellAction';
-import {TableColumn} from 'app/views/eventsV2/table/types';
+import {addSuccessMessage} from 'sentry/actionCreators/indicator';
+import {openModal} from 'sentry/actionCreators/modal';
+import GuideAnchor from 'sentry/components/assistant/guideAnchor';
+import GridEditable, {
+  COL_WIDTH_UNDEFINED,
+  GridColumn,
+} from 'sentry/components/gridEditable';
+import SortLink from 'sentry/components/gridEditable/sortLink';
+import Link from 'sentry/components/links/link';
+import Pagination from 'sentry/components/pagination';
+import Tooltip from 'sentry/components/tooltip';
+import {IconStar} from 'sentry/icons';
+import {tct} from 'sentry/locale';
+import {Organization, Project} from 'sentry/types';
+import {defined} from 'sentry/utils';
+import trackAdvancedAnalyticsEvent from 'sentry/utils/analytics/trackAdvancedAnalyticsEvent';
+import DiscoverQuery, {
+  TableData,
+  TableDataRow,
+} from 'sentry/utils/discover/discoverQuery';
+import EventView, {EventData, isFieldSortable} from 'sentry/utils/discover/eventView';
+import {getFieldRenderer} from 'sentry/utils/discover/fieldRenderers';
+import {fieldAlignment, getAggregateAlias} from 'sentry/utils/discover/fields';
+import {MutableSearch} from 'sentry/utils/tokenizeSearch';
+import CellAction, {Actions, updateQuery} from 'sentry/views/eventsV2/table/cellAction';
+import {TableColumn} from 'sentry/views/eventsV2/table/types';
 
 import TransactionThresholdModal, {
   modalCss,
@@ -55,50 +60,31 @@ type Props = {
   organization: Organization;
   location: Location;
   setError: (msg: string | undefined) => void;
-  summaryConditions: string;
-
   projects: Project[];
+  summaryConditions?: string;
   columnTitles?: string[];
 };
 
 type State = {
   widths: number[];
-  keyedTransactions: number | null;
   transaction: string | undefined;
   transactionThreshold: number | undefined;
   transactionThresholdMetric: TransactionThresholdMetric | undefined;
 };
-class Table extends React.Component<Props, State> {
+class _Table extends React.Component<Props, State> {
   state: State = {
     widths: [],
-    keyedTransactions: null,
     transaction: undefined,
     transactionThreshold: undefined,
     transactionThresholdMetric: undefined,
   };
 
-  componentDidMount() {
-    this.fetchKeyTransactionCount();
-  }
-
-  async fetchKeyTransactionCount() {
-    const {organization} = this.props;
-    try {
-      const count = await fetchLegacyKeyTransactionsCount(organization.slug);
-      this.setState({keyedTransactions: count});
-    } catch (error) {
-      this.setState({keyedTransactions: null});
-    }
-  }
-
   handleCellAction = (column: TableColumn<keyof TableDataRow>, dataRow: TableDataRow) => {
     return (action: Actions, value: React.ReactText) => {
       const {eventView, location, organization, projects} = this.props;
 
-      trackAnalyticsEvent({
-        eventKey: 'performance_views.overview.cellaction',
-        eventName: 'Performance Views: Cell Action Clicked',
-        organization_id: parseInt(organization.id, 10),
+      trackAdvancedAnalyticsEvent('performance_views.overview.cellaction', {
+        organization,
         action,
       });
 
@@ -180,11 +166,8 @@ class Table extends React.Component<Props, State> {
       Actions.EXCLUDE,
       Actions.SHOW_GREATER_THAN,
       Actions.SHOW_LESS_THAN,
+      Actions.EDIT_THRESHOLD,
     ];
-
-    if (organization.features.includes('project-transaction-threshold-override')) {
-      allowActions.push(Actions.EDIT_THRESHOLD);
-    }
 
     if (field === 'transaction') {
       const projectID = getProjectID(dataRow, projects);
@@ -209,16 +192,15 @@ class Table extends React.Component<Props, State> {
           handleCellAction={this.handleCellAction(column, dataRow)}
           allowActions={allowActions}
         >
-          <Link to={target} onClick={this.handleSummaryClick}>
+          <Link
+            to={target}
+            onClick={this.handleSummaryClick}
+            style={{display: `block`, width: `100%`}}
+          >
             {rendered}
           </Link>
         </CellAction>
       );
-    }
-
-    if (field.startsWith('key_transaction')) {
-      // don't display per cell actions for key_transaction
-      return rendered;
     }
 
     if (field.startsWith('team_key_transaction')) {
@@ -268,10 +250,8 @@ class Table extends React.Component<Props, State> {
 
   onSortClick(currentSortKind?: string, currentSortField?: string) {
     const {organization} = this.props;
-    trackAnalyticsEvent({
-      eventKey: 'performance_views.landingv2.transactions.sort',
-      eventName: 'Performance Views: Landing Transactions Sorted',
-      organization_id: parseInt(organization.id, 10),
+    trackAdvancedAnalyticsEvent('performance_views.landingv2.transactions.sort', {
+      organization,
       field: currentSortField,
       direction: currentSortKind,
     });
@@ -282,7 +262,7 @@ class Table extends React.Component<Props, State> {
     column: TableColumn<keyof TableDataRow>,
     title: React.ReactNode
   ): React.ReactNode {
-    const {eventView, location, organization} = this.props;
+    const {eventView, location} = this.props;
 
     const align = fieldAlignment(column.name, column.type, tableMeta);
     const field = {field: column.name, width: column.width};
@@ -318,11 +298,7 @@ class Table extends React.Component<Props, State> {
     );
     if (field.field.startsWith('user_misery')) {
       return (
-        <GuideAnchor
-          target="project_transaction_threshold"
-          position="top"
-          disabled={!organization.features.includes('project-transaction-threshold')}
-        >
+        <GuideAnchor target="project_transaction_threshold" position="top">
           {sortLink}
         </GuideAnchor>
       );
@@ -338,55 +314,26 @@ class Table extends React.Component<Props, State> {
 
   renderPrependCellWithData = (tableData: TableData | null) => {
     const {eventView} = this.props;
-    const {keyedTransactions} = this.state;
 
-    const keyTransactionColumn = eventView
-      .getColumns()
-      .find((col: TableColumn<React.ReactText>) => col.name === 'key_transaction');
     const teamKeyTransactionColumn = eventView
       .getColumns()
       .find((col: TableColumn<React.ReactText>) => col.name === 'team_key_transaction');
     return (isHeader: boolean, dataRow?: any) => {
-      if (keyTransactionColumn) {
+      if (teamKeyTransactionColumn) {
         if (isHeader) {
           const star = (
-            <IconStar
-              key="keyTransaction"
-              color="yellow300"
-              isSolid
-              data-test-id="key-transaction-header"
-            />
-          );
-          return [this.renderHeadCell(tableData?.meta, keyTransactionColumn, star)];
-        } else {
-          return [this.renderBodyCell(tableData, keyTransactionColumn, dataRow)];
-        }
-      } else if (teamKeyTransactionColumn) {
-        if (isHeader) {
-          const star = (
-            <GuideAnchor
-              target="team_key_transaction_header"
-              position="top"
-              disabled={keyedTransactions === null} // wait for the legacy counts to load
-            >
-              <GuideAnchor
-                target="team_key_transaction_existing"
-                position="top"
-                disabled={!keyedTransactions}
-              >
-                <IconStar
-                  key="keyTransaction"
-                  color="yellow300"
-                  isSolid
-                  data-test-id="team-key-transaction-header"
-                />
-              </GuideAnchor>
+            <GuideAnchor target="team_key_transaction_header" position="top">
+              <IconStar
+                key="keyTransaction"
+                color="yellow300"
+                isSolid
+                data-test-id="team-key-transaction-header"
+              />
             </GuideAnchor>
           );
           return [this.renderHeadCell(tableData?.meta, teamKeyTransactionColumn, star)];
-        } else {
-          return [this.renderBodyCell(tableData, teamKeyTransactionColumn, dataRow)];
         }
+        return [this.renderBodyCell(tableData, teamKeyTransactionColumn, dataRow)];
       }
       return [];
     };
@@ -394,10 +341,8 @@ class Table extends React.Component<Props, State> {
 
   handleSummaryClick = () => {
     const {organization} = this.props;
-    trackAnalyticsEvent({
-      eventKey: 'performance_views.overview.navigate.summary',
-      eventName: 'Performance Views: Overview view summary',
-      organization_id: parseInt(organization.id, 10),
+    trackAdvancedAnalyticsEvent('performance_views.overview.navigate.summary', {
+      organization,
     });
   };
 
@@ -428,11 +373,10 @@ class Table extends React.Component<Props, State> {
       this.state;
     const columnOrder = eventView
       .getColumns()
-      // remove key_transactions from the column order as we'll be rendering it
+      // remove team_key_transactions from the column order as we'll be rendering it
       // via a prepended column
       .filter(
         (col: TableColumn<React.ReactText>) =>
-          col.name !== 'key_transaction' &&
           col.name !== 'team_key_transaction' &&
           !col.name.startsWith('count_miserable') &&
           col.name !== 'project_threshold_config'
@@ -484,6 +428,13 @@ class Table extends React.Component<Props, State> {
       </div>
     );
   }
+}
+
+function Table(props: Omit<Props, 'summaryConditions'> & {summaryConditions?: string}) {
+  const summaryConditions =
+    props.summaryConditions ?? props.eventView.getQueryWithAdditionalConditions();
+
+  return <_Table {...props} summaryConditions={summaryConditions} />;
 }
 
 export default Table;

@@ -2,18 +2,19 @@ import {Fragment} from 'react';
 import {css} from '@emotion/react';
 import styled from '@emotion/styled';
 
-import {ModalRenderProps} from 'app/actionCreators/modal';
-import Button from 'app/components/button';
-import Buttonbar from 'app/components/buttonBar';
-import Confirm from 'app/components/confirm';
-import DateTime from 'app/components/dateTime';
-import {getRelativeTimeFromEventDateCreated} from 'app/components/events/contexts/utils';
-import NotAvailable from 'app/components/notAvailable';
-import {t} from 'app/locale';
-import space from 'app/styles/space';
-import {EventAttachment, Organization, Project} from 'app/types';
-import {Event} from 'app/types/event';
-import getDynamicText from 'app/utils/getDynamicText';
+import {ModalRenderProps} from 'sentry/actionCreators/modal';
+import Button from 'sentry/components/button';
+import Buttonbar from 'sentry/components/buttonBar';
+import Confirm from 'sentry/components/confirm';
+import DateTime from 'sentry/components/dateTime';
+import {getRelativeTimeFromEventDateCreated} from 'sentry/components/events/contexts/utils';
+import NotAvailable from 'sentry/components/notAvailable';
+import {t} from 'sentry/locale';
+import space from 'sentry/styles/space';
+import {EventAttachment, Organization, Project} from 'sentry/types';
+import {Event} from 'sentry/types/event';
+import {defined, formatBytesBase2} from 'sentry/utils';
+import getDynamicText from 'sentry/utils/getDynamicText';
 
 import ImageVisualization from './imageVisualization';
 
@@ -37,17 +38,10 @@ function Modal({
   onDelete,
   downloadUrl,
 }: Props) {
-  const {dateCreated, name, size, mimetype, type} = eventAttachment;
+  const {dateCreated, size, mimetype} = eventAttachment;
   return (
     <Fragment>
-      <Header closeButton>
-        <Title>
-          {t('Screenshot')}
-          <FileName>
-            {name ? name.split(`.${name.split('.').pop()}`)[0] : t('Unknown')}
-          </FileName>
-        </Title>
-      </Header>
+      <Header closeButton>{t('Screenshot')}</Header>
       <Body>
         <GeralInfo>
           <Label coloredBg>{t('Date Created')}</Label>
@@ -61,7 +55,7 @@ function Modal({
                   })}
                 />
                 {getRelativeTimeFromEventDateCreated(
-                  event.dateCreated,
+                  event.dateCreated ? event.dateCreated : event.dateReceived,
                   dateCreated,
                   false
                 )}
@@ -72,16 +66,15 @@ function Modal({
           </Value>
 
           <Label>{t('Name')}</Label>
-          <Value>{name ?? <NotAvailable />}</Value>
+          <Value>{t('Screenshot')}</Value>
 
           <Label coloredBg>{t('Size')}</Label>
-          <Value coloredBg>{size ?? <NotAvailable />}</Value>
+          <Value coloredBg>
+            {defined(size) ? formatBytesBase2(size) : <NotAvailable />}
+          </Value>
 
-          <Label>{t('Mimetype')}</Label>
+          <Label>{t('MIME Type')}</Label>
           <Value>{mimetype ?? <NotAvailable />}</Value>
-
-          <Label coloredBg>{t('Type')}</Label>
-          <Value coloredBg>{type ?? <NotAvailable />}</Value>
         </GeralInfo>
 
         <StyledImageVisualization
@@ -112,20 +105,6 @@ function Modal({
 }
 
 export default Modal;
-
-const Title = styled('div')`
-  display: grid;
-  grid-template-columns: max-content 1fr;
-  grid-gap: ${space(1)};
-  align-items: center;
-  font-size: ${p => p.theme.fontSizeExtraLarge};
-  max-width: calc(100% - 40px);
-  word-break: break-all;
-`;
-
-const FileName = styled('span')`
-  font-family: ${p => p.theme.text.familyMono};
-`;
 
 const GeralInfo = styled('div')`
   display: grid;

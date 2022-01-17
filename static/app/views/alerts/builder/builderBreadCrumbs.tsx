@@ -2,19 +2,18 @@ import {browserHistory} from 'react-router';
 import styled from '@emotion/styled';
 import {Location} from 'history';
 
-import Breadcrumbs, {Crumb, CrumbDropdown} from 'app/components/breadcrumbs';
-import IdBadge from 'app/components/idBadge';
-import {t} from 'app/locale';
-import space from 'app/styles/space';
-import {Project} from 'app/types';
-import {isActiveSuperuser} from 'app/utils/isActiveSuperuser';
-import recreateRoute from 'app/utils/recreateRoute';
-import withProjects from 'app/utils/withProjects';
-import MenuItem from 'app/views/settings/components/settingsBreadcrumb/menuItem';
-import {RouteWithName} from 'app/views/settings/components/settingsBreadcrumb/types';
+import Breadcrumbs, {Crumb, CrumbDropdown} from 'sentry/components/breadcrumbs';
+import IdBadge from 'sentry/components/idBadge';
+import {t} from 'sentry/locale';
+import space from 'sentry/styles/space';
+import {Project} from 'sentry/types';
+import {isActiveSuperuser} from 'sentry/utils/isActiveSuperuser';
+import recreateRoute from 'sentry/utils/recreateRoute';
+import withProjects from 'sentry/utils/withProjects';
+import MenuItem from 'sentry/views/settings/components/settingsBreadcrumb/menuItem';
+import {RouteWithName} from 'sentry/views/settings/components/settingsBreadcrumb/types';
 
 type Props = {
-  hasMetricAlerts: boolean;
   orgSlug: string;
   title: string;
   projectSlug: string;
@@ -39,9 +38,13 @@ function BuilderBreadCrumbs(props: Props) {
   const project = projects.find(({slug}) => projectSlug === slug);
   const isSuperuser = isActiveSuperuser();
 
+  const label = (
+    <IdBadge project={project ?? {slug: projectSlug}} avatarSize={18} disableLink />
+  );
+
   const projectCrumbLink = {
-    to: `/settings/${orgSlug}/projects/${projectSlug}/`,
-    label: <IdBadge project={project} avatarSize={18} disableLink />,
+    to: `/organizations/${orgSlug}/alerts/rules/?project=${project?.id}`,
+    label,
     preserveGlobalSelection: true,
   };
   const projectCrumbDropdown = {
@@ -54,7 +57,7 @@ function BuilderBreadCrumbs(props: Props) {
         })
       );
     },
-    label: <IdBadge project={project} avatarSize={18} disableLink />,
+    label,
     items: projects
       .filter(proj => proj.isMember || isSuperuser)
       .map((proj, index) => ({
@@ -79,7 +82,7 @@ function BuilderBreadCrumbs(props: Props) {
     {
       to: `/organizations/${orgSlug}/alerts/rules/`,
       label: t('Alerts'),
-      preserveGlobalSelection: true,
+      preservePageFilters: true,
     },
     projectCrumb,
     {
@@ -87,7 +90,7 @@ function BuilderBreadCrumbs(props: Props) {
       ...(alertName
         ? {
             to: `/organizations/${orgSlug}/alerts/${projectSlug}/wizard`,
-            preserveGlobalSelection: true,
+            preservePageFilters: true,
           }
         : {}),
     },

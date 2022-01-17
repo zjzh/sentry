@@ -1,31 +1,31 @@
 import 'prism-sentry/index.css';
 
 import {Fragment} from 'react';
-import {browserHistory, WithRouterProps} from 'react-router';
+import {browserHistory, RouteComponentProps} from 'react-router';
 import styled from '@emotion/styled';
 
-import AsyncComponent from 'app/components/asyncComponent';
-import Button from 'app/components/button';
-import ButtonBar from 'app/components/buttonBar';
-import platforms from 'app/data/platforms';
-import {t} from 'app/locale';
-import {PageHeader} from 'app/styles/organization';
-import space from 'app/styles/space';
-import {IntegrationProvider, Organization, Project} from 'app/types';
-import {trackAdvancedAnalyticsEvent} from 'app/utils/advancedAnalytics';
-import {trackIntegrationEvent} from 'app/utils/integrationUtil';
-import withOrganization from 'app/utils/withOrganization';
-import FirstEventFooter from 'app/views/onboarding/components/firstEventFooter';
-import AddInstallationInstructions from 'app/views/onboarding/components/integrations/addInstallationInstructions';
-import PostInstallCodeSnippet from 'app/views/onboarding/components/integrations/postInstallCodeSnippet';
-import AddIntegrationButton from 'app/views/organizationIntegrations/addIntegrationButton';
+import AsyncComponent from 'sentry/components/asyncComponent';
+import Button from 'sentry/components/button';
+import ButtonBar from 'sentry/components/buttonBar';
+import platforms from 'sentry/data/platforms';
+import {t} from 'sentry/locale';
+import {PageHeader} from 'sentry/styles/organization';
+import space from 'sentry/styles/space';
+import {IntegrationProvider, Organization, Project} from 'sentry/types';
+import trackAdvancedAnalyticsEvent from 'sentry/utils/analytics/trackAdvancedAnalyticsEvent';
+import {trackIntegrationAnalytics} from 'sentry/utils/integrationUtil';
+import withOrganization from 'sentry/utils/withOrganization';
+import FirstEventFooter from 'sentry/views/onboarding/components/firstEventFooter';
+import AddInstallationInstructions from 'sentry/views/onboarding/components/integrations/addInstallationInstructions';
+import PostInstallCodeSnippet from 'sentry/views/onboarding/components/integrations/postInstallCodeSnippet';
+import AddIntegrationButton from 'sentry/views/organizationIntegrations/addIntegrationButton';
 
 import PlatformHeaderButtonBar from './components/platformHeaderButtonBar';
 
 type Props = {
   organization: Organization;
   integrationSlug: string;
-} & WithRouterProps<{orgId: string; projectId: string; platform: string}, {}> &
+} & RouteComponentProps<{orgId: string; projectId: string; platform: string}, {}> &
   AsyncComponent['props'];
 
 type State = {
@@ -95,7 +95,7 @@ class PlatformIntegrationSetup extends AsyncComponent<Props, State> {
 
   trackSwitchToManual = () => {
     const {organization, integrationSlug} = this.props;
-    trackIntegrationEvent('integrations.switch_manual_sdk_setup', {
+    trackIntegrationAnalytics('integrations.switch_manual_sdk_setup', {
       integration_type: 'first_party',
       integration: integrationSlug,
       view: 'project_creation',

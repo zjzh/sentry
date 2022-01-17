@@ -1,5 +1,6 @@
 from base64 import b64encode
 from datetime import datetime, timedelta
+from unittest.mock import patch
 
 import pytz
 from django.urls import reverse
@@ -36,12 +37,20 @@ from sentry.search.events.constants import (
     SEMVER_BUILD_ALIAS,
     SEMVER_PACKAGE_ALIAS,
 )
-from sentry.testutils import APITestCase, ReleaseCommitPatchTest, SetRefsTestCase, TestCase
-from sentry.utils.compat.mock import patch
+from sentry.testutils import (
+    APITestCase,
+    ReleaseCommitPatchTest,
+    SetRefsTestCase,
+    SnubaTestCase,
+    TestCase,
+)
 
 
-class OrganizationReleaseListTest(APITestCase):
+class OrganizationReleaseListTest(APITestCase, SnubaTestCase):
     endpoint = "sentry-api-0-organization-releases"
+
+    def assert_expected_versions(self, response, expected):
+        assert [item["version"] for item in response.data] == [e.version for e in expected]
 
     def test_simple(self):
         user = self.create_user(is_staff=False, is_superuser=False)
@@ -84,14 +93,8 @@ class OrganizationReleaseListTest(APITestCase):
         )
         release4.add_project(project3)
 
-        url = reverse("sentry-api-0-organization-releases", kwargs={"organization_slug": org.slug})
-        response = self.client.get(url, format="json")
-
-        assert response.status_code == 200, response.content
-        assert len(response.data) == 3
-        assert response.data[0]["version"] == release4.version
-        assert response.data[1]["version"] == release1.version
-        assert response.data[2]["version"] == release3.version
+        response = self.get_valid_response(org.slug)
+        self.assert_expected_versions(response, [release4, release1, release3])
 
     def test_release_list_order_by_date_added(self):
         """
@@ -136,14 +139,89 @@ class OrganizationReleaseListTest(APITestCase):
         )
         release8.add_project(project)
 
-        url = reverse("sentry-api-0-organization-releases", kwargs={"organization_slug": org.slug})
-        response = self.client.get(url, format="json")
+        response = self.get_valid_response(org.slug)
+        self.assert_expected_versions(response, [release8, release7, release6])
 
-        assert response.status_code == 200, response.content
-        assert len(response.data) == 3
-        assert response.data[0]["version"] == release8.version
-        assert response.data[1]["version"] == release7.version
-        assert response.data[2]["version"] == release6.version
+    def test_release_list_order_by_sessions_empty(self):
+        self.login_as(user=self.user)
+
+        release_1 = self.create_release(version="1")
+        release_2 = self.create_release(version="2")
+        release_3 = self.create_release(version="3")
+        release_4 = self.create_release(version="4")
+        release_5 = self.create_release(version="5")
+
+        #  Make sure ordering works fine when we have no session data at all
+        response = self.get_valid_response(self.organization.slug, sort="sessions", flatten="1")
+        self.assert_expected_versions(
+            response, [release_5, release_4, release_3, release_2, release_1]
+        )
+
+    def test_release_list_order_by_sessions(self):
+        self.login_as(user=self.user)
+
+        release_1 = self.create_release(version="1")
+        self.store_session(self.build_session(release=release_1))
+        release_2 = self.create_release(version="2")
+        release_3 = self.create_release(version="3")
+        release_4 = self.create_release(version="4")
+        release_5 = self.create_release(version="5")
+        self.bulk_store_sessions([self.build_session(release=release_5) for _ in range(2)])
+
+        response = self.get_valid_response(self.organization.slug, sort="sessions", flatten="1")
+        self.assert_expected_versions(
+            response, [release_5, release_1, release_4, release_3, release_2]
+        )
+
+        response = self.get_valid_response(
+            self.organization.slug, sort="sessions", flatten="1", per_page=1
+        )
+        self.assert_expected_versions(response, [release_5])
+        response = self.get_valid_response(
+            self.organization.slug,
+            sort="sessions",
+            flatten="1",
+            per_page=1,
+            cursor=self.get_cursor_headers(response)[1],
+        )
+        self.assert_expected_versions(response, [release_1])
+        response = self.get_valid_response(
+            self.organization.slug,
+            sort="sessions",
+            flatten="1",
+            per_page=1,
+            cursor=self.get_cursor_headers(response)[1],
+        )
+        self.assert_expected_versions(response, [release_4])
+        response = self.get_valid_response(
+            self.organization.slug,
+            sort="sessions",
+            flatten="1",
+            per_page=1,
+            cursor=self.get_cursor_headers(response)[1],
+        )
+        self.assert_expected_versions(response, [release_3])
+        response = self.get_valid_response(
+            self.organization.slug,
+            sort="sessions",
+            flatten="1",
+            per_page=1,
+            cursor=self.get_cursor_headers(response)[1],
+        )
+        self.assert_expected_versions(response, [release_2])
+
+        response = self.get_valid_response(
+            self.organization.slug, sort="sessions", flatten="1", per_page=3
+        )
+        self.assert_expected_versions(response, [release_5, release_1, release_4])
+        response = self.get_valid_response(
+            self.organization.slug,
+            sort="sessions",
+            flatten="1",
+            per_page=3,
+            cursor=self.get_cursor_headers(response)[1],
+        )
+        self.assert_expected_versions(response, [release_3, release_2])
 
     def test_release_list_order_by_build_number(self):
         self.login_as(user=self.user)
@@ -154,11 +232,7 @@ class OrganizationReleaseListTest(APITestCase):
         self.create_release(version="test@1.2+500alpha")
 
         response = self.get_valid_response(self.organization.slug, sort="build")
-        assert [r["version"] for r in response.data] == [
-            release_1.version,
-            release_3.version,
-            release_2.version,
-        ]
+        self.assert_expected_versions(response, [release_1, release_3, release_2])
 
     def test_release_list_order_by_semver(self):
         self.login_as(user=self.user)
@@ -169,19 +243,24 @@ class OrganizationReleaseListTest(APITestCase):
         release_5 = self.create_release(version="test@2.20.3")
         release_6 = self.create_release(version="test@2.20.3.3")
         release_7 = self.create_release(version="test@10.0+123")
-        self.create_release(version="test@some_thing")
-        self.create_release(version="random_junk")
+        release_8 = self.create_release(version="test@some_thing")
+        release_9 = self.create_release(version="random_junk")
 
         response = self.get_valid_response(self.organization.slug, sort="semver")
-        assert [r["version"] for r in response.data] == [
-            release_2.version,
-            release_7.version,
-            release_6.version,
-            release_5.version,
-            release_4.version,
-            release_1.version,
-            release_3.version,
-        ]
+        self.assert_expected_versions(
+            response,
+            [
+                release_7,
+                release_2,
+                release_6,
+                release_5,
+                release_4,
+                release_1,
+                release_3,
+                release_9,
+                release_8,
+            ],
+        )
 
     def test_query_filter(self):
         user = self.create_user(is_staff=False, is_superuser=False)
@@ -211,17 +290,11 @@ class OrganizationReleaseListTest(APITestCase):
         )
         release2.add_project(project)
 
-        url = reverse("sentry-api-0-organization-releases", kwargs={"organization_slug": org.slug})
-        response = self.client.get(url + "?query=oob", format="json")
+        response = self.get_valid_response(org.slug, query="oob")
+        self.assert_expected_versions(response, [release])
 
-        assert response.status_code == 200, response.content
-        assert len(response.data) == 1
-        assert response.data[0]["version"] == release.version
-
-        response = self.client.get(url + "?query=baz", format="json")
-
-        assert response.status_code == 200, response.content
-        assert len(response.data) == 0
+        response = self.get_valid_response(org.slug, query="baz")
+        self.assert_expected_versions(response, [])
 
     def test_release_filter(self):
         user = self.create_user(is_staff=False, is_superuser=False)
@@ -252,21 +325,17 @@ class OrganizationReleaseListTest(APITestCase):
         release2.add_project(project)
 
         response = self.get_valid_response(self.organization.slug, query=f"{RELEASE_ALIAS}:foobar")
-
-        assert response.status_code == 200, response.content
-        assert len(response.data) == 1
-        assert response.data[0]["version"] == release.version
+        self.assert_expected_versions(response, [release])
 
         response = self.get_valid_response(self.organization.slug, query=f"{RELEASE_ALIAS}:foo*")
-
-        assert response.status_code == 200, response.content
-        assert len(response.data) == 1
-        assert response.data[0]["version"] == release.version
+        self.assert_expected_versions(response, [release])
 
         response = self.get_valid_response(self.organization.slug, query=f"{RELEASE_ALIAS}:baz")
+        self.assert_expected_versions(response, [])
 
-        assert response.status_code == 200, response.content
-        assert len(response.data) == 0
+        # NOT release
+        response = self.get_valid_response(self.organization.slug, query=f"!{RELEASE_ALIAS}:foobar")
+        self.assert_expected_versions(response, [release2])
 
     def test_query_filter_suffix(self):
         user = self.create_user(is_staff=False, is_superuser=False)
@@ -309,62 +378,68 @@ class OrganizationReleaseListTest(APITestCase):
         release_1 = self.create_release(version="test@1.2.4+124")
         release_2 = self.create_release(version="test@1.2.3+123")
         release_3 = self.create_release(version="test2@1.2.5+125")
-        self.create_release(version="some.release")
+        release_4 = self.create_release(version="some.release")
 
         response = self.get_valid_response(self.organization.slug, query=f"{SEMVER_ALIAS}:>1.2.3")
-        assert [r["version"] for r in response.data] == [release_3.version, release_1.version]
+        self.assert_expected_versions(response, [release_3, release_1])
 
         response = self.get_valid_response(self.organization.slug, query=f"{SEMVER_ALIAS}:>=1.2.3")
-        assert [r["version"] for r in response.data] == [
-            release_3.version,
-            release_2.version,
-            release_1.version,
-        ]
+        self.assert_expected_versions(response, [release_3, release_2, release_1])
 
         response = self.get_valid_response(self.organization.slug, query=f"{SEMVER_ALIAS}:1.2.*")
-        assert [r["version"] for r in response.data] == [
-            release_3.version,
-            release_2.version,
-            release_1.version,
-        ]
+        self.assert_expected_versions(response, [release_3, release_2, release_1])
+
+        # NOT semver version
+        response = self.get_valid_response(self.organization.slug, query=f"!{SEMVER_ALIAS}:1.2.3")
+        self.assert_expected_versions(response, [release_4, release_3, release_1])
 
         response = self.get_valid_response(
             self.organization.slug, query=f"{SEMVER_ALIAS}:>=1.2.3", sort="semver"
         )
-        assert [r["version"] for r in response.data] == [
-            release_3.version,
-            release_1.version,
-            release_2.version,
-        ]
+        self.assert_expected_versions(response, [release_3, release_1, release_2])
 
         response = self.get_valid_response(self.organization.slug, query=f"{SEMVER_ALIAS}:2.2.1")
-        assert [r["version"] for r in response.data] == []
+        self.assert_expected_versions(response, [])
 
         response = self.get_valid_response(
             self.organization.slug, query=f"{SEMVER_PACKAGE_ALIAS}:test2"
         )
-        assert [r["version"] for r in response.data] == [release_3.version]
+        self.assert_expected_versions(response, [release_3])
 
         response = self.get_valid_response(
             self.organization.slug, query=f"{SEMVER_PACKAGE_ALIAS}:test"
         )
-        assert [r["version"] for r in response.data] == [release_2.version, release_1.version]
+        self.assert_expected_versions(response, [release_2, release_1])
+
+        # NOT semver package
+        response = self.get_valid_response(
+            self.organization.slug, query=f"!{SEMVER_PACKAGE_ALIAS}:test2"
+        )
+        self.assert_expected_versions(response, [release_4, release_2, release_1])
 
         response = self.get_valid_response(
             self.organization.slug, query=f"{SEMVER_BUILD_ALIAS}:>124"
         )
-        assert [r["version"] for r in response.data] == [release_3.version]
+        self.assert_expected_versions(response, [release_3])
 
         response = self.get_valid_response(
             self.organization.slug, query=f"{SEMVER_BUILD_ALIAS}:<125"
         )
-        assert [r["version"] for r in response.data] == [release_2.version, release_1.version]
+        self.assert_expected_versions(response, [release_2, release_1])
+
+        # NOT semver build
+        response = self.get_valid_response(
+            self.organization.slug, query=f"!{SEMVER_BUILD_ALIAS}:125"
+        )
+        self.assert_expected_versions(response, [release_4, release_2, release_1])
 
     def test_release_stage_filter(self):
         self.login_as(user=self.user)
 
         response = self.get_valid_response(
-            self.organization.slug, query=f"{RELEASE_STAGE_ALIAS}:adopted"
+            self.organization.slug,
+            query=f"{RELEASE_STAGE_ALIAS}:adopted",
+            environment=self.environment.name,
         )
         assert [r["version"] for r in response.data] == []
 
@@ -391,44 +466,56 @@ class OrganizationReleaseListTest(APITestCase):
         )
 
         response = self.get_valid_response(
-            self.organization.slug, query=f"{RELEASE_STAGE_ALIAS}:{ReleaseStages.ADOPTED}"
+            self.organization.slug,
+            query=f"{RELEASE_STAGE_ALIAS}:{ReleaseStages.ADOPTED}",
+            environment=self.environment.name,
         )
-        assert [r["version"] for r in response.data] == [adopted_release.version]
+        self.assert_expected_versions(response, [adopted_release])
 
         response = self.get_valid_response(
-            self.organization.slug, query=f"{RELEASE_STAGE_ALIAS}:{ReleaseStages.LOW_ADOPTION}"
+            self.organization.slug,
+            query=f"{RELEASE_STAGE_ALIAS}:{ReleaseStages.LOW_ADOPTION}",
+            environment=self.environment.name,
         )
-        assert [r["version"] for r in response.data] == [not_adopted_release.version]
+        self.assert_expected_versions(response, [not_adopted_release])
 
         response = self.get_valid_response(
-            self.organization.slug, query=f"{RELEASE_STAGE_ALIAS}:{ReleaseStages.REPLACED}"
+            self.organization.slug,
+            query=f"{RELEASE_STAGE_ALIAS}:{ReleaseStages.REPLACED}",
+            environment=self.environment.name,
         )
-        assert [r["version"] for r in response.data] == [replaced_release.version]
+        self.assert_expected_versions(response, [replaced_release])
+
+        # NOT release stage
+        response = self.get_valid_response(
+            self.organization.slug,
+            query=f"!{RELEASE_STAGE_ALIAS}:{ReleaseStages.REPLACED}",
+            environment=self.environment.name,
+        )
+        self.assert_expected_versions(response, [not_adopted_release, adopted_release])
 
         response = self.get_valid_response(
             self.organization.slug,
             query=f"{RELEASE_STAGE_ALIAS}:[{ReleaseStages.ADOPTED},{ReleaseStages.REPLACED}]",
+            environment=self.environment.name,
         )
-        assert [r["version"] for r in response.data] == [
-            adopted_release.version,
-            replaced_release.version,
-        ]
+        self.assert_expected_versions(response, [adopted_release, replaced_release])
 
         response = self.get_valid_response(
-            self.organization.slug, query=f"{RELEASE_STAGE_ALIAS}:[{ReleaseStages.LOW_ADOPTION}]"
+            self.organization.slug,
+            query=f"{RELEASE_STAGE_ALIAS}:[{ReleaseStages.LOW_ADOPTION}]",
+            environment=self.environment.name,
         )
 
-        assert [r["version"] for r in response.data] == [not_adopted_release.version]
+        self.assert_expected_versions(response, [not_adopted_release])
 
         response = self.get_valid_response(
             self.organization.slug,
             sort="adoption",
         )
-        assert [r["version"] for r in response.data] == [
-            adopted_release.version,
-            replaced_release.version,
-            not_adopted_release.version,
-        ]
+        self.assert_expected_versions(
+            response, [adopted_release, replaced_release, not_adopted_release]
+        )
         adopted_rpe.update(adopted=timezone.now() - timedelta(minutes=15))
 
         # Replaced should come first now.
@@ -436,16 +523,12 @@ class OrganizationReleaseListTest(APITestCase):
             self.organization.slug,
             sort="adoption",
         )
-        assert [r["version"] for r in response.data] == [
-            replaced_release.version,
-            adopted_release.version,
-            not_adopted_release.version,
-        ]
+        self.assert_expected_versions(
+            response, [replaced_release, adopted_release, not_adopted_release]
+        )
 
         response = self.get_valid_response(self.organization.slug, sort="adoption", per_page=1)
-        assert [r["version"] for r in response.data] == [
-            replaced_release.version,
-        ]
+        self.assert_expected_versions(response, [replaced_release])
         next_cursor = self.get_cursor_headers(response)[1]
         response = self.get_valid_response(
             self.organization.slug,
@@ -453,9 +536,7 @@ class OrganizationReleaseListTest(APITestCase):
             per_page=1,
             cursor=next_cursor,
         )
-        assert [r["version"] for r in response.data] == [
-            adopted_release.version,
-        ]
+        self.assert_expected_versions(response, [adopted_release])
         next_cursor = self.get_cursor_headers(response)[1]
         response = self.get_valid_response(
             self.organization.slug,
@@ -464,9 +545,7 @@ class OrganizationReleaseListTest(APITestCase):
             cursor=next_cursor,
         )
         prev_cursor = self.get_cursor_headers(response)[0]
-        assert [r["version"] for r in response.data] == [
-            not_adopted_release.version,
-        ]
+        self.assert_expected_versions(response, [not_adopted_release])
         response = self.get_valid_response(
             self.organization.slug,
             sort="adoption",
@@ -474,9 +553,7 @@ class OrganizationReleaseListTest(APITestCase):
             cursor=prev_cursor,
         )
         prev_cursor = self.get_cursor_headers(response)[0]
-        assert [r["version"] for r in response.data] == [
-            adopted_release.version,
-        ]
+        self.assert_expected_versions(response, [adopted_release])
         response = self.get_valid_response(
             self.organization.slug,
             sort="adoption",
@@ -484,9 +561,7 @@ class OrganizationReleaseListTest(APITestCase):
             cursor=prev_cursor,
         )
         prev_cursor = self.get_cursor_headers(response)[0]
-        assert [r["version"] for r in response.data] == [
-            replaced_release.version,
-        ]
+        self.assert_expected_versions(response, [replaced_release])
 
         adopted_rpe.update(adopted=timezone.now() - timedelta(minutes=15))
 
@@ -494,14 +569,21 @@ class OrganizationReleaseListTest(APITestCase):
             self.organization.slug,
             query=f"{RELEASE_STAGE_ALIAS}:[{ReleaseStages.LOW_ADOPTION},{ReleaseStages.REPLACED}]",
             sort="adoption",
+            environment=self.environment.name,
         )
-        assert [r["version"] for r in response.data] == [
-            replaced_release.version,
-            not_adopted_release.version,
-        ]
+        self.assert_expected_versions(response, [replaced_release, not_adopted_release])
 
         response = self.get_response(
-            self.organization.slug, query=f"{RELEASE_STAGE_ALIAS}:invalid_stage"
+            self.organization.slug,
+            query=f"{RELEASE_STAGE_ALIAS}:invalid_stage",
+            environment=self.environment.name,
+        )
+        assert response.status_code == 400
+
+        response = self.get_response(
+            self.organization.slug,
+            query=f"{RELEASE_STAGE_ALIAS}:{ReleaseStages.ADOPTED}",
+            # No environment
         )
         assert response.status_code == 400
 
@@ -538,13 +620,8 @@ class OrganizationReleaseListTest(APITestCase):
         )
         release3.add_project(project1)
 
-        url = reverse("sentry-api-0-organization-releases", kwargs={"organization_slug": org.slug})
-        response = self.client.get(url, format="json")
-
-        assert response.status_code == 200, response.content
-        assert len(response.data) == 2
-        assert response.data[0]["version"] == release1.version
-        assert response.data[1]["version"] == release3.version
+        response = self.get_valid_response(org.slug)
+        self.assert_expected_versions(response, [release1, release3])
 
     def test_all_projects_parameter(self):
         user = self.create_user(is_staff=False, is_superuser=False)
@@ -571,13 +648,8 @@ class OrganizationReleaseListTest(APITestCase):
         )
         release2.add_project(project2)
 
-        url = reverse("sentry-api-0-organization-releases", kwargs={"organization_slug": org.slug})
-        response = self.client.get(url, data={"project": [-1]}, format="json")
-
-        assert response.status_code == 200, response.content
-        assert len(response.data) == 2
-        assert response.data[0]["version"] == release2.version
-        assert response.data[1]["version"] == release1.version
+        response = self.get_valid_response(org.slug, project=[-1])
+        self.assert_expected_versions(response, [release2, release1])
 
     def test_new_org(self):
         user = self.create_user(is_staff=False, is_superuser=False)
@@ -585,11 +657,8 @@ class OrganizationReleaseListTest(APITestCase):
         team = self.create_team(organization=org)
         self.create_member(teams=[team], user=user, organization=org)
         self.login_as(user=user)
-        url = reverse("sentry-api-0-organization-releases", kwargs={"organization_slug": org.slug})
-        response = self.client.get(url, format="json")
-
-        assert response.status_code == 200, response.content
-        assert len(response.data) == 0
+        response = self.get_valid_response(org.slug)
+        self.assert_expected_versions(response, [])
 
     def test_archive_release(self):
         self.login_as(user=self.user)
@@ -748,25 +817,18 @@ class OrganizationReleasesStatsTest(APITestCase):
         )
         release1.add_project(project1)
         url = reverse("sentry-api-0-organization-releases", kwargs={"organization_slug": org.slug})
+
+        response = self.client.get(url, format="json")
+
+        assert response.status_code == 200, response.content
+        assert len(response.data) == 1
+        # Not returned because we don't have `adoptionStages=1`.
+        assert "adoptionStages" not in response.data[0]
         response = self.client.get(f"{url}?adoptionStages=1", format="json")
 
         assert response.status_code == 200, response.content
         assert len(response.data) == 1
-        # Not returned because we don't have the feature.
-        assert "adoptionStages" not in response.data[0]
-
-        with self.feature("organizations:release-adoption-stage"):
-            response = self.client.get(url, format="json")
-
-            assert response.status_code == 200, response.content
-            assert len(response.data) == 1
-            # Not returned because we don't have `adoptionStages=1`.
-            assert "adoptionStages" not in response.data[0]
-            response = self.client.get(f"{url}?adoptionStages=1", format="json")
-
-            assert response.status_code == 200, response.content
-            assert len(response.data) == 1
-            assert "adoptionStages" in response.data[0]
+        assert "adoptionStages" in response.data[0]
 
     def test_semver_filter(self):
         self.login_as(user=self.user)
@@ -810,7 +872,9 @@ class OrganizationReleasesStatsTest(APITestCase):
         self.login_as(user=self.user)
 
         response = self.get_valid_response(
-            self.organization.slug, query=f"{RELEASE_STAGE_ALIAS}:adopted"
+            self.organization.slug,
+            query=f"{RELEASE_STAGE_ALIAS}:adopted",
+            environment=self.environment.name,
         )
         assert [r["version"] for r in response.data] == []
 
@@ -837,23 +901,30 @@ class OrganizationReleasesStatsTest(APITestCase):
         )
 
         response = self.get_valid_response(
-            self.organization.slug, query=f"{RELEASE_STAGE_ALIAS}:{ReleaseStages.ADOPTED}"
+            self.organization.slug,
+            query=f"{RELEASE_STAGE_ALIAS}:{ReleaseStages.ADOPTED}",
+            environment=self.environment.name,
         )
         assert [r["version"] for r in response.data] == [adopted_release.version]
 
         response = self.get_valid_response(
-            self.organization.slug, query=f"{RELEASE_STAGE_ALIAS}:{ReleaseStages.LOW_ADOPTION}"
+            self.organization.slug,
+            query=f"{RELEASE_STAGE_ALIAS}:{ReleaseStages.LOW_ADOPTION}",
+            environment=self.environment.name,
         )
         assert [r["version"] for r in response.data] == [not_adopted_release.version]
 
         response = self.get_valid_response(
-            self.organization.slug, query=f"{RELEASE_STAGE_ALIAS}:{ReleaseStages.REPLACED}"
+            self.organization.slug,
+            query=f"{RELEASE_STAGE_ALIAS}:{ReleaseStages.REPLACED}",
+            environment=self.environment.name,
         )
         assert [r["version"] for r in response.data] == [replaced_release.version]
 
         response = self.get_valid_response(
             self.organization.slug,
             query=f"{RELEASE_STAGE_ALIAS}:[{ReleaseStages.ADOPTED},{ReleaseStages.REPLACED}]",
+            environment=self.environment.name,
         )
         assert [r["version"] for r in response.data] == [
             adopted_release.version,
@@ -861,12 +932,23 @@ class OrganizationReleasesStatsTest(APITestCase):
         ]
 
         response = self.get_valid_response(
-            self.organization.slug, query=f"{RELEASE_STAGE_ALIAS}:[{ReleaseStages.LOW_ADOPTION}]"
+            self.organization.slug,
+            query=f"{RELEASE_STAGE_ALIAS}:[{ReleaseStages.LOW_ADOPTION}]",
+            environment=self.environment.name,
         )
         assert [r["version"] for r in response.data] == [not_adopted_release.version]
 
         response = self.get_response(
-            self.organization.slug, query=f"{RELEASE_STAGE_ALIAS}:invalid_stage"
+            self.organization.slug,
+            query=f"{RELEASE_STAGE_ALIAS}:invalid_stage",
+            environment=self.environment.name,
+        )
+        assert response.status_code == 400
+
+        response = self.get_response(
+            self.organization.slug,
+            query=f"{RELEASE_STAGE_ALIAS}:{ReleaseStages.ADOPTED}",
+            # No environment
         )
         assert response.status_code == 400
 
@@ -1183,6 +1265,7 @@ class OrganizationReleaseCreateTest(APITestCase):
         project = self.create_project(name="foo", organization=org, teams=[team])
 
         self.create_member(teams=[team], user=user, organization=org)
+        self.create_member(teams=[team], user=self.user, organization=org)
         self.login_as(user=user)
 
         url = reverse("sentry-api-0-organization-releases", kwargs={"organization_slug": org.slug})
@@ -1955,7 +2038,8 @@ class ReleaseSerializerWithProjectsTest(TestCase):
                 "headCommits": self.headCommits,
                 "refs": self.refs,
                 "projects": self.projects,
-            }
+            },
+            context={"organization": self.organization},
         )
 
         assert serializer.is_valid(), serializer.errors
@@ -1986,7 +2070,8 @@ class ReleaseSerializerWithProjectsTest(TestCase):
 
     def test_fields_not_required(self):
         serializer = ReleaseSerializerWithProjects(
-            data={"version": self.version, "projects": self.projects}
+            data={"version": self.version, "projects": self.projects},
+            context={"organization": self.organization},
         )
         assert serializer.is_valid()
         result = serializer.validated_data
@@ -1995,19 +2080,22 @@ class ReleaseSerializerWithProjectsTest(TestCase):
 
     def test_do_not_allow_null_commits(self):
         serializer = ReleaseSerializerWithProjects(
-            data={"version": self.version, "projects": self.projects, "commits": None}
+            data={"version": self.version, "projects": self.projects, "commits": None},
+            context={"organization": self.organization},
         )
         assert not serializer.is_valid()
 
     def test_do_not_allow_null_head_commits(self):
         serializer = ReleaseSerializerWithProjects(
-            data={"version": self.version, "projects": self.projects, "headCommits": None}
+            data={"version": self.version, "projects": self.projects, "headCommits": None},
+            context={"organization": self.organization},
         )
         assert not serializer.is_valid()
 
     def test_do_not_allow_null_refs(self):
         serializer = ReleaseSerializerWithProjects(
-            data={"version": self.version, "projects": self.projects, "refs": None}
+            data={"version": self.version, "projects": self.projects, "refs": None},
+            context={"organization": self.organization},
         )
         assert not serializer.is_valid()
 
@@ -2017,7 +2105,8 @@ class ReleaseSerializerWithProjectsTest(TestCase):
                 "version": self.version,
                 "projects": self.projects,
                 "ref": "a" * MAX_VERSION_LENGTH,
-            }
+            },
+            context={"organization": self.organization},
         )
         assert serializer.is_valid()
         serializer = ReleaseSerializerWithProjects(
@@ -2025,7 +2114,8 @@ class ReleaseSerializerWithProjectsTest(TestCase):
                 "version": self.version,
                 "projects": self.projects,
                 "ref": "a" * (MAX_VERSION_LENGTH + 1),
-            }
+            },
+            context={"organization": self.organization},
         )
         assert not serializer.is_valid()
 
@@ -2035,14 +2125,16 @@ class ReleaseSerializerWithProjectsTest(TestCase):
         )
         assert serializer.is_valid()
         serializer = ReleaseSerializerWithProjects(
-            data={"version": "a" * (MAX_VERSION_LENGTH + 1), "projects": self.projects}
+            data={"version": "a" * (MAX_VERSION_LENGTH + 1), "projects": self.projects},
+            context={"organization": self.organization},
         )
         assert not serializer.is_valid()
 
     def test_version_does_not_allow_whitespace(self):
         for char in BAD_RELEASE_CHARS:
             serializer = ReleaseSerializerWithProjects(
-                data={"version": char, "projects": self.projects}
+                data={"version": char, "projects": self.projects},
+                context={"organization": self.organization},
             )
             assert not serializer.is_valid()
 
@@ -2050,21 +2142,27 @@ class ReleaseSerializerWithProjectsTest(TestCase):
         serializer = ReleaseSerializerWithProjects(data={"version": ".", "projects": self.projects})
         assert not serializer.is_valid()
         serializer = ReleaseSerializerWithProjects(
-            data={"version": "..", "projects": self.projects}
+            data={"version": "..", "projects": self.projects},
+            context={"organization": self.organization},
         )
         assert not serializer.is_valid()
 
     def test_version_does_not_allow_null_or_empty_value(self):
         serializer = ReleaseSerializerWithProjects(
-            data={"version": None, "projects": self.projects}
+            data={"version": None, "projects": self.projects},
+            context={"organization": self.organization},
         )
         assert not serializer.is_valid()
-        serializer = ReleaseSerializerWithProjects(data={"version": "", "projects": self.projects})
+        serializer = ReleaseSerializerWithProjects(
+            data={"version": "", "projects": self.projects},
+            context={"organization": self.organization},
+        )
         assert not serializer.is_valid()
 
     def test_version_cannot_be_latest(self):
         serializer = ReleaseSerializerWithProjects(
-            data={"version": "Latest", "projects": self.projects}
+            data={"version": "Latest", "projects": self.projects},
+            context={"organization": self.organization},
         )
         assert not serializer.is_valid()
 

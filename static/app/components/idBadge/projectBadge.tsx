@@ -1,11 +1,11 @@
 import * as React from 'react';
 import styled from '@emotion/styled';
 
-import BadgeDisplayName from 'app/components/idBadge/badgeDisplayName';
-import BaseBadge from 'app/components/idBadge/baseBadge';
-import Link from 'app/components/links/link';
-import {Organization} from 'app/types';
-import withOrganization from 'app/utils/withOrganization';
+import BadgeDisplayName from 'sentry/components/idBadge/badgeDisplayName';
+import BaseBadge from 'sentry/components/idBadge/baseBadge';
+import Link from 'sentry/components/links/link';
+import {Organization} from 'sentry/types';
+import withOrganization from 'sentry/utils/withOrganization';
 
 type BaseBadgeProps = React.ComponentProps<typeof BaseBadge>;
 type Project = NonNullable<BaseBadgeProps['project']>;
@@ -25,6 +25,7 @@ type Props = Partial<Omit<BaseBadgeProps, 'project' | 'organization' | 'team'>> 
    * Overides where the project badge links
    */
   to?: React.ComponentProps<typeof Link>['to'];
+  className?: string;
 };
 
 const ProjectBadge = ({
@@ -33,6 +34,7 @@ const ProjectBadge = ({
   to,
   hideOverflow = true,
   disableLink = false,
+  className,
   ...props
 }: Props) => {
   const {slug, id} = project;
@@ -52,10 +54,14 @@ const ProjectBadge = ({
       id ? `?project=${id}` : ''
     }`;
 
-    return <StyledLink to={to ?? defaultTo}>{badge}</StyledLink>;
+    return (
+      <StyledLink to={to ?? defaultTo} className={className}>
+        {badge}
+      </StyledLink>
+    );
   }
 
-  return badge;
+  return React.cloneElement(badge, {className});
 };
 
 const StyledLink = styled(Link)`

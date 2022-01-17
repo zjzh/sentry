@@ -17,9 +17,10 @@ jobs:
   frontend:
     name: frontend tests
     runs-on: ubuntu-20.04
-    timeout-minutes: 20
+    timeout-minutes: 30
     strategy:
       matrix:
+        # XXX: When updating this, make sure you also update CI_NODE_TOTAL.
         instance: [0, 1]
 
     env:
@@ -52,8 +53,16 @@ jobs:
         run: NODE_ENV=production yarn build-css
 
       - name: jest
+        env:
+          GITHUB_PR_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          GITHUB_PR_REF: ${{ github.event.pull_request.head.ref || github.ref }}
+          # XXX: CI_NODE_TOTAL must be hardcoded to the length of strategy.matrix.instance.
+          #      Otherwise, if there are other things in the matrix, using strategy.job-total
+          #      wouldn't be correct.
+          CI_NODE_TOTAL: 2
+          CI_NODE_INDEX: ${{ matrix.instance }}
         run: |
-          CI_NODE_TOTAL=${{ strategy.job-total }} CI_NODE_INDEX=${{ matrix.instance }} JEST_TESTS=$(yarn -s jest --listTests --json) yarn test-ci --forceExit
+          JEST_TESTS=$(yarn -s jest --listTests --json) yarn test-ci --forceExit --testTimeout=10000
 
       - name: Save HTML artifacts
         uses: actions/upload-artifact@v2
@@ -69,7 +78,6 @@ jobs:
           css-path: src/sentry/static/sentry/dist/entrypoints/sentry.css
 
       - name: Save snapshots
-        if: always()
         uses: getsentry/action-visual-snapshot@v2
         with:
           save-only: true
@@ -141,41 +149,25 @@ jobs:
     timeout-minutes: 20
     strategy:
       matrix:
+        python-version: [3.8.12]
+        # XXX: When updating this, make sure you also update MATRIX_INSTANCE_TOTAL.
         instance: [0, 1, 2, 3]
-
     env:
+      # XXX: MATRIX_INSTANCE_TOTAL must be hardcoded to the length of strategy.matrix.instance.
+      MATRIX_INSTANCE_TOTAL: 4
       VISUAL_SNAPSHOT_ENABLE: 1
       TEST_GROUP_STRATEGY: roundrobin
 
     steps:
-      - uses: actions/checkout@v2
-        name: Checkout sentry
+      - name: Checkout sentry
+        uses: actions/checkout@v2
 
-      - name: Set python version output
-        id: python-version
-        run: |
-          echo "::set-output name=python-version::$(cat .python-version)"
-
-      # Until GH composite actions can use `uses`, we need to setup python here
-      - uses: actions/setup-python@v2
-        with:
-          python-version: ${{ steps.python-version.outputs.python-version }}
-
-      - name: Setup pip
-        uses: ./.github/actions/setup-pip
-        id: pip
-
-      - name: pip cache
-        uses: actions/cache@v2
-        with:
-          path: ${{ steps.pip.outputs.pip-cache-dir }}
-          key: |
-            ${{ runner.os }}-py${{ steps.python-version.outputs.python-version }}-pip${{ steps.pip.outputs.pip-version }}-${{ secrets.PIP_CACHE_VERSION }}-${{ hashFiles('requirements-*.txt', '!requirements-pre-commit.txt') }}
-
-      - name: Setup sentry python env
+      - name: Setup sentry env (python ${{ matrix.python-version }})
         uses: ./.github/actions/setup-sentry
         id: setup
         with:
+          python-version: ${{ matrix.python-version }}
+          pip-cache-version: ${{ secrets.PIP_CACHE_VERSION }}
           snuba: true
 
       - name: Wait for frontend build
@@ -195,8 +187,7 @@ jobs:
         run: |
           tar xf dist.tar.gz
 
-      - name: Run acceptance tests (#${{ steps.setup.outputs.matrix-instance-number }} of ${{ strategy.job-total }})
-        if: always()
+      - name: Run acceptance tests (#${{ steps.setup.outputs.matrix-instance-number }} of ${{ steps.setup.outputs.matrix-instance-total }})
         run: |
           mkdir -p ${{ steps.setup.outputs.acceptance-dir }}
           mkdir -p ${{ steps.setup.outputs.acceptance-dir }}-mobile
@@ -207,7 +198,6 @@ jobs:
           USE_SNUBA: 1
 
       - name: Save snapshots
-        if: always()
         uses: getsentry/action-visual-snapshot@v2
         with:
           save-only: true
@@ -222,8 +212,13 @@ jobs:
     timeout-minutes: 30
     strategy:
       matrix:
+        python-version: [3.8.12]
+        # XXX: When updating this, make sure you also update MATRIX_INSTANCE_TOTAL.
         instance: [0]
     env:
+      # XXX: MATRIX_INSTANCE_TOTAL must be hardcoded to the length of strategy.matrix.instance.
+      MATRIX_INSTANCE_TOTAL: 1
+      TEST_GROUP_STRATEGY: roundrobin
       VISUAL_SNAPSHOT_ENABLE: 1
 
     steps:
@@ -233,31 +228,12 @@ jobs:
           # https://github.com/codecov/codecov-bash/blob/7100762afbc822b91806a6574658129fe0d23a7d/codecov#L891
           fetch-depth: '2'
 
-      - name: Set python version output
-        id: python-version
-        run: |
-          echo "::set-output name=python-version::$(cat .python-version)"
-
-      # Until GH composite actions can use `uses`, we need to setup python here
-      - uses: actions/setup-python@v2
-        with:
-          python-version: ${{ steps.python-version.outputs.python-version }}
-
-      - name: Setup pip
-        uses: ./.github/actions/setup-pip
-        id: pip
-
-      - name: pip cache
-        uses: actions/cache@v2
-        with:
-          path: ${{ steps.pip.outputs.pip-cache-dir }}
-          key: |
-            ${{ runner.os }}-py${{ steps.python-version.outputs.python-version }}-pip${{ steps.pip.outputs.pip-version }}-${{ secrets.PIP_CACHE_VERSION }}-${{ hashFiles('requirements-*.txt', '!requirements-pre-commit.txt') }}
-
-      - name: Setup sentry env
+      - name: Setup sentry env (python ${{ matrix.python-version }})
         uses: ./.github/actions/setup-sentry
         id: setup
         with:
+          python-version: ${{ matrix.python-version }}
+          pip-cache-version: ${{ secrets.PIP_CACHE_VERSION }}
           chartcuterie: true
 
       - name: yarn cache
@@ -274,7 +250,7 @@ jobs:
         run: |
           make build-chartcuterie-config
 
-      - name: Run chartcuterie tests (${{ steps.setup.outputs.matrix-instance-number }} of ${{ strategy.job-total }})
+      - name: Run chartcuterie tests (${{ steps.setup.outputs.matrix-instance-number }} of ${{ steps.setup.outputs.matrix-instance-total }})
         run: |
           mkdir -p ${{ steps.setup.outputs.acceptance-dir }}
           make test-chartcuterie
@@ -282,7 +258,6 @@ jobs:
           PYTEST_SNAPSHOTS_DIR: ${{ steps.setup.outputs.acceptance-dir }}
 
       - name: Save snapshots
-        if: always()
         uses: getsentry/action-visual-snapshot@v2
         with:
           save-only: true

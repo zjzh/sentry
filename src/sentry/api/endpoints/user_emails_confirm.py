@@ -1,11 +1,13 @@
 import logging
 
 from rest_framework import serializers, status
+from rest_framework.request import Request
 from rest_framework.response import Response
 
 from sentry.api.bases.user import UserEndpoint
 from sentry.api.validators import AllowedEmailField
 from sentry.models import UserEmail
+from sentry.types.ratelimit import RateLimit, RateLimitCategory
 
 logger = logging.getLogger("sentry.accounts")
 
@@ -31,7 +33,14 @@ class EmailSerializer(serializers.Serializer):
 
 
 class UserEmailsConfirmEndpoint(UserEndpoint):
-    def post(self, request, user):
+    rate_limits = {
+        "POST": {
+            RateLimitCategory.USER: RateLimit(10, 60),
+            RateLimitCategory.ORGANIZATION: RateLimit(10, 60),
+        }
+    }
+
+    def post(self, request: Request, user) -> Response:
         """
         Sends a confirmation email to user
         ``````````````````````````````````
@@ -61,7 +70,7 @@ class UserEmailsConfirmEndpoint(UserEndpoint):
         # If email is specified then try to only send one confirmation email
         try:
             email_to_send = UserEmail.objects.get(
-                user=user, email=serializer.validated_data["email"].lower().strip()
+                user=user, email__iexact=serializer.validated_data["email"].strip()
             )
         except UserEmail.DoesNotExist:
             return InvalidEmailResponse()

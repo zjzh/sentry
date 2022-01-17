@@ -36,6 +36,9 @@ def add_email(email, user):
     if email is None:
         raise InvalidEmailError
 
+    if UserEmail.objects.filter(user=user, email__iexact=email).exists():
+        raise DuplicateEmailError
+
     try:
         with transaction.atomic():
             new_email = UserEmail.objects.create(user=user, email=email)
@@ -48,8 +51,12 @@ def add_email(email, user):
     return new_email
 
 
+from rest_framework.request import Request
+from rest_framework.response import Response
+
+
 class UserEmailsEndpoint(UserEndpoint):
-    def get(self, request, user):
+    def get(self, request: Request, user) -> Response:
         """
         Get list of emails
         ``````````````````
@@ -64,7 +71,7 @@ class UserEmailsEndpoint(UserEndpoint):
         return self.respond(serialize(list(emails), user=user))
 
     @sudo_required
-    def post(self, request, user):
+    def post(self, request: Request, user) -> Response:
         """
         Adds a secondary email address
         ``````````````````````````````
@@ -99,7 +106,7 @@ class UserEmailsEndpoint(UserEndpoint):
             return self.respond(serialize(new_useremail, user=request.user), status=201)
 
     @sudo_required
-    def put(self, request, user):
+    def put(self, request: Request, user) -> Response:
         """
         Updates primary email
         `````````````````````
@@ -193,7 +200,7 @@ class UserEmailsEndpoint(UserEndpoint):
         return self.respond(serialize(new_useremail, user=request.user))
 
     @sudo_required
-    def delete(self, request, user):
+    def delete(self, request: Request, user) -> Response:
         """
         Removes an email from account
         `````````````````````````````
@@ -208,8 +215,11 @@ class UserEmailsEndpoint(UserEndpoint):
             return self.respond(validator.errors, status=400)
 
         email = validator.validated_data["email"]
-        primary_email = UserEmail.get_primary_email(user)
+        primary_email = UserEmail.objects.get_primary_email(user)
         del_email = UserEmail.objects.filter(user=user, email__iexact=email).first()
+        del_useroption_email_list = UserOption.objects.filter(
+            user=user, key="mail:email", value=email
+        )
 
         # Don't allow deleting primary email?
         if primary_email == del_email:
@@ -217,6 +227,9 @@ class UserEmailsEndpoint(UserEndpoint):
 
         if del_email:
             del_email.delete()
+
+        for useroption in del_useroption_email_list:
+            useroption.delete()
 
         logger.info(
             "user.email.remove",

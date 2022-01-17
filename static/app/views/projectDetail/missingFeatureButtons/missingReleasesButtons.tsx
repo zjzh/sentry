@@ -1,12 +1,12 @@
 import styled from '@emotion/styled';
 
-import Button from 'app/components/button';
-import ButtonBar from 'app/components/buttonBar';
-import FeatureTourModal from 'app/components/modals/featureTourModal';
-import {t} from 'app/locale';
-import {Organization} from 'app/types';
-import {trackAnalyticsEvent} from 'app/utils/analytics';
-import {RELEASES_TOUR_STEPS} from 'app/views/releases/list/releasePromo';
+import Button from 'sentry/components/button';
+import ButtonBar from 'sentry/components/buttonBar';
+import FeatureTourModal from 'sentry/components/modals/featureTourModal';
+import {t} from 'sentry/locale';
+import {Organization} from 'sentry/types';
+import {trackAnalyticsEvent} from 'sentry/utils/analytics';
+import {RELEASES_TOUR_STEPS} from 'sentry/views/releases/list/releasesPromo';
 
 const DOCS_URL = 'https://docs.sentry.io/product/releases/';
 const DOCS_HEALTH_URL = 'https://docs.sentry.io/product/releases/health/';
@@ -41,7 +41,7 @@ function MissingReleasesButtons({organization, health, projectId}: Props) {
   }
 
   return (
-    <StyledButtonBar gap={1}>
+    <MissingReleaseButtonBar gap={1}>
       <Button
         size="small"
         priority="primary"
@@ -65,13 +65,12 @@ function MissingReleasesButtons({organization, health, projectId}: Props) {
           )}
         </FeatureTourModal>
       )}
-    </StyledButtonBar>
+    </MissingReleaseButtonBar>
   );
 }
 
-const StyledButtonBar = styled(ButtonBar)`
+export const MissingReleaseButtonBar = styled(ButtonBar)`
   grid-template-columns: minmax(auto, max-content) minmax(auto, max-content);
 `;
 
-export {StyledButtonBar};
 export default MissingReleasesButtons;

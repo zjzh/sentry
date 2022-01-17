@@ -1,6 +1,6 @@
 import styled from '@emotion/styled';
 
-import theme from 'app/utils/theme';
+import theme from 'sentry/utils/theme';
 
 type Props = {
   score: number;
@@ -13,7 +13,7 @@ type Props = {
   vertical?: boolean;
 };
 
-const ScoreBar = ({
+const BaseScoreBar = ({
   score,
   className,
   vertical,
@@ -49,7 +49,7 @@ const ScoreBar = ({
   );
 };
 
-const StyledScoreBar = styled(ScoreBar)`
+const ScoreBar = styled(BaseScoreBar)`
   display: flex;
 
   ${p =>
@@ -78,4 +78,4 @@ const Bar = styled('div')<BarProps>`
   height: ${p => (!p.vertical ? p.size : p.thickness)}px;
 `;
 
-export default StyledScoreBar;
+export default ScoreBar;

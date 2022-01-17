@@ -1,5 +1,7 @@
 from django.utils.datastructures import OrderedSet
 from django.utils.translation import ugettext_lazy as _
+from rest_framework.request import Request
+from rest_framework.response import Response
 
 from sentry.identity.pipeline import IdentityProviderPipeline
 from sentry.integrations import (
@@ -96,8 +98,8 @@ class BitbucketIntegration(IntegrationInstallation, BitbucketIssueBasicMixin, Re
                 for repo in resp.get("values", [])
             ]
 
-        exact_query = ('name="%s"' % (query)).encode("utf-8")
-        fuzzy_query = ('name~"%s"' % (query)).encode("utf-8")
+        exact_query = f'name="{query}"'.encode()
+        fuzzy_query = f'name~"{query}"'.encode()
         exact_search_resp = self.get_client().search_repositories(username, exact_query)
         fuzzy_search_resp = self.get_client().search_repositories(username, fuzzy_query)
 
@@ -200,12 +202,12 @@ class BitbucketIntegrationProvider(IntegrationProvider):
         bindings.add(
             "integration-repository.provider",
             BitbucketRepositoryProvider,
-            id="integrations:%s" % self.key,
+            id=f"integrations:{self.key}",
         )
 
 
 class VerifyInstallation(PipelineView):
-    def dispatch(self, request, pipeline):
+    def dispatch(self, request: Request, pipeline) -> Response:
         try:
             integration = get_integration_from_request(request, BitbucketIntegrationProvider.key)
         except AtlassianConnectValidationError:

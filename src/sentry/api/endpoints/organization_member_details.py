@@ -1,9 +1,10 @@
 from django.db import transaction
 from django.db.models import Q
 from rest_framework import serializers
+from rest_framework.request import Request
 from rest_framework.response import Response
 
-from sentry import roles
+from sentry import ratelimits, roles
 from sentry.api.bases.organization import OrganizationEndpoint, OrganizationPermission
 from sentry.api.exceptions import ResourceDoesNotExist
 from sentry.api.serializers import (
@@ -21,10 +22,12 @@ from sentry.models import (
     InviteStatus,
     OrganizationMember,
     OrganizationMemberTeam,
+    Project,
     Team,
     TeamStatus,
+    UserOption,
 )
-from sentry.utils import metrics, ratelimits
+from sentry.utils import metrics
 
 ERR_NO_AUTH = "You cannot remove this member with an unauthenticated API request."
 ERR_INSUFFICIENT_ROLE = "You cannot remove a member who has more access than you."
@@ -46,9 +49,7 @@ def get_allowed_roles(request, organization, member=None):
         if member and roles.get(acting_member.role).priority < roles.get(member.role).priority:
             can_admin = False
         else:
-            allowed_roles = [
-                r for r in roles.get_all() if r.priority <= roles.get(acting_member.role).priority
-            ]
+            allowed_roles = acting_member.get_allowed_roles_to_invite()
             can_admin = bool(allowed_roles)
     elif is_active_superuser(request):
         allowed_roles = roles.get_all()
@@ -76,7 +77,7 @@ class RelaxedMemberPermission(OrganizationPermission):
 class OrganizationMemberDetailsEndpoint(OrganizationEndpoint):
     permission_classes = [RelaxedMemberPermission]
 
-    def _get_member(self, request, organization, member_id):
+    def _get_member(self, request: Request, organization, member_id):
         if member_id == "me":
             queryset = OrganizationMember.objects.filter(
                 organization=organization, user__id=request.user.id, user__is_active=True
@@ -123,7 +124,7 @@ class OrganizationMemberDetailsEndpoint(OrganizationEndpoint):
 
         return context
 
-    def get(self, request, organization, member_id):
+    def get(self, request: Request, organization, member_id) -> Response:
         """Currently only returns allowed invite roles for member invite"""
 
         try:
@@ -137,7 +138,7 @@ class OrganizationMemberDetailsEndpoint(OrganizationEndpoint):
 
         return Response(context)
 
-    def put(self, request, organization, member_id):
+    def put(self, request: Request, organization, member_id) -> Response:
         try:
             om = self._get_member(request, organization, member_id)
         except OrganizationMember.DoesNotExist:
@@ -244,7 +245,7 @@ class OrganizationMemberDetailsEndpoint(OrganizationEndpoint):
 
         return Response(context)
 
-    def delete(self, request, organization, member_id):
+    def delete(self, request: Request, organization, member_id) -> Response:
         try:
             om = self._get_member(request, organization, member_id)
         except OrganizationMember.DoesNotExist:
@@ -277,6 +278,17 @@ class OrganizationMemberDetailsEndpoint(OrganizationEndpoint):
             AuthIdentity.objects.filter(
                 user=om.user, auth_provider__organization=organization
             ).delete()
+
+            # Delete instances of `UserOption` that are scoped to the projects within the
+            # organization when corresponding member is removed from org
+            proj_list = Project.objects.filter(organization=organization).values_list(
+                "id", flat=True
+            )
+            uo_list = UserOption.objects.filter(
+                user=om.user, project_id__in=proj_list, key="mail:email"
+            )
+            for uo in uo_list:
+                uo.delete()
 
             om.delete()
 

@@ -13,6 +13,14 @@ from sentry.utils.strings import truncatechars
 MAX_ACTOR_LABEL_LENGTH = 64
 
 
+def format_ondemand_max_spend(max_spend_in_cents):
+    ondemand_max_spend = max_spend_in_cents / 100
+    has_cents = (ondemand_max_spend % 1) != 0
+    if has_cents:
+        return f"${ondemand_max_spend:.2f}"
+    return f"${int(ondemand_max_spend)}"
+
+
 class AuditLogEntryEvent:
     MEMBER_INVITE = 1
     MEMBER_ADD = 2
@@ -96,6 +104,10 @@ class AuditLogEntryEvent:
 
     INVITE_REQUEST_ADD = 140
     INVITE_REQUEST_REMOVE = 141
+
+    PROJECT_QUOTA_ADD = 150
+    PROJECT_QUOTA_EDIT = 151
+    PROJECT_QUOTA_REMOVE = 152
 
 
 class AuditLogEntry(Model):
@@ -186,6 +198,9 @@ class AuditLogEntry(Model):
             (AuditLogEntryEvent.PLAN_CANCELLED, "plan.cancelled"),
             (AuditLogEntryEvent.INVITE_REQUEST_ADD, "invite-request.create"),
             (AuditLogEntryEvent.INVITE_REQUEST_REMOVE, "invite-request.remove"),
+            (AuditLogEntryEvent.PROJECT_QUOTA_ADD, "project-quota.add"),
+            (AuditLogEntryEvent.PROJECT_QUOTA_EDIT, "project-quota.edit"),
+            (AuditLogEntryEvent.PROJECT_QUOTA_REMOVE, "project-quota.remove"),
         )
     )
     ip_address = models.GenericIPAddressField(null=True, unpack_ipv4=True)
@@ -195,7 +210,10 @@ class AuditLogEntry(Model):
     class Meta:
         app_label = "sentry"
         db_table = "sentry_auditlogentry"
-        indexes = [models.Index(fields=["organization", "datetime"])]
+        indexes = [
+            models.Index(fields=["organization", "datetime"]),
+            models.Index(fields=["organization", "event", "datetime"]),
+        ]
 
     __repr__ = sane_repr("organization_id", "type")
 
@@ -351,7 +369,11 @@ class AuditLogEntry(Model):
         elif self.event == AuditLogEntryEvent.SET_ONDEMAND:
             if self.data["ondemand"] == -1:
                 return "changed on-demand spend to unlimited"
-            return "changed on-demand max spend to $%d" % (self.data["ondemand"] / 100,)
+            next_ondemand_max_spend = format_ondemand_max_spend(self.data["ondemand"])
+            if "prev_ondemand" in self.data:
+                prev_ondemand_max_spend = format_ondemand_max_spend(self.data["prev_ondemand"])
+                return f"changed on-demand max spend from {prev_ondemand_max_spend} to {next_ondemand_max_spend}"
+            return f"changed on-demand max spend to {next_ondemand_max_spend}"
         elif self.event == AuditLogEntryEvent.TRIAL_STARTED:
             return "started trial"
         elif self.event == AuditLogEntryEvent.PLAN_CHANGED:
@@ -426,5 +448,18 @@ class AuditLogEntry(Model):
             return "request added to invite {}".format(self.data["email"])
         elif self.event == AuditLogEntryEvent.INVITE_REQUEST_REMOVE:
             return "removed the invite request for {}".format(self.data["email"])
-
+        elif self.event == AuditLogEntryEvent.PROJECT_QUOTA_ADD:
+            return (
+                "created project quota for {} with {} as the event type and a limit of {} ".format(
+                    self.data["slug"], self.data["billing_metric"], self.data["limit"]
+                )
+            )
+        elif self.event == AuditLogEntryEvent.PROJECT_QUOTA_EDIT:
+            return "changed project quota for {} with {} as the event type to have a limit of {} ".format(
+                self.data["slug"], self.data["billing_metric"], self.data["limit"]
+            )
+        elif self.event == AuditLogEntryEvent.PROJECT_QUOTA_REMOVE:
+            return "removed project quota for {} with {} as the event type".format(
+                self.data["slug"], self.data["billing_metric"]
+            )
         return ""

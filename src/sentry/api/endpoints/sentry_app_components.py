@@ -1,3 +1,4 @@
+from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.serializers import ValidationError
 
@@ -14,7 +15,7 @@ from sentry.models import Project, SentryAppComponent, SentryAppInstallation
 
 
 class SentryAppComponentsEndpoint(SentryAppBaseEndpoint):
-    def get(self, request, sentry_app):
+    def get(self, request: Request, sentry_app) -> Response:
         return self.paginate(
             request=request,
             queryset=sentry_app.components.all(),
@@ -23,9 +24,13 @@ class SentryAppComponentsEndpoint(SentryAppBaseEndpoint):
         )
 
 
+from rest_framework.request import Request
+from rest_framework.response import Response
+
+
 class OrganizationSentryAppComponentsEndpoint(OrganizationEndpoint):
     @add_integration_platform_metric_tag
-    def get(self, request, organization):
+    def get(self, request: Request, organization) -> Response:
         project_id = request.GET.get("projectId")
         if not project_id:
             raise ValidationError("Required parameter 'projectId' is missing")
@@ -37,7 +42,9 @@ class OrganizationSentryAppComponentsEndpoint(OrganizationEndpoint):
 
         components = []
 
-        for install in SentryAppInstallation.get_installed_for_org(organization.id):
+        for install in SentryAppInstallation.objects.get_installed_for_organization(
+            organization.id
+        ):
             _components = SentryAppComponent.objects.filter(sentry_app_id=install.sentry_app_id)
 
             if "filter" in request.GET:

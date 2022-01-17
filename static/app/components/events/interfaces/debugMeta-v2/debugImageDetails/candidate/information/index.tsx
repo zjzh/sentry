@@ -3,14 +3,13 @@ import styled from '@emotion/styled';
 import capitalize from 'lodash/capitalize';
 import moment from 'moment-timezone';
 
-import DateTime from 'app/components/dateTime';
-import FileSize from 'app/components/fileSize';
-import TimeSince from 'app/components/timeSince';
-import Tooltip from 'app/components/tooltip';
-import {IconWarning} from 'app/icons';
-import {t, tct} from 'app/locale';
-import space from 'app/styles/space';
-import {BuiltinSymbolSource} from 'app/types/debugFiles';
+import DateTime from 'sentry/components/dateTime';
+import FileSize from 'sentry/components/fileSize';
+import TimeSince from 'sentry/components/timeSince';
+import Tooltip from 'sentry/components/tooltip';
+import {IconWarning} from 'sentry/icons';
+import {t, tct} from 'sentry/locale';
+import space from 'sentry/styles/space';
 import {
   CandidateDownloadStatus,
   ImageCandidate,
@@ -18,7 +17,7 @@ import {
   ImageCandidateOk,
   ImageCandidateUnApplied,
   SymbolType,
-} from 'app/types/debugImage';
+} from 'sentry/types/debugImage';
 
 import ProcessingItem from '../../../processing/item';
 import ProcessingList from '../../../processing/list';
@@ -30,7 +29,6 @@ import ProcessingIcon from './processingIcon';
 
 type Props = {
   candidate: ImageCandidate;
-  builtinSymbolSources: Array<BuiltinSymbolSource> | null;
   isInternalSource: boolean;
   hasReprocessWarning: boolean;
   eventDateReceived?: string;
@@ -270,7 +268,7 @@ const Details = styled('div')`
   display: grid;
   grid-auto-flow: column;
   grid-auto-columns: max-content;
-  grid-gap: ${space(1)};
+  gap: ${space(1)};
   color: ${p => p.theme.gray400};
   font-size: ${p => p.theme.fontSizeSmall};
 `;
@@ -279,16 +277,18 @@ const TimeSinceWrapper = styled('div')`
   display: grid;
   grid-template-columns: max-content 1fr;
   align-items: center;
-  grid-gap: ${space(0.5)};
+  gap: ${space(0.5)};
+  font-variant-numeric: tabular-nums;
 `;
 
 const DateTimeWrapper = styled('div')`
   padding-top: ${space(1)};
+  font-variant-numeric: tabular-nums;
 `;
 
 const StyledProcessingList = styled(ProcessingList)`
   display: grid;
   grid-auto-flow: column;
   grid-auto-columns: max-content;
-  grid-gap: ${space(1)};
+  gap: ${space(1)};
 `;

@@ -1,7 +1,9 @@
 from rest_framework import status
+from rest_framework.request import Request
 from rest_framework.response import Response
 
 from sentry.api.bases.project import ProjectAlertRulePermission, ProjectEndpoint
+from sentry.api.endpoints.project_rules import trigger_alert_rule_action_creators
 from sentry.api.exceptions import ResourceDoesNotExist
 from sentry.api.serializers import serialize
 from sentry.api.serializers.rest_framework.rule import RuleSerializer
@@ -22,7 +24,7 @@ from sentry.web.decorators import transaction_start
 class ProjectRuleDetailsEndpoint(ProjectEndpoint):
     permission_classes = (ProjectAlertRulePermission,)
 
-    def convert_args(self, request, rule_id, *args, **kwargs):
+    def convert_args(self, request: Request, rule_id, *args, **kwargs):
         args, kwargs = super().convert_args(request, *args, **kwargs)
         project = kwargs["project"]
 
@@ -39,7 +41,7 @@ class ProjectRuleDetailsEndpoint(ProjectEndpoint):
         return args, kwargs
 
     @transaction_start("ProjectRuleDetailsEndpoint")
-    def get(self, request, project, rule):
+    def get(self, request: Request, project, rule) -> Response:
         """
         Retrieve a rule
 
@@ -53,7 +55,7 @@ class ProjectRuleDetailsEndpoint(ProjectEndpoint):
         return Response(data)
 
     @transaction_start("ProjectRuleDetailsEndpoint")
-    def put(self, request, project, rule):
+    def put(self, request: Request, project, rule) -> Response:
         """
         Update a rule
 
@@ -70,7 +72,11 @@ class ProjectRuleDetailsEndpoint(ProjectEndpoint):
             }}
 
         """
-        serializer = RuleSerializer(context={"project": project}, data=request.data, partial=True)
+        serializer = RuleSerializer(
+            context={"project": project, "organization": project.organization},
+            data=request.data,
+            partial=True,
+        )
 
         if serializer.is_valid():
             data = serializer.validated_data
@@ -108,7 +114,10 @@ class ProjectRuleDetailsEndpoint(ProjectEndpoint):
                 context = {"uuid": client.uuid}
                 return Response(context, status=202)
 
+            trigger_alert_rule_action_creators(kwargs.get("actions"))
+
             updated_rule = project_rules.Updater.run(rule=rule, request=request, **kwargs)
+
             RuleActivity.objects.create(
                 rule=updated_rule, user=request.user, type=RuleActivityType.UPDATED.value
             )
@@ -125,7 +134,7 @@ class ProjectRuleDetailsEndpoint(ProjectEndpoint):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     @transaction_start("ProjectRuleDetailsEndpoint")
-    def delete(self, request, project, rule):
+    def delete(self, request: Request, project, rule) -> Response:
         """
         Delete a rule
         """

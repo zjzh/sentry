@@ -1,20 +1,22 @@
 import * as React from 'react';
-import {InjectedRouter, Link} from 'react-router';
+import {InjectedRouter} from 'react-router';
 import styled from '@emotion/styled';
 
-import GuideAnchor from 'app/components/assistant/guideAnchor';
-import Badge from 'app/components/badge';
-import Button from 'app/components/button';
-import ButtonBar from 'app/components/buttonBar';
-import * as Layout from 'app/components/layouts/thirds';
-import QueryCount from 'app/components/queryCount';
-import Tooltip from 'app/components/tooltip';
-import {IconPause, IconPlay} from 'app/icons';
-import {t} from 'app/locale';
-import space from 'app/styles/space';
-import {Organization, Project} from 'app/types';
-import {trackAnalyticsEvent} from 'app/utils/analytics';
-import withProjects from 'app/utils/withProjects';
+import GuideAnchor from 'sentry/components/assistant/guideAnchor';
+import Badge from 'sentry/components/badge';
+import Button from 'sentry/components/button';
+import ButtonBar from 'sentry/components/buttonBar';
+import GlobalEventProcessingAlert from 'sentry/components/globalEventProcessingAlert';
+import * as Layout from 'sentry/components/layouts/thirds';
+import Link from 'sentry/components/links/link';
+import QueryCount from 'sentry/components/queryCount';
+import Tooltip from 'sentry/components/tooltip';
+import {IconPause, IconPlay} from 'sentry/icons';
+import {t} from 'sentry/locale';
+import space from 'sentry/styles/space';
+import {Organization, Project} from 'sentry/types';
+import {trackAnalyticsEvent} from 'sentry/utils/analytics';
+import withProjects from 'sentry/utils/withProjects';
 
 import SavedSearchTab from './savedSearchTab';
 import {getTabs, IssueSortOptions, Query, QueryCounts, TAB_MAX_COUNT} from './utils';
@@ -44,12 +46,11 @@ type Props = {
   sort: string;
   queryCounts: QueryCounts;
   realtimeActive: boolean;
-  orgSlug: Organization['slug'];
   router: InjectedRouter;
-  projectIds: Array<string>;
-  projects: Array<Project>;
   onRealtimeChange: (realtime: boolean) => void;
   displayReprocessingTab: boolean;
+  selectedProjectIds: number[];
+  projects: Project[];
   queryCount?: number;
 } & React.ComponentProps<typeof SavedSearchTab>;
 
@@ -66,6 +67,8 @@ function IssueListHeader({
   savedSearchList,
   router,
   displayReprocessingTab,
+  selectedProjectIds,
+  projects,
 }: Props) {
   const tabs = getTabs(organization);
   const visibleTabs = displayReprocessingTab
@@ -88,86 +91,89 @@ function IssueListHeader({
     }
   }
 
-  return (
-    <React.Fragment>
-      <BorderlessHeader>
-        <StyledHeaderContent>
-          <StyledLayoutTitle>{t('Issues')}</StyledLayoutTitle>
-        </StyledHeaderContent>
-        <Layout.HeaderActions>
-          <ButtonBar gap={1}>
-            <Button
-              size="small"
-              data-test-id="real-time"
-              title={t('%s real-time updates', realtimeActive ? t('Pause') : t('Enable'))}
-              onClick={() => onRealtimeChange(!realtimeActive)}
-            >
-              {realtimeActive ? <IconPause size="xs" /> : <IconPlay size="xs" />}
-            </Button>
-          </ButtonBar>
-        </Layout.HeaderActions>
-      </BorderlessHeader>
-      <TabLayoutHeader>
-        <Layout.HeaderNavTabs underlined>
-          {visibleTabs.map(
-            ([tabQuery, {name: queryName, tooltipTitle, tooltipHoverable}]) => {
-              const to = {
-                query: {
-                  ...queryParms,
-                  query: tabQuery,
-                  sort:
-                    tabQuery === Query.FOR_REVIEW ? IssueSortOptions.INBOX : sortParam,
-                },
-                pathname: `/organizations/${organization.slug}/issues/`,
-              };
+  const selectedProjects = projects.filter(({id}) =>
+    selectedProjectIds.includes(Number(id))
+  );
 
-              return (
-                <li key={tabQuery} className={query === tabQuery ? 'active' : ''}>
-                  <Link to={to} onClick={() => trackTabClick(tabQuery)}>
-                    <WrapGuideTabs query={query} tabQuery={tabQuery} to={to}>
-                      <Tooltip
-                        title={tooltipTitle}
-                        position="bottom"
-                        isHoverable={tooltipHoverable}
-                        delay={1000}
-                      >
-                        {queryName}{' '}
-                        {queryCounts[tabQuery]?.count > 0 && (
-                          <Badge
-                            type={
-                              tabQuery === Query.FOR_REVIEW &&
-                              queryCounts[tabQuery]!.count > 0
-                                ? 'review'
-                                : 'default'
-                            }
-                          >
-                            <QueryCount
-                              hideParens
-                              count={queryCounts[tabQuery].count}
-                              max={queryCounts[tabQuery].hasMore ? TAB_MAX_COUNT : 1000}
-                            />
-                          </Badge>
-                        )}
-                      </Tooltip>
-                    </WrapGuideTabs>
-                  </Link>
-                </li>
-              );
+  return (
+    <Layout.Header noActionWrap>
+      <Layout.HeaderContent>
+        <StyledLayoutTitle>{t('Issues')}</StyledLayoutTitle>
+      </Layout.HeaderContent>
+      <Layout.HeaderActions>
+        <ButtonBar gap={1}>
+          <Button
+            size="small"
+            data-test-id="real-time"
+            title={
+              realtimeActive
+                ? t('Pause real-time updates')
+                : t('Enable real-time updates')
             }
-          )}
-          <SavedSearchTab
-            organization={organization}
-            query={query}
-            sort={sort}
-            savedSearchList={savedSearchList}
-            onSavedSearchSelect={onSavedSearchSelect}
-            onSavedSearchDelete={onSavedSearchDelete}
-            isActive={savedSearchTabActive}
-            queryCount={queryCount}
+            icon={realtimeActive ? <IconPause size="xs" /> : <IconPlay size="xs" />}
+            onClick={() => onRealtimeChange(!realtimeActive)}
           />
-        </Layout.HeaderNavTabs>
-      </TabLayoutHeader>
-    </React.Fragment>
+        </ButtonBar>
+      </Layout.HeaderActions>
+      <StyledGlobalEventProcessingAlert projects={selectedProjects} />
+      <Layout.HeaderNavTabs underlined>
+        {visibleTabs.map(
+          ([tabQuery, {name: queryName, tooltipTitle, tooltipHoverable}]) => {
+            const to = {
+              query: {
+                ...queryParms,
+                query: tabQuery,
+                sort: tabQuery === Query.FOR_REVIEW ? IssueSortOptions.INBOX : sortParam,
+              },
+              pathname: `/organizations/${organization.slug}/issues/`,
+            };
+
+            return (
+              <li key={tabQuery} className={query === tabQuery ? 'active' : ''}>
+                <Link to={to} onClick={() => trackTabClick(tabQuery)}>
+                  <WrapGuideTabs query={query} tabQuery={tabQuery} to={to}>
+                    <Tooltip
+                      title={tooltipTitle}
+                      position="bottom"
+                      isHoverable={tooltipHoverable}
+                      delay={1000}
+                    >
+                      {queryName}{' '}
+                      {queryCounts[tabQuery]?.count > 0 && (
+                        <Badge
+                          type={
+                            tabQuery === Query.FOR_REVIEW &&
+                            queryCounts[tabQuery]!.count > 0
+                              ? 'review'
+                              : 'default'
+                          }
+                        >
+                          <QueryCount
+                            hideParens
+                            count={queryCounts[tabQuery].count}
+                            max={queryCounts[tabQuery].hasMore ? TAB_MAX_COUNT : 1000}
+                          />
+                        </Badge>
+                      )}
+                    </Tooltip>
+                  </WrapGuideTabs>
+                </Link>
+              </li>
+            );
+          }
+        )}
+        <SavedSearchTab
+          organization={organization}
+          query={query}
+          sort={sort}
+          savedSearchList={savedSearchList}
+          onSavedSearchSelect={onSavedSearchSelect}
+          onSavedSearchDelete={onSavedSearchDelete}
+          isActive={savedSearchTabActive}
+          queryCount={queryCount}
+        />
+      </Layout.HeaderNavTabs>
+    </Layout.Header>
   );
 }
 
@@ -177,21 +183,13 @@ const StyledLayoutTitle = styled(Layout.Title)`
   margin-top: ${space(0.5)};
 `;
 
-const BorderlessHeader = styled(Layout.Header)`
-  border-bottom: 0;
-  /* Not enough buttons to change direction for mobile view */
-  grid-template-columns: 1fr auto;
-`;
+const StyledGlobalEventProcessingAlert = styled(GlobalEventProcessingAlert)`
+  grid-column: 1/-1;
+  margin-top: ${space(1)};
+  margin-bottom: ${space(1)};
 
-const TabLayoutHeader = styled(Layout.Header)`
-  padding-top: 0;
-
-  @media (max-width: ${p => p.theme.breakpoints[1]}) {
-    padding-top: 0;
+  @media (min-width: ${p => p.theme.breakpoints[1]}) {
+    margin-top: ${space(2)};
+    margin-bottom: 0;
   }
-`;
-
-const StyledHeaderContent = styled(Layout.HeaderContent)`
-  margin-bottom: 0;
-  margin-right: ${space(2)};
 `;

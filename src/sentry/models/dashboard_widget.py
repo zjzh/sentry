@@ -8,6 +8,7 @@ from sentry.db.models import (
     Model,
     sane_repr,
 )
+from sentry.db.models.fields import JSONField
 
 
 class TypesClass:
@@ -34,6 +35,16 @@ class TypesClass:
                 return id
 
 
+class DashboardWidgetTypes(TypesClass):
+    DISCOVER = 0
+    ISSUE = 1
+    TYPES = [
+        (DISCOVER, "discover"),
+        (ISSUE, "issue"),
+    ]
+    TYPE_NAMES = [t[1] for t in TYPES]
+
+
 class DashboardWidgetDisplayTypes(TypesClass):
     LINE_CHART = 0
     AREA_CHART = 1
@@ -42,6 +53,7 @@ class DashboardWidgetDisplayTypes(TypesClass):
     TABLE = 4
     WORLD_MAP = 5
     BIG_NUMBER = 6
+    TOP_N = 7
     TYPES = [
         (LINE_CHART, "line"),
         (AREA_CHART, "area"),
@@ -50,6 +62,7 @@ class DashboardWidgetDisplayTypes(TypesClass):
         (TABLE, "table"),
         (WORLD_MAP, "world_map"),
         (BIG_NUMBER, "big_number"),
+        (TOP_N, "top_n"),
     ]
     TYPE_NAMES = [t[1] for t in TYPES]
 
@@ -92,6 +105,8 @@ class DashboardWidget(Model):
     interval = models.CharField(max_length=10, null=True)
     display_type = BoundedPositiveIntegerField(choices=DashboardWidgetDisplayTypes.as_choices())
     date_added = models.DateTimeField(default=timezone.now)
+    widget_type = BoundedPositiveIntegerField(choices=DashboardWidgetTypes.as_choices(), null=True)
+    detail = JSONField(null=True)
 
     class Meta:
         app_label = "sentry"

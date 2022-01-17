@@ -3,8 +3,8 @@
  * Common constants here
  */
 
-import {t} from 'app/locale';
-import {Scope} from 'app/types';
+import {t} from 'sentry/locale';
+import {Scope} from 'sentry/types';
 
 // This is the element id where we render our React application to
 export const ROOT_ELEMENT = 'blk_router';
@@ -185,6 +185,9 @@ export const AVATAR_URL_MAP = {
   organization: 'organization-avatar',
   project: 'project-avatar',
   user: 'avatar',
+  sentryAppColor: 'sentry-app-avatar',
+  sentryAppSimple: 'sentry-app-avatar',
+  docIntegration: 'doc-integration-avatar',
 };
 
 export const MENU_CLOSE_DELAY = 200;
@@ -215,7 +218,6 @@ export const MAX_AUTOCOMPLETE_RECENT_SEARCHES = 3;
 export const MAX_AUTOCOMPLETE_RELEASES = 5;
 
 export const DEFAULT_PER_PAGE = 50;
-export const TEAMS_PER_PAGE = 25;
 
 // Limit query length so paginated response headers don't
 // go over HTTP header size limits (4Kb)
@@ -254,6 +256,7 @@ export const IS_ACCEPTANCE_TEST = !!process.env.IS_ACCEPTANCE_TEST;
 export const NODE_ENV = process.env.NODE_ENV;
 export const DISABLE_RR_WEB = !!process.env.DISABLE_RR_WEB;
 export const SPA_DSN = process.env.SPA_DSN;
+export const SENTRY_RELEASE_VERSION = process.env.SENTRY_RELEASE_VERSION;
 
 export const DEFAULT_ERROR_JSON = {
   detail: t('Unknown error. Please try again.'),

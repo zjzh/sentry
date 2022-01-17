@@ -1,10 +1,10 @@
 import * as React from 'react';
-import * as queryString from 'query-string';
+import * as qs from 'query-string';
 
-import {addErrorMessage, addSuccessMessage} from 'app/actionCreators/indicator';
-import {t} from 'app/locale';
-import {IntegrationProvider, IntegrationWithConfig, Organization} from 'app/types';
-import {trackIntegrationEvent} from 'app/utils/integrationUtil';
+import {addErrorMessage, addSuccessMessage} from 'sentry/actionCreators/indicator';
+import {t} from 'sentry/locale';
+import {IntegrationProvider, IntegrationWithConfig, Organization} from 'sentry/types';
+import {trackIntegrationAnalytics} from 'sentry/utils/integrationUtil';
 
 type Props = {
   children: (
@@ -63,27 +63,29 @@ export default class AddIntegration extends React.Component<Props> {
   }
 
   openDialog = (urlParams?: {[key: string]: string}) => {
-    trackIntegrationEvent('integrations.installation_start', {
-      integration: this.props.provider.key,
+    const {account, analyticsParams, modalParams, organization, provider} = this.props;
+
+    trackIntegrationAnalytics('integrations.installation_start', {
+      integration: provider.key,
       integration_type: 'first_party',
-      organization: this.props.organization,
-      ...this.props.analyticsParams,
+      organization,
+      ...analyticsParams,
     });
     const name = 'sentryAddIntegration';
-    const {url, width, height} = this.props.provider.setupDialog;
+    const {url, width, height} = provider.setupDialog;
     const {left, top} = this.computeCenteredWindow(width, height);
 
     let query: {[key: string]: string} = {...urlParams};
 
-    if (this.props.account) {
-      query.account = this.props.account;
+    if (account) {
+      query.account = account;
     }
 
-    if (this.props.modalParams) {
-      query = {...query, ...this.props.modalParams};
+    if (modalParams) {
+      query = {...query, ...modalParams};
     }
 
-    const installUrl = `${url}?${queryString.stringify(query)}`;
+    const installUrl = `${url}?${qs.stringify(query)}`;
     const opts = `scrollbars=yes,width=${width},height=${height},top=${top},left=${left}`;
 
     this.dialog = window.open(installUrl, name, opts);
@@ -91,6 +93,8 @@ export default class AddIntegration extends React.Component<Props> {
   };
 
   didReceiveMessage = (message: MessageEvent) => {
+    const {analyticsParams, onInstall, organization, provider} = this.props;
+
     if (message.origin !== document.location.origin) {
       return;
     }
@@ -110,17 +114,19 @@ export default class AddIntegration extends React.Component<Props> {
     if (!data) {
       return;
     }
-    trackIntegrationEvent('integrations.installation_complete', {
-      integration: this.props.provider.key,
+    trackIntegrationAnalytics('integrations.installation_complete', {
+      integration: provider.key,
       integration_type: 'first_party',
-      organization: this.props.organization,
-      ...this.props.analyticsParams,
+      organization,
+      ...analyticsParams,
     });
-    addSuccessMessage(t('%s added', this.props.provider.name));
-    this.props.onInstall(data);
+    addSuccessMessage(t('%s added', provider.name));
+    onInstall(data);
   };
 
   render() {
-    return this.props.children(this.openDialog);
+    const {children} = this.props;
+
+    return children(this.openDialog);
   }
 }

@@ -1,7 +1,7 @@
 import {mountWithTheme} from 'sentry-test/enzyme';
 import {initializeOrg} from 'sentry-test/initializeOrg';
 
-import ProjectTeamAccess from 'app/views/projectDetail/projectTeamAccess';
+import ProjectTeamAccess from 'sentry/views/projectDetail/projectTeamAccess';
 
 describe('ProjectDetail > ProjectTeamAccess', function () {
   const {organization, routerContext} = initializeOrg();
@@ -40,7 +40,7 @@ describe('ProjectDetail > ProjectTeamAccess', function () {
       routerContext
     );
 
-    const assignTeamButton = wrapper.find('Link[aria-label="Assign Team"]');
+    const assignTeamButton = wrapper.find('Link[aria-label="Assign Team"]').at(0);
     expect(assignTeamButton.prop('to')).toBe(
       '/settings/org-slug/projects/project-slug/teams/'
     );

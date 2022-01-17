@@ -1,12 +1,12 @@
 import {Fragment} from 'react';
 import styled from '@emotion/styled';
 
-import {GroupingConfigItem} from 'app/components/events/groupingInfo';
-import ExternalLink from 'app/components/links/externalLink';
-import {t, tct} from 'app/locale';
-import space from 'app/styles/space';
-import marked from 'app/utils/marked';
-import {Field} from 'app/views/settings/components/forms/type';
+import {GroupingConfigItem} from 'sentry/components/events/groupingInfo';
+import ExternalLink from 'sentry/components/links/externalLink';
+import {t, tct} from 'sentry/locale';
+import space from 'sentry/styles/space';
+import marked from 'sentry/utils/marked';
+import {Field} from 'sentry/views/settings/components/forms/type';
 
 // Export route to make these forms searchable by label/help
 export const route = '/settings/:orgId/projects/:projectId/issue-grouping/';
@@ -143,6 +143,9 @@ stack.function:mylibrary_* +app`}
     help: t(
       'Sets the secondary grouping algorithm that should be run in addition to avoid creating too many new groups. Controlled by expiration date below.'
     ),
+    saveMessage: t(
+      'Changing the secondary grouping strategy will affect how many new issues are created.'
+    ),
   },
   secondaryGroupingExpiry: {
     name: 'secondaryGroupingExpiry',
@@ -150,6 +153,11 @@ stack.function:mylibrary_* +app`}
     label: t('Expiration date of secondary grouping'),
     help: t(
       'If this UNIX timestamp is in the past, the secondary grouping configuration stops applying automatically.'
+    ),
+    saveOnBlur: false,
+    saveMessageAlertType: 'info',
+    saveMessage: t(
+      'Changing the expiration date will affect how many new issues are created.'
     ),
   },
 };

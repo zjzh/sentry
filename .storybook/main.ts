@@ -10,7 +10,7 @@ import babelConfig from '../babel.config';
 const toPath = (p: string) => path.join(process.cwd(), p);
 
 const config: StorybookConfig = {
-  stories: ['../docs-ui/stories/*/*.stories.*'],
+  stories: ['../docs-ui/stories/**/*.stories.*'],
   core: {
     builder: 'webpack5',
   },
@@ -20,6 +20,8 @@ const config: StorybookConfig = {
       options: {},
     },
     '@storybook/addon-a11y',
+    '@storybook/addon-links',
+    'storybook-dark-mode',
   ],
 
   // For whatever reason the `babel` config override is not present in

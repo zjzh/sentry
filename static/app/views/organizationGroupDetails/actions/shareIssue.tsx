@@ -1,18 +1,18 @@
 import * as React from 'react';
 import styled from '@emotion/styled';
 
-import ActionButton from 'app/components/actions/button';
-import AutoSelectText from 'app/components/autoSelectText';
-import Button from 'app/components/button';
-import Clipboard from 'app/components/clipboard';
-import Confirm from 'app/components/confirm';
-import DropdownLink from 'app/components/dropdownLink';
-import LoadingIndicator from 'app/components/loadingIndicator';
-import Switch from 'app/components/switchButton';
-import {IconChevron, IconCopy, IconRefresh} from 'app/icons';
-import {t} from 'app/locale';
-import overflowEllipsis from 'app/styles/overflowEllipsis';
-import space from 'app/styles/space';
+import ActionButton from 'sentry/components/actions/button';
+import AutoSelectText from 'sentry/components/autoSelectText';
+import Button from 'sentry/components/button';
+import Clipboard from 'sentry/components/clipboard';
+import Confirm from 'sentry/components/confirm';
+import DropdownLink from 'sentry/components/dropdownLink';
+import LoadingIndicator from 'sentry/components/loadingIndicator';
+import Switch from 'sentry/components/switchButton';
+import {IconChevron, IconCopy, IconRefresh} from 'sentry/icons';
+import {t} from 'sentry/locale';
+import overflowEllipsis from 'sentry/styles/overflowEllipsis';
+import space from 'sentry/styles/space';
 
 type ContainerProps = {
   shareUrl: string;
@@ -21,7 +21,7 @@ type ContainerProps = {
   onCancel: () => void;
 };
 
-type UrlRef = AutoSelectText | null;
+type UrlRef = React.ElementRef<typeof AutoSelectText> | null;
 
 class ShareUrlContainer extends React.Component<ContainerProps> {
   urlRef?: UrlRef;
@@ -31,19 +31,13 @@ class ShareUrlContainer extends React.Component<ContainerProps> {
     this.urlRef?.selectText();
   };
 
-  handleUrlMount = (ref: UrlRef) => {
-    this.urlRef = ref;
-    // Always select url if it's available
-    this.urlRef?.selectText();
-  };
-
   render() {
     const {shareUrl, onConfirming, onCancel, onConfirm} = this.props;
 
     return (
       <UrlContainer>
         <TextContainer>
-          <StyledAutoSelectText ref={ref => this.handleUrlMount(ref)}>
+          <StyledAutoSelectText ref={ref => (this.urlRef = ref)}>
             {shareUrl}
           </StyledAutoSelectText>
         </TextContainer>

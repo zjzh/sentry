@@ -1,24 +1,24 @@
 import {Fragment} from 'react';
 import styled from '@emotion/styled';
 
-import Hook from 'app/components/hook';
-import ExternalLink from 'app/components/links/externalLink';
-import {IconSentry} from 'app/icons';
-import {t} from 'app/locale';
-import ConfigStore from 'app/stores/configStore';
-import space from 'app/styles/space';
-import getDynamicText from 'app/utils/getDynamicText';
+import Hook from 'sentry/components/hook';
+import ExternalLink from 'sentry/components/links/externalLink';
+import {IconSentry} from 'sentry/icons';
+import {t} from 'sentry/locale';
+import ConfigStore from 'sentry/stores/configStore';
+import space from 'sentry/styles/space';
+import getDynamicText from 'sentry/utils/getDynamicText';
 
 type Props = {
   className?: string;
 };
 
-function Footer({className}: Props) {
+function BaseFooter({className}: Props) {
   const config = ConfigStore.getConfig();
   return (
     <footer className={className}>
       <LeftLinks>
-        {config.isOnPremise && (
+        {config.isSelfHosted && (
           <Fragment>
             {'Sentry '}
             {getDynamicText({
@@ -47,7 +47,7 @@ function Footer({className}: Props) {
         <FooterLink href="https://github.com/getsentry/sentry">
           {t('Contribute')}
         </FooterLink>
-        {config.isOnPremise && !config.demoMode && (
+        {config.isSelfHosted && !config.demoMode && (
           <FooterLink href="/out/">{t('Migrate to SaaS')}</FooterLink>
         )}
       </RightLinks>
@@ -101,7 +101,7 @@ const Build = styled('span')`
   margin-left: ${space(1)};
 `;
 
-const StyledFooter = styled(Footer)`
+const Footer = styled(BaseFooter)`
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
   color: ${p => p.theme.subText};
@@ -114,4 +114,4 @@ const StyledFooter = styled(Footer)`
   }
 `;
 
-export default StyledFooter;
+export default Footer;

@@ -44,6 +44,7 @@ from sentry.utils.http import absolute_uri
 from sentry.utils.iterators import chunked
 from sentry.utils.math import mean
 from sentry.utils.outcomes import Outcome
+from sentry.utils.query import RangeQuerySetWrapper
 from sentry.utils.snuba import raw_snql_query
 
 date_format = partial(dateformat.format, format_string="F jS, Y")
@@ -564,16 +565,28 @@ class RedisReportBackend(ReportBackend):
 backend = RedisReportBackend(redis.clusters.get("default"), 60 * 60 * 3)
 
 
-@instrumented_task(name="sentry.tasks.reports.prepare_reports", queue="reports.prepare")
+@instrumented_task(
+    name="sentry.tasks.reports.prepare_reports",
+    queue="reports.prepare",
+    max_retries=5,
+    acks_late=True,
+)
 def prepare_reports(dry_run=False, *args, **kwargs):
     timestamp, duration = _fill_default_parameters(*args, **kwargs)
 
-    organization_ids = _get_organization_queryset().values_list("id", flat=True)
-    for organization_id in organization_ids:
-        prepare_organization_report.delay(timestamp, duration, organization_id, dry_run=dry_run)
+    logger.info("reports.begin_prepare_report")
+
+    organizations = _get_organization_queryset()
+    for organization in RangeQuerySetWrapper(organizations, step=10000):
+        prepare_organization_report.delay(timestamp, duration, organization.id, dry_run=dry_run)
 
 
-@instrumented_task(name="sentry.tasks.reports.prepare_organization_report", queue="reports.prepare")
+@instrumented_task(
+    name="sentry.tasks.reports.prepare_organization_report",
+    queue="reports.prepare",
+    max_retries=5,
+    acks_late=True,
+)
 def prepare_organization_report(timestamp, duration, organization_id, dry_run=False):
     try:
         organization = _get_organization_queryset().get(id=organization_id)
@@ -587,6 +600,14 @@ def prepare_organization_report(timestamp, duration, organization_id, dry_run=Fa
             },
         )
         return
+
+    if features.has("organizations:weekly-report-debugging", organization):
+        logger.info(
+            "reports.org.begin_computing_report",
+            extra={
+                "organization_id": organization.id,
+            },
+        )
 
     backend.prepare(timestamp, duration, organization)
 
@@ -668,8 +689,9 @@ DISABLED_ORGANIZATIONS_USER_OPTION_KEY = "reports:disabled-organizations"
 
 
 def user_subscribed_to_organization_reports(user, organization):
-    return organization.id not in UserOption.objects.get_value(
-        user=user, key=DISABLED_ORGANIZATIONS_USER_OPTION_KEY, default=[]
+    return organization.id not in (
+        UserOption.objects.get_value(user, key=DISABLED_ORGANIZATIONS_USER_OPTION_KEY)
+        or []  # A small number of users have incorrect data stored
     )
 
 
@@ -685,7 +707,10 @@ def has_valid_aggregates(interval, project__report):
 
 
 @instrumented_task(
-    name="sentry.tasks.reports.deliver_organization_user_report", queue="reports.deliver"
+    name="sentry.tasks.reports.deliver_organization_user_report",
+    queue="reports.deliver",
+    max_retries=5,
+    acks_late=True,
 )
 def deliver_organization_user_report(timestamp, duration, organization_id, user_id, dry_run=False):
     try:
@@ -703,9 +728,25 @@ def deliver_organization_user_report(timestamp, duration, organization_id, user_
 
     user = User.objects.get(id=user_id)
 
+    if features.has("organizations:weekly-report-debugging", organization):
+        logger.info(
+            "reports.deliver_organization_user_report.begin",
+            extra={
+                "user_id": user.id,
+                "organization_id": organization.id,
+            },
+        )
     if not user_subscribed_to_organization_reports(user, organization):
+        if features.has("organizations:weekly-report-debugging", organization):
+            logger.info(
+                "reports.user.unsubscribed",
+                extra={
+                    "user_id": user.id,
+                    "organization_id": organization.id,
+                },
+            )
         logger.debug(
-            "Skipping report for %r to %r, user is not subscribed to reports.", organization, user
+            f"Skipping report for {organization} to {user}, user is not subscribed to reports."
         )
         return Skipped.NotSubscribed
 
@@ -714,10 +755,16 @@ def deliver_organization_user_report(timestamp, duration, organization_id, user_
         projects.update(Project.objects.get_for_user(team, user, _skip_team_check=True))
 
     if not projects:
+        if features.has("organizations:weekly-report-debugging", organization):
+            logger.info(
+                "reports.user.no_projects",
+                extra={
+                    "user_id": user.id,
+                    "organization_id": organization.id,
+                },
+            )
         logger.debug(
-            "Skipping report for %r to %r, user is not associated with any projects.",
-            organization,
-            user,
+            f"Skipping report for {organization} to {user}, user is not associated with any projects."
         )
         return Skipped.NoProjects
 
@@ -737,14 +784,30 @@ def deliver_organization_user_report(timestamp, duration, organization_id, user_
     )
 
     if not reports:
+        if features.has("organizations:weekly-report-debugging", organization):
+            logger.info(
+                "reports.user.no_reports",
+                extra={
+                    "user_id": user.id,
+                    "organization_id": organization.id,
+                },
+            )
         logger.debug(
-            "Skipping report for %r to %r, no qualifying reports to deliver.", organization, user
+            f"Skipping report for {organization} to {user}, no qualifying reports to deliver."
         )
         return Skipped.NoReports
 
     message = build_message(timestamp, duration, organization, user, reports)
 
     if not dry_run:
+        if features.has("organizations:weekly-report-debugging", organization):
+            logger.info(
+                "reports.deliver_organization_user_report.finish",
+                extra={
+                    "user_id": user.id,
+                    "organization_id": organization.id,
+                },
+            )
         message.send()
 
 

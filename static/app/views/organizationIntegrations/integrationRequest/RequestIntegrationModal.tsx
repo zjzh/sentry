@@ -1,13 +1,13 @@
 import {Fragment} from 'react';
 
-import {addErrorMessage, addSuccessMessage} from 'app/actionCreators/indicator';
-import {ModalRenderProps} from 'app/actionCreators/modal';
-import AsyncComponent from 'app/components/asyncComponent';
-import Button from 'app/components/button';
-import {t} from 'app/locale';
-import {trackIntegrationEvent} from 'app/utils/integrationUtil';
-import TextareaField from 'app/views/settings/components/forms/textareaField';
-import TextBlock from 'app/views/settings/components/text/textBlock';
+import {addErrorMessage, addSuccessMessage} from 'sentry/actionCreators/indicator';
+import {ModalRenderProps} from 'sentry/actionCreators/modal';
+import AsyncComponent from 'sentry/components/asyncComponent';
+import Button from 'sentry/components/button';
+import {t} from 'sentry/locale';
+import {trackIntegrationAnalytics} from 'sentry/utils/integrationUtil';
+import TextareaField from 'sentry/views/settings/components/forms/textareaField';
+import TextBlock from 'sentry/views/settings/components/text/textBlock';
 
 import RequestIntegrationButton from './RequestIntegrationButton';
 
@@ -37,7 +37,7 @@ export default class RequestIntegrationModal extends AsyncComponent<Props, State
     const {organization, slug, type} = this.props;
     const {message} = this.state;
 
-    trackIntegrationEvent('integrations.request_install', {
+    trackIntegrationAnalytics('integrations.request_install', {
       integration_type: type,
       integration: slug,
       organization,

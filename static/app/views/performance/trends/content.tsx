@@ -3,23 +3,23 @@ import {browserHistory} from 'react-router';
 import styled from '@emotion/styled';
 import {Location} from 'history';
 
-import Alert from 'app/components/alert';
-import Breadcrumbs from 'app/components/breadcrumbs';
-import DropdownControl, {DropdownItem} from 'app/components/dropdownControl';
-import SearchBar from 'app/components/events/searchBar';
-import * as Layout from 'app/components/layouts/thirds';
-import GlobalSelectionHeader from 'app/components/organizations/globalSelectionHeader';
-import {MAX_QUERY_LENGTH} from 'app/constants';
-import {IconFlag} from 'app/icons/iconFlag';
-import {t} from 'app/locale';
-import space from 'app/styles/space';
-import {GlobalSelection, Organization} from 'app/types';
-import {trackAnalyticsEvent} from 'app/utils/analytics';
-import EventView from 'app/utils/discover/eventView';
-import {generateAggregateFields} from 'app/utils/discover/fields';
-import {decodeScalar} from 'app/utils/queryString';
-import {MutableSearch} from 'app/utils/tokenizeSearch';
-import withGlobalSelection from 'app/utils/withGlobalSelection';
+import Alert from 'sentry/components/alert';
+import Breadcrumbs from 'sentry/components/breadcrumbs';
+import DropdownControl, {DropdownItem} from 'sentry/components/dropdownControl';
+import SearchBar from 'sentry/components/events/searchBar';
+import * as Layout from 'sentry/components/layouts/thirds';
+import PageFiltersContainer from 'sentry/components/organizations/pageFilters/container';
+import {MAX_QUERY_LENGTH} from 'sentry/constants';
+import {IconFlag} from 'sentry/icons/iconFlag';
+import {t} from 'sentry/locale';
+import space from 'sentry/styles/space';
+import {Organization, PageFilters} from 'sentry/types';
+import {trackAnalyticsEvent} from 'sentry/utils/analytics';
+import EventView from 'sentry/utils/discover/eventView';
+import {generateAggregateFields} from 'sentry/utils/discover/fields';
+import {decodeScalar} from 'sentry/utils/queryString';
+import {MutableSearch} from 'sentry/utils/tokenizeSearch';
+import withPageFilters from 'sentry/utils/withPageFilters';
 
 import {getPerformanceLandingUrl, getTransactionSearchQuery} from '../utils';
 
@@ -31,17 +31,17 @@ import {
   getCurrentTrendFunction,
   getCurrentTrendParameter,
   getSelectedQueryKey,
-  getTrendsParameters,
   modifyTrendsViewDefaultPeriod,
   resetCursors,
   TRENDS_FUNCTIONS,
+  TRENDS_PARAMETERS,
 } from './utils';
 
 type Props = {
   organization: Organization;
   location: Location;
   eventView: EventView;
-  selection: GlobalSelection;
+  selection: PageFilters;
 };
 
 type State = {
@@ -195,12 +195,8 @@ class TrendsContent extends React.Component<Props, State> {
     const currentTrendParameter = getCurrentTrendParameter(location);
     const query = getTransactionSearchQuery(location);
 
-    const TRENDS_PARAMETERS = getTrendsParameters({
-      canSeeSpanOpTrends: organization.features.includes('performance-ops-breakdown'),
-    });
-
     return (
-      <GlobalSelectionHeader
+      <PageFiltersContainer
         defaultSelection={{
           datetime: {
             start: null,
@@ -295,7 +291,7 @@ class TrendsContent extends React.Component<Props, State> {
             </DefaultTrends>
           </Layout.Main>
         </Layout.Body>
-      </GlobalSelectionHeader>
+      </PageFiltersContainer>
     );
   }
 }
@@ -319,14 +315,10 @@ class DefaultTrends extends React.Component<DefaultTrendsProps> {
     if (queryString || this.hasPushedDefaults) {
       this.hasPushedDefaults = true;
       return <React.Fragment>{children}</React.Fragment>;
-    } else {
-      this.hasPushedDefaults = true;
-      conditions.setFilterValues('tpm()', ['>0.01']);
-      conditions.setFilterValues(trendParameter.column, [
-        '>0',
-        `<${DEFAULT_MAX_DURATION}`,
-      ]);
     }
+    this.hasPushedDefaults = true;
+    conditions.setFilterValues('tpm()', ['>0.01']);
+    conditions.setFilterValues(trendParameter.column, ['>0', `<${DEFAULT_MAX_DURATION}`]);
 
     const query = conditions.formatString();
     eventView.query = query;
@@ -359,7 +351,7 @@ const StyledSearchContainer = styled('div')`
 
 const TrendsLayoutContainer = styled('div')`
   display: grid;
-  grid-gap: ${space(2)};
+  gap: ${space(2)};
 
   @media (min-width: ${p => p.theme.breakpoints[1]}) {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -367,4 +359,4 @@ const TrendsLayoutContainer = styled('div')`
   }
 `;
 
-export default withGlobalSelection(TrendsContent);
+export default withPageFilters(TrendsContent);

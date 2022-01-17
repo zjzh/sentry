@@ -1,12 +1,13 @@
 import {Component} from 'react';
+import styled from '@emotion/styled';
 import capitalize from 'lodash/capitalize';
 import pick from 'lodash/pick';
 
-import {t, tct} from 'app/locale';
-import {ExternalActorMapping, Integration, Organization} from 'app/types';
-import {FieldFromConfig} from 'app/views/settings/components/forms';
-import Form from 'app/views/settings/components/forms/form';
-import {Field} from 'app/views/settings/components/forms/type';
+import {t, tct} from 'sentry/locale';
+import {ExternalActorMapping, Integration, Organization} from 'sentry/types';
+import {FieldFromConfig} from 'sentry/views/settings/components/forms';
+import Form from 'sentry/views/settings/components/forms/form';
+import {Field} from 'sentry/views/settings/components/forms/type';
 
 type Props = Pick<Form['props'], 'onSubmitSuccess' | 'onCancel'> &
   Partial<Pick<Form['props'], 'onSubmit'>> & {
@@ -107,24 +108,32 @@ export default class IntegrationExternalMappingForm extends Component<Props> {
     const apiMethod = !baseEndpoint ? undefined : mapping ? 'PUT' : 'POST';
 
     return (
-      <Form
-        onSubmitSuccess={onSubmitSuccess}
-        initialData={this.initialData}
-        apiEndpoint={endpoint}
-        apiMethod={apiMethod}
-        onCancel={onCancel}
-        onSubmit={onSubmit}
-      >
-        {this.formFields.map(field => (
-          <FieldFromConfig
-            key={field.name}
-            field={field}
-            inline={false}
-            stacked
-            flexibleControlStateSize
-          />
-        ))}
-      </Form>
+      <FormWrapper>
+        <Form
+          requireChanges
+          onSubmitSuccess={onSubmitSuccess}
+          initialData={this.initialData}
+          apiEndpoint={endpoint}
+          apiMethod={apiMethod}
+          onCancel={onCancel}
+          onSubmit={onSubmit}
+        >
+          {this.formFields.map(field => (
+            <FieldFromConfig
+              key={field.name}
+              field={field}
+              inline={false}
+              stacked
+              flexibleControlStateSize
+            />
+          ))}
+        </Form>
+      </FormWrapper>
     );
   }
 }
+
+// Prevents errors from appearing off the modal
+const FormWrapper = styled('div')`
+  position: relative;
+`;

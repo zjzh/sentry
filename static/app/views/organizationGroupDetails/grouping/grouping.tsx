@@ -1,26 +1,25 @@
-import React, {useEffect, useState} from 'react';
-import {InjectedRouter} from 'react-router';
+import {Fragment, useEffect, useState} from 'react';
+import {browserHistory, InjectedRouter} from 'react-router';
 import styled from '@emotion/styled';
 import {Location} from 'history';
 import debounce from 'lodash/debounce';
 
-import {Client} from 'app/api';
-import ExternalLink from 'app/components/links/externalLink';
-import LoadingIndicator from 'app/components/loadingIndicator';
-import Pagination from 'app/components/pagination';
-import PaginationCaption from 'app/components/pagination/paginationCaption';
-import {PanelTable} from 'app/components/panels';
-import {DEFAULT_DEBOUNCE_DURATION} from 'app/constants';
-import {IconMegaphone} from 'app/icons';
-import {t, tct, tn} from 'app/locale';
-import space from 'app/styles/space';
-import {BaseGroup, Group, Organization, Project} from 'app/types';
-import {defined} from 'app/utils';
-import parseLinkHeader from 'app/utils/parseLinkHeader';
-import withApi from 'app/utils/withApi';
+import {Client} from 'sentry/api';
+import ExternalLink from 'sentry/components/links/externalLink';
+import LoadingIndicator from 'sentry/components/loadingIndicator';
+import Pagination from 'sentry/components/pagination';
+import {PanelTable} from 'sentry/components/panels';
+import {DEFAULT_DEBOUNCE_DURATION} from 'sentry/constants';
+import {IconMegaphone} from 'sentry/icons';
+import {t, tct, tn} from 'sentry/locale';
+import space from 'sentry/styles/space';
+import {BaseGroup, Group, Organization, Project} from 'sentry/types';
+import {defined} from 'sentry/utils';
+import parseLinkHeader from 'sentry/utils/parseLinkHeader';
+import withApi from 'sentry/utils/withApi';
 import RangeSlider, {
   Slider,
-} from 'app/views/settings/components/forms/controls/rangeSlider';
+} from 'sentry/views/settings/components/forms/controls/rangeSlider';
 
 import ErrorMessage from './errorMessage';
 import NewIssue from './newIssue';
@@ -28,12 +27,12 @@ import NewIssue from './newIssue';
 type Error = React.ComponentProps<typeof ErrorMessage>['error'];
 
 type Props = {
+  api: Client;
   organization: Organization;
   groupId: Group['id'];
   projSlug: Project['slug'];
-  location: Location<{level?: number; cursor?: string}>;
-  api: Client;
   router: InjectedRouter;
+  location: Location<{level?: number; cursor?: string}>;
 };
 
 type GroupingLevelDetails = Partial<Pick<BaseGroup, 'title' | 'metadata'>> & {
@@ -81,6 +80,7 @@ function Grouping({api, groupId, location, organization, router, projSlug}: Prop
 
   useEffect(() => {
     fetchGroupingLevels();
+    return browserHistory.listen(handleRouteLeave);
   }, []);
 
   useEffect(() => {
@@ -94,6 +94,30 @@ function Grouping({api, groupId, location, organization, router, projSlug}: Prop
   useEffect(() => {
     fetchGroupingLevelDetails();
   }, [activeGroupingLevel, cursor]);
+
+  function handleRouteLeave(newLocation: Location<{level?: number; cursor?: string}>) {
+    if (
+      newLocation.pathname === location.pathname ||
+      (newLocation.pathname !== location.pathname &&
+        newLocation.query.cursor === undefined &&
+        newLocation.query.level === undefined)
+    ) {
+      return true;
+    }
+
+    // Removes cursor and level from the URL on route leave
+    // so that the parameters will not interfere with other pages
+    browserHistory.replace({
+      pathname: newLocation.pathname,
+      query: {
+        ...newLocation.query,
+        cursor: undefined,
+        level: undefined,
+      },
+    });
+
+    return false;
+  }
 
   const handleSetActiveGroupingLevel = debounce((groupingLevelId: number | '') => {
     setActiveGroupingLevel(Number(groupingLevelId));
@@ -187,16 +211,17 @@ function Grouping({api, groupId, location, organization, router, projSlug}: Prop
 
   if (error) {
     return (
-      <React.Fragment>
+      <Fragment>
         <ErrorMessage
           onRetry={fetchGroupingLevels}
           groupId={groupId}
           error={error}
           projSlug={projSlug}
           orgSlug={organization.slug}
+          hasProjectWriteAccess={organization.access.includes('project:write')}
         />
         <LinkFooter />
-      </React.Fragment>
+      </Fragment>
     );
   }
 
@@ -253,19 +278,15 @@ function Grouping({api, groupId, location, organization, router, projSlug}: Prop
           <StyledPagination
             pageLinks={pagination}
             disabled={isGroupingLevelDetailsLoading}
-            caption={
-              <PaginationCaption
-                caption={tct('Showing [current] of [total] [result]', {
-                  result: hasMore
-                    ? t('results')
-                    : tn('result', 'results', paginationCurrentQuantity),
-                  current: paginationCurrentQuantity,
-                  total: hasMore
-                    ? `${paginationCurrentQuantity}+`
-                    : paginationCurrentQuantity,
-                })}
-              />
-            }
+            caption={tct('Showing [current] of [total] [result]', {
+              result: hasMore
+                ? t('results')
+                : tn('result', 'results', paginationCurrentQuantity),
+              current: paginationCurrentQuantity,
+              total: hasMore
+                ? `${paginationCurrentQuantity}+`
+                : paginationCurrentQuantity,
+            })}
           />
         </Content>
       </Body>
@@ -302,7 +323,7 @@ const Footer = styled('p')`
 
 const Body = styled('div')`
   display: grid;
-  grid-gap: ${space(3)};
+  gap: ${space(3)};
 `;
 
 const StyledPanelTable = styled(PanelTable)`
@@ -341,7 +362,7 @@ const Content = styled('div')<{isReloading: boolean}>`
 
 const SliderWrapper = styled('div')`
   display: grid;
-  grid-gap: ${space(1.5)};
+  gap: ${space(1.5)};
   grid-template-columns: max-content max-content;
   justify-content: space-between;
   align-items: flex-start;

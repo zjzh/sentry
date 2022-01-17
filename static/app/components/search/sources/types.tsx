@@ -1,4 +1,4 @@
-import parseHtmlMarks from 'app/utils/parseHtmlMarks';
+import parseHtmlMarks from 'sentry/utils/parseHtmlMarks';
 
 type MarkedText = ReturnType<typeof parseHtmlMarks>;
 
@@ -39,6 +39,8 @@ export type ResultItem = {
     | 'issue'
     | 'event'
     | 'integration'
+    | 'sentryApp'
+    | 'docIntegration'
     | 'help-docs'
     | 'help-develop'
     | 'help-help-center'
@@ -64,6 +66,7 @@ export type ResultItem = {
   // Used to store groups and events
   model?: any;
   configUrl?: string;
+  disabled?: boolean;
 };
 
 /**

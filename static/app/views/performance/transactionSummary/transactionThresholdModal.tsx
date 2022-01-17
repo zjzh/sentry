@@ -1,26 +1,25 @@
 import * as React from 'react';
-import {Link} from 'react-router';
 import {css} from '@emotion/react';
 import styled from '@emotion/styled';
 import cloneDeep from 'lodash/cloneDeep';
 import set from 'lodash/set';
 
-import {addErrorMessage} from 'app/actionCreators/indicator';
-import {ModalRenderProps} from 'app/actionCreators/modal';
-import {Client} from 'app/api';
-import Button from 'app/components/button';
-import ButtonBar from 'app/components/buttonBar';
-import FeatureBadge from 'app/components/featureBadge';
-import SelectControl from 'app/components/forms/selectControl';
-import {t, tct} from 'app/locale';
-import space from 'app/styles/space';
-import {Organization, Project} from 'app/types';
-import {defined} from 'app/utils';
-import EventView from 'app/utils/discover/eventView';
-import withApi from 'app/utils/withApi';
-import withProjects from 'app/utils/withProjects';
-import Input from 'app/views/settings/components/forms/controls/input';
-import Field from 'app/views/settings/components/forms/field';
+import {addErrorMessage} from 'sentry/actionCreators/indicator';
+import {ModalRenderProps} from 'sentry/actionCreators/modal';
+import {Client} from 'sentry/api';
+import Button from 'sentry/components/button';
+import ButtonBar from 'sentry/components/buttonBar';
+import SelectControl from 'sentry/components/forms/selectControl';
+import Link from 'sentry/components/links/link';
+import {t, tct} from 'sentry/locale';
+import space from 'sentry/styles/space';
+import {Organization, Project} from 'sentry/types';
+import {defined} from 'sentry/utils';
+import EventView from 'sentry/utils/discover/eventView';
+import withApi from 'sentry/utils/withApi';
+import withProjects from 'sentry/utils/withProjects';
+import Input from 'sentry/views/settings/components/forms/controls/input';
+import Field from 'sentry/views/settings/components/forms/field';
 
 import {transactionSummaryRouteWithQuery} from './utils';
 
@@ -64,10 +63,9 @@ class TransactionThresholdModal extends React.Component<Props, State> {
 
     if (defined(project)) {
       return projects.find(proj => proj.id === project);
-    } else {
-      const projectId = String(eventView.project[0]);
-      return projects.find(proj => proj.id === projectId);
     }
+    const projectId = String(eventView.project[0]);
+    return projects.find(proj => proj.id === projectId);
   }
 
   handleApply = async (event: React.FormEvent) => {
@@ -247,9 +245,7 @@ class TransactionThresholdModal extends React.Component<Props, State> {
     return (
       <React.Fragment>
         <Header closeButton>
-          <h4>
-            {t('Transaction Settings')} <FeatureBadge type="new" />
-          </h4>
+          <h4>{t('Transaction Settings')}</h4>
         </Header>
         <Body>
           <Instruction>

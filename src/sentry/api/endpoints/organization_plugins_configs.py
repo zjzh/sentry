@@ -1,3 +1,5 @@
+from django.http.response import Http404
+from rest_framework.request import Request
 from rest_framework.response import Response
 
 from sentry.api.bases.organization import OrganizationEndpoint
@@ -9,7 +11,7 @@ from sentry.plugins.base import plugins
 
 
 class OrganizationPluginsConfigsEndpoint(OrganizationEndpoint):
-    def get(self, request, organization):
+    def get(self, request: Request, organization) -> Response:
 
         """
         List one or more plugin configurations, including a `projectList` for each plugin which contains
@@ -83,6 +85,8 @@ class OrganizationPluginsConfigsEndpoint(OrganizationEndpoint):
         serialized_plugins = []
         for plugin in desired_plugins:
             serialized_plugin = serialize(plugin, request.user, PluginSerializer())
+            if serialized_plugin["isDeprecated"]:
+                continue
 
             serialized_plugin["projectList"] = []
 
@@ -112,5 +116,8 @@ class OrganizationPluginsConfigsEndpoint(OrganizationEndpoint):
             # sort by the projectSlug
             serialized_plugin["projectList"].sort(key=lambda x: x["projectSlug"])
             serialized_plugins.append(serialized_plugin)
+
+        if not serialized_plugins:
+            raise Http404
 
         return Response(serialized_plugins)

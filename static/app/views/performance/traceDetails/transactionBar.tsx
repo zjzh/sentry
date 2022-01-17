@@ -1,45 +1,50 @@
 import * as React from 'react';
 import {Location} from 'history';
 
-import GuideAnchor from 'app/components/assistant/guideAnchor';
-import Count from 'app/components/count';
-import * as AnchorLinkManager from 'app/components/events/interfaces/spans/anchorLinkManager';
-import * as DividerHandlerManager from 'app/components/events/interfaces/spans/dividerHandlerManager';
-import * as ScrollbarManager from 'app/components/events/interfaces/spans/scrollbarManager';
-import {ROW_HEIGHT} from 'app/components/performance/waterfall/constants';
-import {Row, RowCell, RowCellContainer} from 'app/components/performance/waterfall/row';
-import {DurationPill, RowRectangle} from 'app/components/performance/waterfall/rowBar';
+import GuideAnchor from 'sentry/components/assistant/guideAnchor';
+import Count from 'sentry/components/count';
+import * as AnchorLinkManager from 'sentry/components/events/interfaces/spans/anchorLinkManager';
+import * as DividerHandlerManager from 'sentry/components/events/interfaces/spans/dividerHandlerManager';
+import * as ScrollbarManager from 'sentry/components/events/interfaces/spans/scrollbarManager';
+import ProjectBadge from 'sentry/components/idBadge/projectBadge';
+import {ROW_HEIGHT} from 'sentry/components/performance/waterfall/constants';
+import {
+  Row,
+  RowCell,
+  RowCellContainer,
+} from 'sentry/components/performance/waterfall/row';
+import {DurationPill, RowRectangle} from 'sentry/components/performance/waterfall/rowBar';
 import {
   DividerContainer,
   DividerLine,
   DividerLineGhostContainer,
   ErrorBadge,
-} from 'app/components/performance/waterfall/rowDivider';
+} from 'sentry/components/performance/waterfall/rowDivider';
 import {
   RowTitle,
   RowTitleContainer,
   RowTitleContent,
-} from 'app/components/performance/waterfall/rowTitle';
+} from 'sentry/components/performance/waterfall/rowTitle';
 import {
   ConnectorBar,
-  StyledIconChevron,
   TOGGLE_BORDER_BOX,
   TreeConnector,
   TreeToggle,
   TreeToggleContainer,
-} from 'app/components/performance/waterfall/treeConnector';
+  TreeToggleIcon,
+} from 'sentry/components/performance/waterfall/treeConnector';
 import {
   getDurationDisplay,
   getHumanDuration,
   toPercent,
-} from 'app/components/performance/waterfall/utils';
-import Tooltip from 'app/components/tooltip';
-import {Organization} from 'app/types';
-import {TraceFullDetailed} from 'app/utils/performance/quickTrace/types';
-import {isTraceFullDetailed} from 'app/utils/performance/quickTrace/utils';
-import Projects from 'app/utils/projects';
+} from 'sentry/components/performance/waterfall/utils';
+import Tooltip from 'sentry/components/tooltip';
+import {Organization} from 'sentry/types';
+import {TraceFullDetailed} from 'sentry/utils/performance/quickTrace/types';
+import {isTraceFullDetailed} from 'sentry/utils/performance/quickTrace/utils';
+import Projects from 'sentry/utils/projects';
 
-import {StyledProjectBadge} from './styles';
+import {ProjectBadgeContainer} from './styles';
 import TransactionDetail from './transactionDetail';
 import {TraceInfo, TraceRoot, TreeDepth} from './types';
 
@@ -100,7 +105,7 @@ class TransactionBar extends React.Component<Props, State> {
       if (hasToggle) {
         return (
           <ConnectorBar
-            style={{right: '16px', height: '10px', bottom: '-5px', top: 'auto'}}
+            style={{right: '15px', height: '10px', bottom: '-5px', top: 'auto'}}
             orphanBranch={false}
           />
         );
@@ -117,7 +122,7 @@ class TransactionBar extends React.Component<Props, State> {
           return null;
         }
 
-        const left = -1 * getOffset(generation - depth - 1) - 1;
+        const left = -1 * getOffset(generation - depth - 1) - 2;
 
         return (
           <ConnectorBar
@@ -133,9 +138,9 @@ class TransactionBar extends React.Component<Props, State> {
       connectorBars.push(
         <ConnectorBar
           style={{
-            right: '16px',
+            right: '15px',
             height: '10px',
-            bottom: isLast ? `-${ROW_HEIGHT / 2}px` : '0',
+            bottom: isLast ? `-${ROW_HEIGHT / 2 + 1}px` : '0',
             top: 'auto',
           }}
           key={`${eventId}-last`}
@@ -186,7 +191,7 @@ class TransactionBar extends React.Component<Props, State> {
           <Count value={children.length} />
           {!isRoot && (
             <div>
-              <StyledIconChevron direction={isExpanded ? 'up' : 'down'} />
+              <TreeToggleIcon direction={isExpanded ? 'up' : 'down'} />
             </div>
           )}
         </TreeToggle>
@@ -210,13 +215,15 @@ class TransactionBar extends React.Component<Props, State> {
           {({projects}) => {
             const project = projects.find(p => p.slug === transaction.project_slug);
             return (
-              <Tooltip title={transaction.project_slug}>
-                <StyledProjectBadge
-                  project={project ? project : {slug: transaction.project_slug}}
-                  avatarSize={16}
-                  hideName
-                />
-              </Tooltip>
+              <ProjectBadgeContainer>
+                <Tooltip title={transaction.project_slug}>
+                  <ProjectBadge
+                    project={project ? project : {slug: transaction.project_slug}}
+                    avatarSize={16}
+                    hideName
+                  />
+                </Tooltip>
+              </ProjectBadgeContainer>
             );
           }}
         </Projects>

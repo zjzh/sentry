@@ -1,8 +1,9 @@
 import {mountWithTheme} from 'sentry-test/enzyme';
+import {act} from 'sentry-test/reactTestingLibrary';
 
-import * as projectsActions from 'app/actionCreators/projects';
-import ProjectsStatsStore from 'app/stores/projectsStatsStore';
-import {Dashboard} from 'app/views/projectsDashboard';
+import * as projectsActions from 'sentry/actionCreators/projects';
+import ProjectsStatsStore from 'sentry/stores/projectsStatsStore';
+import {Dashboard} from 'sentry/views/projectsDashboard';
 
 jest.unmock('lodash/debounce');
 jest.mock('lodash/debounce', () => {
@@ -292,7 +293,9 @@ describe('ProjectsDashboard', function () {
       expect(wrapper.find('Chart')).toHaveLength(6);
 
       // Resets store when it unmounts
-      wrapper.unmount();
+      act(() => {
+        wrapper.unmount();
+      });
       expect(ProjectsStatsStore.getAll()).toEqual({});
     });
 

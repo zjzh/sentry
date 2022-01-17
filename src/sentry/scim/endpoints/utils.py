@@ -1,9 +1,12 @@
+from rest_framework import serializers
+from rest_framework.exceptions import ParseError
 from rest_framework.negotiation import BaseContentNegotiation
+from rest_framework.request import Request
 
 from sentry.api.bases.organization import OrganizationEndpoint, OrganizationPermission
 from sentry.models import AuthProvider
 
-from .constants import SCIM_API_LIST
+from .constants import SCIM_400_INVALID_FILTER, SCIM_API_LIST
 
 SCIM_CONTENT_TYPES = ["application/json", "application/json+scim"]
 ACCEPTED_FILTERED_KEYS = ["userName", "value", "displayName"]
@@ -16,7 +19,7 @@ class SCIMFilterError(ValueError):
 class SCIMClientNegotiation(BaseContentNegotiation):
     # SCIM uses the content type "application/json+scim"
     # which is just json for our purposes.
-    def select_parser(self, request, parsers):
+    def select_parser(self, request: Request, parsers):
         """
         Select the first parser in the `.parser_classes` list.
         """
@@ -24,7 +27,7 @@ class SCIMClientNegotiation(BaseContentNegotiation):
             if parser.media_type in SCIM_CONTENT_TYPES:
                 return parser
 
-    def select_renderer(self, request, renderers, format_suffix):
+    def select_renderer(self, request: Request, renderers, format_suffix):
         """
         Select the first renderer in the `.renderer_classes` list.
         """
@@ -33,8 +36,29 @@ class SCIMClientNegotiation(BaseContentNegotiation):
                 return (renderer, renderer.media_type)
 
 
+class SCIMQueryParamSerializer(serializers.Serializer):
+    # SCIM API parameters are standardized camelCase by RFC7644.
+    # We convert them to snake_case using the source field
+
+    startIndex = serializers.IntegerField(
+        min_value=1, required=False, default=1, source="start_index"
+    )
+    count = serializers.IntegerField(min_value=0, required=False, default=100)
+    filter = serializers.CharField(required=False, default=None)
+    excludedAttributes = serializers.ListField(
+        child=serializers.CharField(), required=False, default=[], source="excluded_attributes"
+    )
+
+    def validate_filter(self, filter):
+        try:
+            filter = parse_filter_conditions(filter)
+        except SCIMFilterError:
+            raise serializers.ValidationError("invalid filter")
+        return filter
+
+
 class OrganizationSCIMPermission(OrganizationPermission):
-    def has_object_permission(self, request, view, organization):
+    def has_object_permission(self, request: Request, view, organization):
         result = super().has_object_permission(request, view, organization)
         # The scim endpoints should only be used in conjunction with a SAML2 integration
         if not result:
@@ -72,17 +96,28 @@ class SCIMEndpoint(OrganizationEndpoint):
     content_negotiation_class = SCIMClientNegotiation
     cursor_name = "startIndex"
 
-    def add_cursor_headers(self, request, response, cursor_result):
+    def add_cursor_headers(self, request: Request, response, cursor_result):
         pass
 
-    def list_api_format(self, request, total_results, results):
+    def list_api_format(self, results, total_results, start_index):
         return {
             "schemas": [SCIM_API_LIST],
             "totalResults": total_results,  # TODO: audit perf of queryset.count()
-            "startIndex": int(request.GET.get("startIndex", 1)),  # must be integer
+            "startIndex": start_index,
             "itemsPerPage": len(results),  # what's max?
             "Resources": results,
         }
+
+    def get_query_parameters(self, request: Request):
+        serializer = SCIMQueryParamSerializer(data=request.GET)
+        if not serializer.is_valid():
+            if "filter" in serializer.errors:
+                # invalid filter needs to return a specific formatted
+                # error response
+                raise ParseError(detail=SCIM_400_INVALID_FILTER)
+            raise ParseError(serializer.errors)
+
+        return serializer.validated_data
 
 
 def parse_filter_conditions(raw_filters):
@@ -100,9 +135,9 @@ def parse_filter_conditions(raw_filters):
     # TODO: support "and" operator
     # TODO: support email querying/filtering
     # TODO: graceful error handling when unsupported operators are used
-    filters = []
+
     if raw_filters is None:
-        return filters
+        return None
 
     try:
         conditions = raw_filters.split(",")

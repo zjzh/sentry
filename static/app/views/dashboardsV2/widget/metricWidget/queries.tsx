@@ -1,19 +1,17 @@
 import {Fragment} from 'react';
 import styled from '@emotion/styled';
 
-import Button from 'app/components/button';
-import {IconAdd, IconDelete} from 'app/icons';
-import {t} from 'app/locale';
-import space from 'app/styles/space';
-import Input from 'app/views/settings/components/forms/controls/input';
+import Button from 'sentry/components/button';
+import {IconAdd, IconDelete} from 'sentry/icons';
+import {t} from 'sentry/locale';
+import space from 'sentry/styles/space';
+import {MetricMeta, MetricQuery} from 'sentry/types';
+import Input from 'sentry/views/settings/components/forms/controls/input';
 
-import GroupByField from './groupByField';
 import MetricSelectField from './metricSelectField';
-import {MetricMeta, MetricQuery} from './types';
 
 type Props = {
   metricMetas: MetricMeta[];
-  metricTags: string[];
   queries: MetricQuery[];
   onRemoveQuery: (index: number) => void;
   onAddQuery: () => void;
@@ -22,7 +20,6 @@ type Props = {
 
 function Queries({
   metricMetas,
-  metricTags,
   queries,
   onRemoveQuery,
   onAddQuery,
@@ -46,11 +43,6 @@ function Queries({
               metricMeta={query.metricMeta}
               aggregation={query.aggregation}
               onChange={(field, value) => handleFieldChange(queryIndex, field)(value)}
-            />
-            <GroupByField
-              metricTags={metricTags}
-              groupBy={query.groupBy}
-              onChange={v => handleFieldChange(queryIndex, 'groupBy')(v)}
             />
             <Input
               type="text"
@@ -110,19 +102,19 @@ const IconDeleteWrapper = styled('div')`
 
 const Fields = styled('div')<{displayDeleteButton: boolean}>`
   display: grid;
-  grid-gap: ${space(2)};
+  gap: ${space(2)};
 
   @media (min-width: ${p => p.theme.breakpoints[3]}) {
     grid-template-columns: ${p =>
-      p.displayDeleteButton ? '1.3fr 1fr 0.5fr max-content' : '1.3fr 1fr 0.5fr'};
-    grid-gap: ${space(1)};
+      p.displayDeleteButton ? '1fr 33% max-content' : '1fr 33%'};
+    gap: ${space(1)};
     align-items: center;
   }
 `;
 
 const Wrapper = styled('div')`
   display: grid;
-  grid-gap: ${space(2)};
+  gap: ${space(2)};
   @media (max-width: ${p => p.theme.breakpoints[3]}) {
     ${Fields} {
       :not(:first-child) {

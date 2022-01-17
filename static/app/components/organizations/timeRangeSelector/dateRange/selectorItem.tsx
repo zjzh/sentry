@@ -1,7 +1,7 @@
 import * as React from 'react';
 import styled from '@emotion/styled';
 
-import space from 'app/styles/space';
+import space from 'sentry/styles/space';
 
 type Props = {
   onClick: (value: string, e?: React.MouseEvent) => void;
@@ -12,23 +12,13 @@ type Props = {
   className?: string;
 };
 
-class SelectorItem extends React.PureComponent<Props> {
-  handleClick = (e: React.MouseEvent) => {
-    const {onClick, value} = this.props;
-    onClick(value, e);
-  };
+const BaseSelectorItem = ({onClick, value, className, label}: Props) => (
+  <div className={className} onClick={e => onClick(value, e)}>
+    <Label>{label}</Label>
+  </div>
+);
 
-  render() {
-    const {className, label} = this.props;
-    return (
-      <div className={className} onClick={this.handleClick}>
-        <Label>{label}</Label>
-      </div>
-    );
-  }
-}
-
-const StyledSelectorItem = styled(SelectorItem)`
+const SelectorItem = styled(BaseSelectorItem)`
   display: flex;
   cursor: pointer;
   white-space: nowrap;
@@ -42,7 +32,7 @@ const StyledSelectorItem = styled(SelectorItem)`
 
   &:hover {
     color: ${p => p.theme.textColor};
-    background: ${p => p.theme.focus};
+    background: ${p => p.theme.hover};
   }
 `;
 
@@ -51,4 +41,4 @@ const Label = styled('span')`
   margin-right: ${space(1)};
 `;
 
-export default StyledSelectorItem;
+export default SelectorItem;

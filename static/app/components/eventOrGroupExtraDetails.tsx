@@ -1,19 +1,20 @@
-import {Link, withRouter, WithRouterProps} from 'react-router';
+import {withRouter, WithRouterProps} from 'react-router';
 import styled from '@emotion/styled';
 
-import GuideAnchor from 'app/components/assistant/guideAnchor';
-import EventAnnotation from 'app/components/events/eventAnnotation';
-import InboxReason from 'app/components/group/inboxBadges/inboxReason';
-import InboxShortId from 'app/components/group/inboxBadges/shortId';
-import TimesTag from 'app/components/group/inboxBadges/timesTag';
-import UnhandledTag from 'app/components/group/inboxBadges/unhandledTag';
-import ProjectBadge from 'app/components/idBadge/projectBadge';
-import Placeholder from 'app/components/placeholder';
-import {IconChat} from 'app/icons';
-import {tct} from 'app/locale';
-import space from 'app/styles/space';
-import {Group} from 'app/types';
-import {Event} from 'app/types/event';
+import GuideAnchor from 'sentry/components/assistant/guideAnchor';
+import EventAnnotation from 'sentry/components/events/eventAnnotation';
+import InboxReason from 'sentry/components/group/inboxBadges/inboxReason';
+import InboxShortId from 'sentry/components/group/inboxBadges/shortId';
+import TimesTag from 'sentry/components/group/inboxBadges/timesTag';
+import UnhandledTag from 'sentry/components/group/inboxBadges/unhandledTag';
+import ProjectBadge from 'sentry/components/idBadge/projectBadge';
+import Link from 'sentry/components/links/link';
+import Placeholder from 'sentry/components/placeholder';
+import {IconChat} from 'sentry/icons';
+import {tct} from 'sentry/locale';
+import space from 'sentry/styles/space';
+import {Group} from 'sentry/types';
+import {Event} from 'sentry/types/event';
 
 type Props = WithRouterProps<{orgId: string}> & {
   data: Event | Group;
@@ -119,7 +120,7 @@ function EventOrGroupExtraDetails({
 const GroupExtra = styled('div')`
   display: inline-grid;
   grid-auto-flow: column dense;
-  grid-gap: ${space(1.5)};
+  gap: ${space(1.5)};
   justify-content: start;
   align-items: center;
   color: ${p => p.theme.textColor};
@@ -141,7 +142,7 @@ const ShadowlessProjectBadge = styled(ProjectBadge)`
 
 const CommentsLink = styled(Link)`
   display: inline-grid;
-  grid-gap: ${space(0.5)};
+  gap: ${space(0.5)};
   align-items: center;
   grid-auto-flow: column;
   color: ${p => p.theme.textColor};

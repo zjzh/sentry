@@ -1,9 +1,9 @@
-import {t} from 'app/locale';
-import {EventAttachment} from 'app/types';
-import GroupEventAttachmentsTableRow from 'app/views/organizationGroupDetails/groupEventAttachments/groupEventAttachmentsTableRow';
+import {t} from 'sentry/locale';
+import {IssueAttachment} from 'sentry/types';
+import GroupEventAttachmentsTableRow from 'sentry/views/organizationGroupDetails/groupEventAttachments/groupEventAttachmentsTableRow';
 
 type Props = {
-  attachments: EventAttachment[];
+  attachments: IssueAttachment[];
   orgId: string;
   projectId: string;
   groupId: string;

@@ -7,6 +7,8 @@ from django import forms
 from django.core.validators import URLValidator
 from django.utils.translation import ugettext_lazy as _
 from django.views.decorators.csrf import csrf_exempt
+from rest_framework.request import Request
+from rest_framework.response import Response
 
 from sentry.integrations import (
     FeatureDescription,
@@ -128,7 +130,7 @@ class InstallationConfigView(PipelineView):
     Collect the OAuth client credentials from the user.
     """
 
-    def dispatch(self, request, pipeline):
+    def dispatch(self, request: Request, pipeline) -> Response:
         if request.method == "POST":
             form = InstallationForm(request.POST)
             if form.is_valid():
@@ -153,7 +155,7 @@ class OAuthLoginView(PipelineView):
     """
 
     @csrf_exempt
-    def dispatch(self, request, pipeline):
+    def dispatch(self, request: Request, pipeline) -> Response:
         if "oauth_token" in request.GET:
             return pipeline.next_step()
 
@@ -176,7 +178,7 @@ class OAuthLoginView(PipelineView):
                 "identity.bitbucket-server.request-token",
                 extra={"url": config.get("url"), "error": error},
             )
-            return pipeline.error("Could not fetch a request token from Bitbucket. %s" % error)
+            return pipeline.error(f"Could not fetch a request token from Bitbucket. {error}")
 
 
 class OAuthCallbackView(PipelineView):
@@ -186,7 +188,7 @@ class OAuthCallbackView(PipelineView):
     """
 
     @csrf_exempt
-    def dispatch(self, request, pipeline):
+    def dispatch(self, request: Request, pipeline) -> Response:
         config = pipeline.fetch_state("installation_data")
         client = BitbucketServerSetupClient(
             config.get("url"),
@@ -205,7 +207,7 @@ class OAuthCallbackView(PipelineView):
             return pipeline.next_step()
         except ApiError as error:
             logger.info("identity.bitbucket-server.access-token", extra={"error": error})
-            return pipeline.error("Could not fetch an access token from Bitbucket. %s" % str(error))
+            return pipeline.error(f"Could not fetch an access token from Bitbucket. {str(error)}")
 
 
 class BitbucketServerIntegration(IntegrationInstallation, RepositoryMixin):
@@ -347,5 +349,5 @@ class BitbucketServerIntegrationProvider(IntegrationProvider):
         bindings.add(
             "integration-repository.provider",
             BitbucketServerRepositoryProvider,
-            id="integrations:%s" % self.key,
+            id=f"integrations:{self.key}",
         )

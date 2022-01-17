@@ -1,8 +1,16 @@
+from typing import Any
+
 import pytest
 from django.utils.functional import cached_property
 
 from sentry.incidents.models import IncidentActivityType
-from sentry.models import Activity, Integration, OrganizationMember, OrganizationMemberTeam
+from sentry.models import (
+    Activity,
+    Integration,
+    Organization,
+    OrganizationMember,
+    OrganizationMemberTeam,
+)
 from sentry.testutils.factories import Factories
 from sentry.testutils.helpers.datetime import before_now, iso_format
 
@@ -73,6 +81,18 @@ class Fixtures:
         return Activity.objects.create(
             group=self.group, project=self.project, type=Activity.NOTE, user=self.user, data={}
         )
+
+    @cached_property
+    def integration(self):
+        integration = Integration.objects.create(
+            provider="github", name="GitHub", external_id="github:1"
+        )
+        integration.add_organization(self.organization, self.user)
+        return integration
+
+    @cached_property
+    def organization_integration(self):
+        return self.integration.add_organization(self.organization, self.user)
 
     def create_organization(self, *args, **kwargs):
         return Factories.create_organization(*args, **kwargs)
@@ -159,10 +179,12 @@ class Fixtures:
             release = self.release.version
         return Factories.create_release_archive(org, release, *args, **kwargs)
 
-    def create_code_mapping(self, project=None, repo=None, **kwargs):
+    def create_code_mapping(self, project=None, repo=None, organization_integration=None, **kwargs):
         if project is None:
             project = self.project
-        return Factories.create_code_mapping(project, repo, **kwargs)
+        if organization_integration is None:
+            organization_integration = self.organization_integration
+        return Factories.create_code_mapping(project, repo, organization_integration, **kwargs)
 
     def create_repo(self, project=None, *args, **kwargs):
         if project is None:
@@ -228,6 +250,9 @@ class Fixtures:
     def create_sentry_app_installation(self, *args, **kwargs):
         return Factories.create_sentry_app_installation(*args, **kwargs)
 
+    def create_stacktrace_link_schema(self, *args, **kwargs):
+        return Factories.create_stacktrace_link_schema(*args, **kwargs)
+
     def create_issue_link_schema(self, *args, **kwargs):
         return Factories.create_issue_link_schema(*args, **kwargs)
 
@@ -236,6 +261,15 @@ class Fixtures:
 
     def create_sentry_app_feature(self, *args, **kwargs):
         return Factories.create_sentry_app_feature(*args, **kwargs)
+
+    def create_doc_integration(self, *args, **kwargs):
+        return Factories.create_doc_integration(*args, **kwargs)
+
+    def create_doc_integration_features(self, *args, **kwargs):
+        return Factories.create_doc_integration_features(*args, **kwargs)
+
+    def create_doc_integration_avatar(self, *args, **kwargs):
+        return Factories.create_doc_integration_avatar(*args, **kwargs)
 
     def create_service_hook(self, *args, **kwargs):
         return Factories.create_service_hook(*args, **kwargs)
@@ -306,10 +340,8 @@ class Fixtures:
         if not organization:
             organization = self.organization  # Force creation.
         if not integration:
-            integration = Integration.objects.create(
-                provider="github", name="GitHub", external_id="github:1"
-            )
-            integration.add_organization(self.organization, self.user)
+            integration = self.integration
+
         return Factories.create_external_user(
             user=user, organization=organization, integration_id=integration.id, **kwargs
         )
@@ -318,10 +350,8 @@ class Fixtures:
         if not team:
             team = self.team
         if not integration:
-            integration = Integration.objects.create(
-                provider="github", name="GitHub", external_id="github:1"
-            )
-            integration.add_organization(self.organization, self.user)
+            integration = self.integration
+
         return Factories.create_external_team(
             team=team, organization=team.organization, integration_id=integration.id, **kwargs
         )
@@ -334,6 +364,31 @@ class Fixtures:
             code_mapping = self.create_code_mapping(self.project, self.repo)
 
         return Factories.create_codeowners(project=project, code_mapping=code_mapping, **kwargs)
+
+    def create_slack_integration(
+        self,
+        organization: "Organization",
+        external_id: str = "TXXXXXXX1",
+        **kwargs: Any,
+    ):
+        integration = Factories.create_slack_integration(
+            organization=organization, external_id=external_id, **kwargs
+        )
+        idp = Factories.create_identity_provider(integration=integration)
+        Factories.create_identity(organization.get_default_owner(), idp, "UXXXXXXX1")
+
+        return integration
+
+    def create_identity(self, *args, **kwargs):
+        return Factories.create_identity(*args, **kwargs)
+
+    def create_identity_provider(self, *args, **kwargs):
+        return Factories.create_identity_provider(*args, **kwargs)
+
+    def create_group_history(self, *args, **kwargs):
+        if "actor" not in kwargs:
+            kwargs["actor"] = self.user.actor
+        return Factories.create_group_history(*args, **kwargs)
 
     @pytest.fixture(autouse=True)
     def _init_insta_snapshot(self, insta_snapshot):

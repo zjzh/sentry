@@ -1,6 +1,7 @@
 import logging
 
 from rest_framework.exceptions import ParseError
+from rest_framework.request import Request
 from rest_framework.response import Response
 
 from sentry import features
@@ -20,6 +21,7 @@ ALLOWED_EVENTS_V2_REFERRERS = {
     "api.performance.vitals-cards",
     "api.performance.landing-table",
     "api.performance.transaction-summary",
+    "api.performance.transaction-spans",
     "api.performance.status-breakdown",
     "api.performance.vital-detail",
     "api.performance.durationpercentilechart",
@@ -36,22 +38,7 @@ ALLOWED_EVENTS_GEO_REFERRERS = {
 
 
 class OrganizationEventsV2Endpoint(OrganizationEventsV2EndpointBase):
-    def has_feature_for_fields(self, feature, organization, request, feature_fields):
-        has_feature = features.has(feature, organization, actor=request.user)
-
-        columns = self.get_field_list(organization, request)
-
-        if has_feature:
-            return True
-
-        if any(field in columns for field in feature_fields):
-            return False
-
-        # TODO: Check feature for search terms in the query
-
-        return True
-
-    def get(self, request, organization):
+    def get(self, request: Request, organization) -> Response:
         if not self.has_feature(organization, request):
             return Response(status=404)
 
@@ -64,19 +51,6 @@ class OrganizationEventsV2Endpoint(OrganizationEventsV2EndpointBase):
         referrer = (
             referrer if referrer in ALLOWED_EVENTS_V2_REFERRERS else "api.organization-events-v2"
         )
-
-        if not self.has_feature_for_fields(
-            "organizations:project-transaction-threshold",
-            organization,
-            request,
-            feature_fields=[
-                "project_threshold_config",
-                "count_miserable(user)",
-                "user_misery()",
-                "apdex()",
-            ],
-        ):
-            return Response(status=404)
 
         def data_fn(offset, limit):
             return discover.query(
@@ -91,6 +65,9 @@ class OrganizationEventsV2Endpoint(OrganizationEventsV2EndpointBase):
                 auto_fields=True,
                 auto_aggregations=True,
                 use_aggregate_conditions=True,
+                use_snql=features.has(
+                    "organizations:discover-use-snql", organization, actor=request.user
+                ),
             )
 
         with self.handle_query_errors():
@@ -115,10 +92,10 @@ class OrganizationEventsV2Endpoint(OrganizationEventsV2EndpointBase):
 
 
 class OrganizationEventsGeoEndpoint(OrganizationEventsV2EndpointBase):
-    def has_feature(self, request, organization):
+    def has_feature(self, request: Request, organization):
         return features.has("organizations:dashboards-basic", organization, actor=request.user)
 
-    def get(self, request, organization):
+    def get(self, request: Request, organization) -> Response:
         if not self.has_feature(request, organization):
             return Response(status=404)
 
@@ -149,6 +126,10 @@ class OrganizationEventsGeoEndpoint(OrganizationEventsV2EndpointBase):
                 limit=limit,
                 referrer=referrer,
                 use_aggregate_conditions=True,
+                orderby=self.get_orderby(request) or maybe_aggregate,
+                use_snql=features.has(
+                    "organizations:discover-use-snql", organization, actor=request.user
+                ),
             )
 
         with self.handle_query_errors():

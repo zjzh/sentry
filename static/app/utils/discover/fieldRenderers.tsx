@@ -4,20 +4,23 @@ import styled from '@emotion/styled';
 import {Location} from 'history';
 import partial from 'lodash/partial';
 
-import Count from 'app/components/count';
-import Duration from 'app/components/duration';
-import ProjectBadge from 'app/components/idBadge/projectBadge';
-import UserBadge from 'app/components/idBadge/userBadge';
-import {RowRectangle} from 'app/components/performance/waterfall/rowBar';
-import {pickBarColor, toPercent} from 'app/components/performance/waterfall/utils';
-import Tooltip from 'app/components/tooltip';
-import UserMisery from 'app/components/userMisery';
-import Version from 'app/components/version';
-import {t} from 'app/locale';
-import {Organization} from 'app/types';
-import {defined} from 'app/utils';
-import {trackAnalyticsEvent} from 'app/utils/analytics';
-import EventView, {EventData, MetaType} from 'app/utils/discover/eventView';
+import AssigneeSelector from 'sentry/components/assigneeSelector';
+import Count from 'sentry/components/count';
+import Duration from 'sentry/components/duration';
+import ProjectBadge from 'sentry/components/idBadge/projectBadge';
+import UserBadge from 'sentry/components/idBadge/userBadge';
+import ExternalLink from 'sentry/components/links/externalLink';
+import {RowRectangle} from 'sentry/components/performance/waterfall/rowBar';
+import {pickBarColor, toPercent} from 'sentry/components/performance/waterfall/utils';
+import Tooltip from 'sentry/components/tooltip';
+import UserMisery from 'sentry/components/userMisery';
+import Version from 'sentry/components/version';
+import {t} from 'sentry/locale';
+import MemberListStore from 'sentry/stores/memberListStore';
+import {Organization} from 'sentry/types';
+import {defined, isUrl} from 'sentry/utils';
+import {trackAnalyticsEvent} from 'sentry/utils/analytics';
+import EventView, {EventData, MetaType} from 'sentry/utils/discover/eventView';
 import {
   AGGREGATIONS,
   getAggregateAlias,
@@ -26,27 +29,26 @@ import {
   isRelativeSpanOperationBreakdownField,
   SPAN_OP_BREAKDOWN_FIELDS,
   SPAN_OP_RELATIVE_BREAKDOWN_FIELD,
-} from 'app/utils/discover/fields';
-import {getShortEventId} from 'app/utils/events';
-import {formatFloat, formatPercentage} from 'app/utils/formatters';
-import getDynamicText from 'app/utils/getDynamicText';
-import Projects from 'app/utils/projects';
+} from 'sentry/utils/discover/fields';
+import {getShortEventId} from 'sentry/utils/events';
+import {formatFloat, formatPercentage} from 'sentry/utils/formatters';
+import getDynamicText from 'sentry/utils/getDynamicText';
+import Projects from 'sentry/utils/projects';
 import {
   filterToLocationQuery,
   SpanOperationBreakdownFilter,
   stringToFilter,
-} from 'app/views/performance/transactionSummary/filter';
+} from 'sentry/views/performance/transactionSummary/filter';
 
 import ArrayValue from './arrayValue';
-import KeyTransactionField from './keyTransactionField';
 import {
   BarContainer,
   Container,
+  FieldDateTime,
+  FieldShortId,
   FlexContainer,
   NumberContainer,
   OverflowLink,
-  StyledDateTime,
-  StyledShortId,
   UserIcon,
   VersionContainer,
 } from './styles';
@@ -112,7 +114,7 @@ const FIELD_FORMATTERS: FieldFormatters = {
       <Container>
         {data[field]
           ? getDynamicText({
-              value: <StyledDateTime date={data[field]} />,
+              value: <FieldDateTime date={data[field]} />,
               fixed: 'timestamp',
             })
           : emptyValue}
@@ -164,6 +166,15 @@ const FIELD_FORMATTERS: FieldFormatters = {
         : defined(data[field])
         ? data[field]
         : emptyValue;
+      if (isUrl(value)) {
+        return (
+          <Container>
+            <ExternalLink href={value} data-test-id="group-tag-url">
+              {value}
+            </ExternalLink>
+          </Container>
+        );
+      }
       return <Container>{value}</Container>;
     },
   },
@@ -197,11 +208,11 @@ type SpecialFields = {
   'error.handled': SpecialField;
   issue: SpecialField;
   release: SpecialField;
-  key_transaction: SpecialField;
   team_key_transaction: SpecialField;
   'trend_percentage()': SpecialField;
   'timestamp.to_hour': SpecialField;
   'timestamp.to_day': SpecialField;
+  assignee: SpecialField;
 };
 
 /**
@@ -255,7 +266,7 @@ const SPECIAL_FIELDS: SpecialFields = {
       if (!issueID) {
         return (
           <Container>
-            <StyledShortId shortId={`${data.issue}`} />
+            <FieldShortId shortId={`${data.issue}`} />
           </Container>
         );
       }
@@ -267,7 +278,7 @@ const SPECIAL_FIELDS: SpecialFields = {
       return (
         <Container>
           <OverflowLink to={target} aria-label={issueID}>
-            <StyledShortId shortId={`${data.issue}`} />
+            <FieldShortId shortId={`${data.issue}`} />
           </OverflowLink>
         </Container>
       );
@@ -374,19 +385,6 @@ const SPECIAL_FIELDS: SpecialFields = {
       return <Container>{[1, null].includes(value) ? 'true' : 'false'}</Container>;
     },
   },
-  key_transaction: {
-    sortField: null,
-    renderFunc: (data, {organization}) => (
-      <Container>
-        <KeyTransactionField
-          isKeyTransaction={(data.key_transaction ?? 0) !== 0}
-          organization={organization}
-          projectSlug={data.project}
-          transactionName={data.transaction}
-        />
-      </Container>
-    ),
-  },
   team_key_transaction: {
     sortField: null,
     renderFunc: (data, {organization}) => (
@@ -415,7 +413,7 @@ const SPECIAL_FIELDS: SpecialFields = {
     renderFunc: data => (
       <Container>
         {getDynamicText({
-          value: <StyledDateTime date={data['timestamp.to_hour']} format="lll z" />,
+          value: <FieldDateTime date={data['timestamp.to_hour']} format="lll z" />,
           fixed: 'timestamp.to_hour',
         })}
       </Container>
@@ -426,13 +424,33 @@ const SPECIAL_FIELDS: SpecialFields = {
     renderFunc: data => (
       <Container>
         {getDynamicText({
-          value: <StyledDateTime date={data['timestamp.to_day']} dateOnly utc />,
+          value: <FieldDateTime date={data['timestamp.to_day']} dateOnly utc />,
           fixed: 'timestamp.to_day',
         })}
       </Container>
     ),
   },
+  assignee: {
+    sortField: 'assignee.name',
+    renderFunc: data => {
+      const memberList = MemberListStore.getAll();
+      return (
+        <ActorContainer>
+          <AssigneeSelector id={data.id} memberList={memberList} noDropdown />
+        </ActorContainer>
+      );
+    },
+  },
 };
+
+const ActorContainer = styled('div')`
+  display: flex;
+  justify-content: left;
+  margin-left: 18px;
+  :hover {
+    cursor: default;
+  }
+`;
 
 type SpecialFunctionFieldRenderer = (
   fieldName: string

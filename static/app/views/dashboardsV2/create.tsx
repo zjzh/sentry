@@ -1,24 +1,27 @@
-import React from 'react';
-import {RouteComponentProps} from 'react-router';
+import {useEffect, useState} from 'react';
+import {browserHistory, RouteComponentProps} from 'react-router';
 
-import Feature from 'app/components/acl/feature';
-import Alert from 'app/components/alert';
-import {t} from 'app/locale';
-import {PageContent} from 'app/styles/organization';
-import {Organization} from 'app/types';
-import withOrganization from 'app/utils/withOrganization';
+import Feature from 'sentry/components/acl/feature';
+import Alert from 'sentry/components/alert';
+import {t} from 'sentry/locale';
+import {PageContent} from 'sentry/styles/organization';
+import {Organization} from 'sentry/types';
+import withOrganization from 'sentry/utils/withOrganization';
 
-import {EMPTY_DASHBOARD} from './data';
+import {DASHBOARDS_TEMPLATES, EMPTY_DASHBOARD} from './data';
 import DashboardDetail from './detail';
-import {DashboardState} from './types';
-import {cloneDashboard} from './utils';
+import {DashboardState, Widget} from './types';
+import {cloneDashboard, constructWidgetFromQuery} from './utils';
 
-type Props = RouteComponentProps<{orgId: string}, {}> & {
+type Props = RouteComponentProps<{orgId: string; templateId?: string}, {}> & {
   organization: Organization;
   children: React.ReactNode;
 };
 
 function CreateDashboard(props: Props) {
+  const {organization, location} = props;
+  const {templateId} = props.params;
+  const [newWidget, setNewWidget] = useState<Widget | undefined>();
   function renderDisabled() {
     return (
       <PageContent>
@@ -27,7 +30,18 @@ function CreateDashboard(props: Props) {
     );
   }
 
-  const dashboard = cloneDashboard(EMPTY_DASHBOARD);
+  const template = templateId
+    ? DASHBOARDS_TEMPLATES.find(dashboardTemplate => dashboardTemplate.id === templateId)
+    : undefined;
+  const dashboard = template ? cloneDashboard(template) : cloneDashboard(EMPTY_DASHBOARD);
+  const initialState = template ? DashboardState.PREVIEW : DashboardState.CREATE;
+  useEffect(() => {
+    const constructedWidget = constructWidgetFromQuery(location.query);
+    setNewWidget(constructedWidget);
+    if (constructedWidget) {
+      browserHistory.replace(location.pathname);
+    }
+  }, [organization.slug]);
   return (
     <Feature
       features={['dashboards-edit']}
@@ -36,9 +50,10 @@ function CreateDashboard(props: Props) {
     >
       <DashboardDetail
         {...props}
-        initialState={DashboardState.CREATE}
+        initialState={initialState}
         dashboard={dashboard}
         dashboards={[]}
+        newWidget={newWidget}
       />
     </Feature>
   );

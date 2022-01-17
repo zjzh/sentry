@@ -1,31 +1,30 @@
 import styled from '@emotion/styled';
 import {Location} from 'history';
 
-import EventTagsPill from 'app/components/events/eventTags/eventTagsPill';
-import {SecondaryHeader} from 'app/components/events/interfaces/spans/header';
-import ProjectBadge from 'app/components/idBadge/projectBadge';
-import {Panel} from 'app/components/panels';
-import Pills from 'app/components/pills';
-import SearchBar from 'app/components/searchBar';
-import space from 'app/styles/space';
-import {Organization} from 'app/types';
-import {defined} from 'app/utils';
-import {TraceFullDetailed} from 'app/utils/performance/quickTrace/types';
-import {appendTagCondition} from 'app/utils/queryString';
-import {transactionSummaryRouteWithQuery} from 'app/views/performance/transactionSummary/utils';
+import EventTagsPill from 'sentry/components/events/eventTags/eventTagsPill';
+import {SecondaryHeader} from 'sentry/components/events/interfaces/spans/header';
+import {Panel} from 'sentry/components/panels';
+import Pills from 'sentry/components/pills';
+import SearchBar from 'sentry/components/searchBar';
+import space from 'sentry/styles/space';
+import {Organization} from 'sentry/types';
+import {defined} from 'sentry/utils';
+import {TraceFullDetailed} from 'sentry/utils/performance/quickTrace/types';
+import {appendTagCondition} from 'sentry/utils/queryString';
+import {transactionSummaryRouteWithQuery} from 'sentry/views/performance/transactionSummary/utils';
 
 export {
   Row,
   SpanDetails as TransactionDetails,
   SpanDetailContainer as TransactionDetailsContainer,
-} from 'app/components/events/interfaces/spans/spanDetail';
+} from 'sentry/components/events/interfaces/spans/spanDetail';
 
-export const SearchContainer = styled('div')`
+export const TraceSearchContainer = styled('div')`
   display: flex;
   width: 100%;
 `;
 
-export const StyledSearchBar = styled(SearchBar)`
+export const TraceSearchBar = styled(SearchBar)`
   flex-grow: 1;
 `;
 
@@ -39,11 +38,11 @@ export const TraceViewHeaderContainer = styled(SecondaryHeader)`
 export const TraceDetailHeader = styled('div')`
   display: grid;
   grid-template-columns: 1fr;
-  grid-gap: ${space(2)};
+  gap: ${space(3)};
   margin-bottom: ${space(2)};
 
   @media (min-width: ${p => p.theme.breakpoints[1]}) {
-    grid-template-columns: minmax(250px, 1fr) minmax(160px, 1fr) 6fr;
+    grid-template-columns: max-content max-content;
     grid-row-gap: 0;
   }
 `;
@@ -58,12 +57,15 @@ export const TraceViewContainer = styled('div')`
   border-bottom-right-radius: 3px;
 `;
 
-export const StyledPanel = styled(Panel)`
+export const TracePanel = styled(Panel)`
   overflow: hidden;
 `;
 
-export const StyledProjectBadge = styled(ProjectBadge)`
+export const ProjectBadgeContainer = styled('span')`
   margin-right: ${space(0.75)};
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 `;
 
 const StyledPills = styled(Pills)`
@@ -113,7 +115,6 @@ export function Tags({
                 query={query}
                 streamPath={streamPath}
                 releasesPath={releasesPath}
-                hasQueryFeature={false}
               />
             );
           })}

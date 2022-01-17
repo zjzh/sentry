@@ -1,15 +1,18 @@
+import {Fragment} from 'react';
 import styled from '@emotion/styled';
 
-import * as modal from 'app/actionCreators/modal';
-import Button from 'app/components/button';
-import ContextPickerModal from 'app/components/contextPickerModal';
-import {t} from 'app/locale';
-import space from 'app/styles/space';
-import {PluginProjectItem, PluginWithProjectList} from 'app/types';
-import withOrganization from 'app/utils/withOrganization';
+import * as modal from 'sentry/actionCreators/modal';
+import AsyncComponent from 'sentry/components/asyncComponent';
+import Button from 'sentry/components/button';
+import ContextPickerModal from 'sentry/components/contextPickerModal';
+import {t} from 'sentry/locale';
+import space from 'sentry/styles/space';
+import {PluginProjectItem, PluginWithProjectList} from 'sentry/types';
+import withOrganization from 'sentry/utils/withOrganization';
 
 import AbstractIntegrationDetailedView from './abstractIntegrationDetailedView';
 import InstalledPlugin from './installedPlugin';
+import PluginDeprecationAlert from './pluginDeprecationAlert';
 
 type State = {
   plugins: PluginWithProjectList[];
@@ -21,7 +24,7 @@ class PluginDetailedView extends AbstractIntegrationDetailedView<
   AbstractIntegrationDetailedView['props'],
   State & AbstractIntegrationDetailedView['state']
 > {
-  getEndpoints(): ([string, string, any] | [string, string])[] {
+  getEndpoints(): ReturnType<AsyncComponent['getEndpoints']> {
     const {orgId, integrationSlug} = this.props.params;
     return [
       ['plugins', `/organizations/${orgId}/plugins/configs/?plugins=${integrationSlug}`],
@@ -102,7 +105,7 @@ class PluginDetailedView extends AbstractIntegrationDetailedView<
   handleAddToProject = () => {
     const plugin = this.plugin;
     const {organization, router} = this.props;
-    this.trackIntegrationEvent('integrations.plugin_add_to_project_clicked');
+    this.trackIntegrationAnalytics('integrations.plugin_add_to_project_clicked');
     modal.openModal(
       modalProps => (
         <ContextPickerModal
@@ -116,7 +119,7 @@ class PluginDetailedView extends AbstractIntegrationDetailedView<
           }}
         />
       ),
-      {}
+      {allowClickClose: false}
     );
   };
 
@@ -149,21 +152,25 @@ class PluginDetailedView extends AbstractIntegrationDetailedView<
   renderConfigurations() {
     const plugin = this.plugin;
     const {organization} = this.props;
+
     if (plugin.projectList.length) {
       return (
-        <div>
-          {plugin.projectList.map((projectItem: PluginProjectItem) => (
-            <InstalledPlugin
-              key={projectItem.projectId}
-              organization={organization}
-              plugin={plugin}
-              projectItem={projectItem}
-              onResetConfiguration={this.handleResetConfiguration}
-              onPluginEnableStatusChange={this.handlePluginEnableStatus}
-              trackIntegrationEvent={this.trackIntegrationEvent}
-            />
-          ))}
-        </div>
+        <Fragment>
+          <PluginDeprecationAlert organization={organization} plugin={plugin} />
+          <div>
+            {plugin.projectList.map((projectItem: PluginProjectItem) => (
+              <InstalledPlugin
+                key={projectItem.projectId}
+                organization={organization}
+                plugin={plugin}
+                projectItem={projectItem}
+                onResetConfiguration={this.handleResetConfiguration}
+                onPluginEnableStatusChange={this.handlePluginEnableStatus}
+                trackIntegrationAnalytics={this.trackIntegrationAnalytics}
+              />
+            ))}
+          </div>
+        </Fragment>
       );
     }
     return this.renderEmptyConfigurations();

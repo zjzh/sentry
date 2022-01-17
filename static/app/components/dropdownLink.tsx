@@ -1,10 +1,10 @@
 import * as React from 'react';
-import {css, withTheme} from '@emotion/react';
+import {css, useTheme} from '@emotion/react';
 import classNames from 'classnames';
 
-import DropdownMenu from 'app/components/dropdownMenu';
-import {IconChevron} from 'app/icons';
-import {Theme} from 'app/utils/theme';
+import DropdownMenu from 'sentry/components/dropdownMenu';
+import {IconChevron} from 'sentry/icons';
+import {Theme} from 'sentry/utils/theme';
 
 const getRootCss = (theme: Theme) => css`
   .dropdown-menu {
@@ -14,7 +14,7 @@ const getRootCss = (theme: Theme) => css`
       &:hover,
       &:focus {
         color: inherit;
-        background-color: ${theme.focus};
+        background-color: ${theme.hover};
       }
     }
 
@@ -29,7 +29,7 @@ const getRootCss = (theme: Theme) => css`
 
   .dropdown-submenu:hover > span {
     color: ${theme.textColor};
-    background: ${theme.focus};
+    background: ${theme.hover};
   }
 `;
 
@@ -42,7 +42,6 @@ type Props = Omit<
   keyof typeof DropdownMenu.defaultProps
 > &
   Partial<typeof DropdownMenu.defaultProps> & {
-    theme: Theme;
     children: React.ReactNode;
     title?: React.ReactNode;
     customTitle?: React.ReactNode;
@@ -67,22 +66,23 @@ type Props = Omit<
     className?: string;
   };
 
-const DropdownLink = withTheme(
-  ({
-    anchorRight,
-    anchorMiddle,
-    disabled,
-    title,
-    customTitle,
-    caret,
-    children,
-    menuClasses,
-    className,
-    alwaysRenderMenu,
-    topLevelClasses,
-    theme,
-    ...otherProps
-  }: Props) => (
+function DropdownLink({
+  anchorMiddle,
+  title,
+  customTitle,
+  children,
+  menuClasses,
+  className,
+  topLevelClasses,
+  anchorRight = false,
+  disabled = false,
+  caret = true,
+  alwaysRenderMenu = true,
+  ...otherProps
+}: Props) {
+  const theme = useTheme();
+
+  return (
     <DropdownMenu alwaysRenderMenu={alwaysRenderMenu} {...otherProps}>
       {({isOpen, getRootProps, getActorProps, getMenuProps}) => {
         const shouldRenderMenu = alwaysRenderMenu || isOpen;
@@ -99,6 +99,10 @@ const DropdownLink = withTheme(
           open: isOpen,
         });
 
+        const {onClick: onClickActor, ...actorProps} = getActorProps({
+          className: cx,
+        });
+
         return (
           <span
             css={getRootCss(theme)}
@@ -106,11 +110,7 @@ const DropdownLink = withTheme(
               className: topLevelCx,
             })}
           >
-            <a
-              {...getActorProps({
-                className: cx,
-              })}
-            >
+            <a onClick={disabled ? undefined : onClickActor} {...actorProps}>
               {customTitle || (
                 <div className="dropdown-actor-title">
                   {title}
@@ -132,16 +132,7 @@ const DropdownLink = withTheme(
         );
       }}
     </DropdownMenu>
-  )
-);
-
-DropdownLink.defaultProps = {
-  alwaysRenderMenu: true,
-  disabled: false,
-  anchorRight: false,
-  caret: true,
-};
-
-DropdownLink.displayName = 'DropdownLink';
+  );
+}
 
 export default DropdownLink;
