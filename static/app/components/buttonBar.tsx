@@ -36,6 +36,9 @@ function ButtonBar({
             // We do not want to pass `barId` to <Button>`
             const {barId, ...props} = childProps;
             const isActive = active === barId;
+            if (isActive) {
+              props['aria-current'] = true;
+            }
 
             // This ["primary"] could be customizable with a prop,
             // but let's just enforce one "active" type for now

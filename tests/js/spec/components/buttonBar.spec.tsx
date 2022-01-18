@@ -18,5 +18,9 @@ describe('ButtonBar', function () {
     createWrapper();
     expect(screen.getByLabelText('First Button')).not.toHaveClass('active');
     expect(screen.getByLabelText('Second Button')).toHaveClass('active');
+    expect(screen.getByRole('button', {current: true})).toHaveTextContent(
+      'Second Button'
+    );
+    expect(screen.getAllByRole('button', {current: false})).toHaveLength(3);
   });
 });
