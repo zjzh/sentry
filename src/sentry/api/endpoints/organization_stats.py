@@ -2,7 +2,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 
 from sentry import tsdb
-from sentry.api.base import EnvironmentMixin, StatsMixin, VersionedEndpoint, method_version
+from sentry.api.base import EnvironmentMixin, StatsMixin, VersionedEndpoint
 from sentry.api.bases.organization import OrganizationEndpoint
 from sentry.api.endpoints.organization_stats_v2 import OrganizationStatsEndpointV2
 from sentry.api.exceptions import ResourceDoesNotExist
@@ -16,12 +16,10 @@ class OrganizationStatsEndpoint(
 ):
     _V2_DELEGATE = OrganizationStatsEndpointV2()
 
-    @method_version("get", 2)
     @rate_limit_endpoint(limit=20, window=1)
     def get_v2(self, request: Request, organization) -> Response:
         return self._V2_DELEGATE.get(request, organization)
 
-    @method_version("get")
     def get_v1(self, request: Request, organization) -> Response:
         """
         Retrieve Event Counts for an Organization
@@ -108,3 +106,8 @@ class OrganizationStatsEndpoint(
             data = data[organization.id]
 
         return Response(data)
+
+    @classmethod
+    def list_method_versions(cls):
+        cls.register_method_version(cls.get_v1, "get", 1)
+        cls.register_method_version(cls.get_v2, "get", 2)

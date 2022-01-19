@@ -3,10 +3,10 @@ from __future__ import annotations
 import functools
 import logging
 import time
+from abc import abstractmethod
 from collections import defaultdict
-from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Any, Callable, Mapping, Optional
+from typing import Callable, Mapping, Optional
 
 import sentry_sdk
 from django.conf import settings
@@ -407,88 +407,37 @@ class Endpoint(APIView):
         return response
 
 
-@dataclass
-class _VersionedMethodBody:
-    """Wraps an object method that handles versioned requests to an endpoint."""
-
-    http_method: str
-    version: int
-    wrapped: Callable
-
-    def __call__(self, *args: Any, **kwargs: Any) -> Any:
-        return self.wrapped(*args, **kwargs)
-
-
-def method_version(http_method: str, version: int = 1):
-    """Decorate an endpoint method to handle versioned requests.
-
-    This decorator should be used only on endpoint classes that extend
-    `VersionedEndpoint`. The default version (1) should be applied to methods
-    that existed before the platform supported versioning.
-
-    Example usage:
-
-        class AnEndpoint(VersionedEndpoint):
-            @method_version("get")
-            def get_v1(self, request):
-                return get_stuff(request)
-
-            @method_version("get", 2)
-            def get_v2(self, request):
-                return get_other_stuff(request)
-    """
-
-    if http_method not in APIView.http_method_names:
-        raise ValueError(f"http_method must be one of: {APIView.http_method_names}")
-
-    if version < 0:
-        raise ValueError("version must be positive")
-
-    def decorator(wrapped: Callable) -> _VersionedMethodBody:
-        if wrapped.__name__ in APIView.http_method_names:
-            raise Exception(
-                "Methods decorated with @method_version must not "
-                f"override HTTP handler methods such as `{wrapped.__name__}`. "
-                "Give it a descriptive name or change it to "
-                f"`{wrapped.__name__}_v{version}`."
-            )
-
-        return _VersionedMethodBody(http_method, version, wrapped)
-
-    return decorator
-
-
 class _MethodVersionTable:
     """A table of all handler methods on a versioned endpoint."""
 
-    def __init__(self, endpoint_cls) -> None:
-        self.table: Mapping[str, Mapping[int, _VersionedMethodBody]] = self._build(endpoint_cls)
+    def __init__(self) -> None:
+        self._table: Mapping[str, Mapping[int, Callable]] = defaultdict(dict)
+        self._is_frozen: bool = False
 
-    def _build(self, endpoint_cls) -> Mapping[str, Mapping[int, _VersionedMethodBody]]:
-        table = defaultdict(dict)
-        for attr_name in dir(endpoint_cls):
-            attr_obj = getattr(endpoint_cls, attr_name)
-            if isinstance(attr_obj, _VersionedMethodBody):
-                method_table = table[attr_obj.http_method]
-                if attr_obj.version in method_table:
-                    raise Exception(
-                        "Multiple methods mapped to "
-                        f"[method={attr_obj.http_method!r}, version={attr_obj.version!r}] "
-                        f"in {endpoint_cls!r}"
-                    )
-                table[attr_obj.http_method][attr_obj.version] = attr_obj
-        return table
+    def register(self, cls_method: Callable, http_method: str, version: int) -> None:
+        if self._is_frozen:
+            raise Exception("Can't register more methods after class init")
+
+        method_table = self._table[http_method]
+        if version in method_table:
+            raise Exception(
+                f"Multiple methods mapped to [method={http_method!r}, version={version!r}]"
+            )
+        method_table[version] = cls_method
+
+    def freeze(self) -> None:
+        self._is_frozen = True
 
     def supports_http_method(self, http_method: str) -> bool:
         """Check whether the endpoint supports an HTTP method.
 
         This determines whether a 405 response status is appropriate.
         """
-        return bool(self.table[http_method])
+        return bool(self._table[http_method])
 
-    def get_method_version(self, http_method: str, version: int) -> Optional[_VersionedMethodBody]:
+    def get_method_version(self, http_method: str, version: int) -> Optional[Callable]:
         """Look up a method version, or None if it doesn't exist."""
-        return self.table[http_method].get(version)
+        return self._table[http_method].get(version)
 
 
 class VersionedEndpoint(Endpoint):
@@ -499,12 +448,33 @@ class VersionedEndpoint(Endpoint):
     `@method_version`.
     """
 
-    _method_version_table = None
+    _method_version_table = _MethodVersionTable()
 
     def __init_subclass__(cls) -> None:
-        cls._method_version_table = _MethodVersionTable(cls)
+        cls.list_method_versions()
+        cls._method_version_table.freeze()
+
         for method_name in cls.http_method_names:
             cls._validate_method_override(method_name)
+
+    @classmethod
+    @abstractmethod
+    def list_method_versions(cls):
+        raise NotImplementedError
+
+    @classmethod
+    def register_method_version(cls, cls_method: Callable, http_method: str, version: int = 1):
+        if version <= 0:
+            raise ValueError("version must be positive")
+        if http_method not in cls.http_method_names:
+            raise ValueError(f"http_method must be one of: {cls.http_method_names}")
+        if cls_method.__name__ in cls.http_method_names:
+            raise ValueError(
+                f"Must not override `{cls_method.__name__}` as a versioned method. "
+                f"(Give it a descriptive name or change it to `{cls_method.__name__}_v{version}`.)"
+            )
+
+        cls._method_version_table.register(cls_method, http_method, version)
 
     @classmethod
     def _validate_method_override(cls, method_name):
